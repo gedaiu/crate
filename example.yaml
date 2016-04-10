@@ -1,0 +1,10 @@
+Event:
+  type: object
+  description: A calendar event
+  properties:
+    itemType:
+      type: string
+    begin:
+      type: string
+    end:
+      type: string

@@ -1,0 +1,9 @@
+name "crate"
+description "A minimal D application."
+copyright "Copyright © 2016, gedaiu"
+authors "gedaiu"
+license "MIT"
+targetType "library"
+
+dependency "vibe-d:data" version="*"
+dependency "vibe-d:http" version="*"
