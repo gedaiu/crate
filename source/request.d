@@ -101,7 +101,7 @@ final class RequestRouter
 
     performExpected(res);
 
-		callback(res)();
+		callback(res, responseBody)();
 	}
 
 	void end(alias T)()
@@ -111,6 +111,6 @@ final class RequestRouter
 
     performExpected(res);
 
-		T(res);
+		T(res, responseBody);
 	}
 }
