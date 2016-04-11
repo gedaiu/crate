@@ -7,6 +7,7 @@ import vibe.data.json;
 import vibe.stream.memory;
 
 import std.conv, std.string, std.array;
+import std.stdio;
 
 RequestRouter request(URLRouter router)
 {
@@ -115,6 +116,7 @@ final class RequestRouter
 		res.statusCode = 404;
 
 		router.handleRequest(preparedRequest, res);
+		stream.flush();
 
 		auto response = new Response(cast(string) data);
 
@@ -122,20 +124,7 @@ final class RequestRouter
 
 		callback(response)();
 	}
-
-	void end(alias T)()
-	{
-		HTTPServerResponse res;
-		router.handleRequest(preparedRequest, res);
-
-		performExpected(response);
-
-		T(response);
-	}
 }
-
-
-import std.stdio;
 
 class Response {
   string bodyString;
@@ -145,6 +134,9 @@ class Response {
 
   this(string data) {
 		auto bodyIndex = data.indexOf("\r\n\r\n");
+
+		assert(bodyIndex != -1, "Invalid response data");
+
 		auto headers = data[0..bodyIndex].split("\r\n").array;
 
 		statusCode =  headers[0].split(" ")[1].to!int;

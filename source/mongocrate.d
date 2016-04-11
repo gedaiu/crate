@@ -35,8 +35,8 @@ unittest {
 		.post("/testModels")
 			.send(NewTestModel("test model"))
 
-			//.expectHeader("Content-Type", "application/vnd.api+json")
-			//.expectHeaderContains("Location", "http://localhost/testModels/")
+			.expectHeader("Content-Type", "application/vnd.api+json")
+			.expectHeaderContains("Location", "http://localhost/testModels/")
 			.expectStatusCode(201)
 
 			.end((Response response) => {

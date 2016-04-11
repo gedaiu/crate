@@ -23,7 +23,6 @@ class BaseCrate {
 		response.headers["Content-Type"] = "application/vnd.api+json";
 		response.headers["Location"] = "http://localhost/testModels/";
 
-
-    response.writeBody("hello world!");
+		response.writeVoidBody();
 	}
 }
