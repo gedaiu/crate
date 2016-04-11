@@ -4,7 +4,9 @@ import vibe.inet.url;
 import vibe.http.router;
 import vibe.data.json;
 
-import std.conv, std.string;
+import vibe.stream.memory;
+
+import std.conv, std.string, std.array;
 
 RequestRouter request(URLRouter router)
 {
@@ -18,9 +20,11 @@ final class RequestRouter
 		URLRouter router;
 		HTTPServerRequest preparedRequest;
 
-    string[string] expectHeaders;
-    string[string] expectHeadersContains;
-    int expectedStatusCode;
+		string[string] expectHeaders;
+		string[string] expectHeadersContains;
+		int expectedStatusCode;
+
+		string responseBody;
 	}
 
 	this(URLRouter router)
@@ -58,50 +62,65 @@ final class RequestRouter
 
 	RequestRouter expectHeader(string name, string value)
 	{
-    expectHeaders[name] = value;
+		expectHeaders[name] = value;
 		return this;
 	}
 
 	RequestRouter expectHeaderContains(string name, string value)
 	{
-    expectHeadersContains[name] = value;
+		expectHeadersContains[name] = value;
 		return this;
 	}
 
 	RequestRouter expectStatusCode(int code)
 	{
-    expectedStatusCode =  code;
+		expectedStatusCode = code;
 		return this;
 	}
 
-  private void performExpected(HTTPServerResponse res) {
+	private void performExpected(Response res)
+	{
 
-    if(expectedStatusCode != 0) {
-      assert(expectedStatusCode == res.statusCode, "Expected status code `" ~ expectedStatusCode.to!string ~ "` not found. Got `" ~ res.statusCode.to!string ~ "` instead");
-    }
+		if (expectedStatusCode != 0)
+		{
+			assert(expectedStatusCode == res.statusCode,
+					"Expected status code `" ~ expectedStatusCode.to!string
+					~ "` not found. Got `" ~ res.statusCode.to!string ~ "` instead");
+		}
 
-    foreach(string key, value; expectHeaders) {
-      assert(key in res.headers, "Response header `" ~ key ~ "` is missing.");
-      assert(res.headers[key] == value, "Response header `" ~ key ~ "` has an unexpected value. Expected `" ~ value ~ "` != `" ~ res.headers[key].to!string ~ "`");
-    }
+		foreach (string key, value; expectHeaders)
+		{
+			assert(key in res.headers, "Response header `" ~ key ~ "` is missing.");
+			assert(res.headers[key] == value,
+					"Response header `" ~ key ~ "` has an unexpected value. Expected `"
+					~ value ~ "` != `" ~ res.headers[key].to!string ~ "`");
+		}
 
-    foreach(string key, value; expectHeadersContains) {
-      assert(key in res.headers, "Response header `" ~ key ~ "` is missing.");
-      assert(res.headers[key].indexOf(value) != -1, "Response header `" ~ key ~ "` has an unexpected value. Expected `" ~ value ~ "` not found in `" ~ res.headers[key].to!string ~ "`");
-    }
+		foreach (string key, value; expectHeadersContains)
+		{
+			assert(key in res.headers, "Response header `" ~ key ~ "` is missing.");
+			assert(res.headers[key].indexOf(value) != -1,
+					"Response header `" ~ key ~ "` has an unexpected value. Expected `"
+					~ value ~ "` not found in `" ~ res.headers[key].to!string ~ "`");
+		}
 
-  }
+	}
 
 	void end(T)(T callback)
 	{
-		HTTPServerResponse res = createTestHTTPServerResponse();
+    auto data = new ubyte[5000];
+
+		MemoryStream stream = new MemoryStream(data);
+		HTTPServerResponse res = createTestHTTPServerResponse(stream);
 		res.statusCode = 404;
 
 		router.handleRequest(preparedRequest, res);
 
-    performExpected(res);
+		auto response = new Response(cast(string) data);
 
-		callback(res, responseBody)();
+		performExpected(response);
+
+		callback(response)();
 	}
 
 	void end(alias T)()
@@ -109,8 +128,32 @@ final class RequestRouter
 		HTTPServerResponse res;
 		router.handleRequest(preparedRequest, res);
 
-    performExpected(res);
+		performExpected(response);
 
-		T(res, responseBody);
+		T(response);
 	}
+}
+
+
+import std.stdio;
+
+class Response {
+  string bodyString;
+
+	string[string] headers;
+  int statusCode;
+
+  this(string data) {
+		auto bodyIndex = data.indexOf("\r\n\r\n");
+		auto headers = data[0..bodyIndex].split("\r\n").array;
+
+		statusCode =  headers[0].split(" ")[1].to!int;
+
+		foreach(i; 1..headers.length) {
+			auto header = headers[i].split(": ");
+			this.headers[header[0]] = header[1];
+		}
+
+		bodyString = data[bodyIndex+4..$];
+  }
 }
