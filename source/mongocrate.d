@@ -84,6 +84,9 @@ unittest
 	data["attributes"]["name"] = "test name";
 
 	request(router).post("/testmodels").send(data).expectHeader("Content-Type", "application/vnd.api+json")
-		.expectHeaderContains("Location", "http://localhost/testModels/").expectStatusCode(201)
-		.end((Response response) => { std.stdio.writeln(response.bodyString); });
+		.expectHeaderContains("Location", "http://localhost/testmodels/").expectStatusCode(201)
+		.end((Response response) => {
+			auto id = response.bodyJson["data"]["id"].to!string;
+			assert(response.headers["Location"] == "http://localhost/testmodels/" ~ id);
+		});
 }

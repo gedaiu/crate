@@ -59,6 +59,7 @@ final class RequestRouter
 	RequestRouter request(HTTPMethod method)(URL url)
 	{
 		preparedRequest = createTestHTTPServerRequest(url, method);
+		preparedRequest.host = "localhost";
 
 		return this;
 	}
@@ -151,4 +152,9 @@ class Response {
 
 		bodyString = data[bodyIndex+4..$];
   }
+
+	@property
+	Json bodyJson() {
+		return bodyString.parseJson;
+	}
 }

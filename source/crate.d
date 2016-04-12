@@ -110,7 +110,6 @@ unittest
 	assert(deserialized.field1 == "Ember Hamster");
 	assert(deserialized.field2 == 5);
 
-
 	//test the serialize method
 	auto value = serializer.serialize(deserialized);
 	assert(value["data"]["type"] == "testmodels");
@@ -198,10 +197,10 @@ class CrateRouter(T)
 
 	void postItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
-		response.headers["Location"] = "http://localhost/testModels/";
-
 		auto item = crate.addItem(request.json.attributes.deserializeJson!T);
+		auto data = serializer.serialize(item);
 
-		response.writeJsonBody(serializer.serialize(item), 201, "application/vnd.api+json");
+		response.headers["Location"] = (request.fullURL ~ Path(data["data"]["id"].to!string)).to!string;
+		response.writeJsonBody(data, 201, "application/vnd.api+json");
 	}
 }
