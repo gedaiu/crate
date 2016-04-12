@@ -37,10 +37,12 @@ final class RequestRouter
 	{
 		static if (is(T == string))
 		{
+			preparedRequest.bodyReader = new MemoryStream(cast(ubyte[]) data);
 			return this;
 		}
 		else static if (is(T == Json))
 		{
+			preparedRequest.json = data;
 			return send(data.to!string);
 		}
 		else
@@ -109,6 +111,8 @@ final class RequestRouter
 
 	void end(T)(T callback)
 	{
+		import vibe.stream.operations : readAllUTF8;
+
     auto data = new ubyte[5000];
 
 		MemoryStream stream = new MemoryStream(data);
@@ -116,7 +120,6 @@ final class RequestRouter
 		res.statusCode = 404;
 
 		router.handleRequest(preparedRequest, res);
-		stream.flush();
 
 		auto response = new Response(cast(string) data);
 
