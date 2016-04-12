@@ -45,19 +45,26 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 
 		value["data"] = Json.emptyObject;
 
-		static if(hasMember!(T, "id")) {
+		static if (hasMember!(T, "id"))
+		{
 			value["data"]["id"] = original["id"];
-		} else if(hasMember!(T, "_id")) {
+		}
+		else if (hasMember!(T, "_id"))
+		{
 			value["data"]["id"] = original["_id"];
-		} else {
+		}
+		else
+		{
 			static assert(T.stringof ~ " must contain `id` or `_id` field.");
 		}
 
 		value["data"]["type"] = T.stringof.toLower ~ "s";
 		value["data"]["attributes"] = Json.emptyObject;
 
-		foreach(string key, val; original) {
-			if(key.to!string != "id") {
+		foreach (string key, val; original)
+		{
+			if (key.to!string != "id")
+			{
 				value["data"]["attributes"][key] = val;
 			}
 		}
@@ -67,13 +74,20 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 
 	T deserialize(Json data)
 	{
+		assert(data["data"]["type"].to!string == T.stringof.toLower ~ "s");
+
 		Json normalised = data["data"]["attributes"];
 
-		static if(hasMember!(T, "id")) {
+		static if (hasMember!(T, "id"))
+		{
 			normalised["id"] = data["data"]["id"];
-		} else if(hasMember!(T, "_id")) {
+		}
+		else if (hasMember!(T, "_id"))
+		{
 			normalised["_id"] = data["data"]["id"];
-		} else {
+		}
+		else
+		{
 			static assert(T.stringof ~ " must contain either `id` or `_id` field.");
 		}
 
@@ -118,7 +132,6 @@ unittest
 	assert(value["data"]["attributes"]["field2"] == 5);
 }
 
-
 unittest
 {
 	struct TestModel
@@ -149,6 +162,42 @@ unittest
 	//test the serialize method
 	auto value = serializer.serialize(deserialized);
 	assert(value["data"]["id"] == "570d5afa999f19d459000000");
+}
+
+unittest
+{
+	struct TestModel
+	{
+		BsonObjectID _id;
+
+		string field1;
+		int field2;
+	}
+
+	auto serializer = new CrateJsonApiSerializer!TestModel();
+
+	//test the deserialize method
+	bool raised;
+
+	try
+	{
+		serializer.deserialize(`{
+			"data": {
+				"type": "unknown",
+				"id": "570d5afa999f19d459000000",
+				"attributes": {
+					"field1": "Ember Hamster",
+					"field2": 5
+				}
+			}
+		}`.parseJsonString);
+	}
+	catch (Throwable)
+	{
+		raised = true;
+	}
+
+	assert(raised);
 }
 
 class CrateRouter(T)
@@ -200,7 +249,8 @@ class CrateRouter(T)
 		auto item = crate.addItem(request.json.attributes.deserializeJson!T);
 		auto data = serializer.serialize(item);
 
-		response.headers["Location"] = (request.fullURL ~ Path(data["data"]["id"].to!string)).to!string;
+		response.headers["Location"] = (request.fullURL ~ Path(data["data"]["id"].to!string))
+			.to!string;
 		response.writeJsonBody(data, 201, "application/vnd.api+json");
 	}
 }
