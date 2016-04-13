@@ -253,13 +253,13 @@ class CrateRouter(T)
 	void updateItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		auto data = crate.editItem(request.params["id"], request.json.attributes);
-
 		response.writeJsonBody(serializer.serialize(data), 200, "application/vnd.api+json");
 	}
 
 	void deleteItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
-
+		crate.deleteItem(request.params["id"]);
+		response.writeBody("", 204, "application/vnd.api+json");
 	}
 
 	void getList(HTTPServerRequest request, HTTPServerResponse response)

@@ -66,7 +66,7 @@ class MongoCrate(T) : Crate!T
 
 	void deleteItem(string id)
 	{
-		throw new Exception("Not implemented");
+		collection.remove(["_id": id]);
 	}
 }
 
@@ -182,5 +182,28 @@ unittest
 			assert(response.bodyJson["data"]["type"].to!string == "testmodels");
 			assert(response.bodyJson["data"]["attributes"]["name"].to!string == "testName");
 			assert(response.bodyJson["data"]["attributes"]["other"].to!string == "other value");
+		});
+}
+
+unittest
+{
+	import vibe.db.mongo.mongo : connectMongoDB;
+
+	auto client = connectMongoDB("127.0.0.1");
+	auto collection = client.getCollection("test.model");
+	collection.drop;
+	collection.insert(TestModel("1", "", "testName"));
+
+	auto router = new URLRouter();
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new const CrateRouter!TestModel(router, crate);
+
+	request(router).delete_("/testmodels/1")
+		.expectStatusCode(204)
+		.expectHeader("Content-Type", "application/vnd.api+json")
+
+		.end((Response response) => {
+			assert(response.bodyString == "");
+			assert(collection.count(["_id": "1"]) == 0);
 		});
 }

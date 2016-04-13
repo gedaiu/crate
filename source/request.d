@@ -61,6 +61,11 @@ final class RequestRouter
 		return request!(HTTPMethod.PATCH)(URL("http://localhost" ~ path));
 	}
 
+	RequestRouter delete_(string path)
+	{
+		return request!(HTTPMethod.DELETE)(URL("http://localhost" ~ path));
+	}
+
 	RequestRouter get(string path)
 	{
 		return request!(HTTPMethod.GET)(URL("http://localhost" ~ path));
@@ -124,7 +129,7 @@ final class RequestRouter
 	{
 		import vibe.stream.operations : readAllUTF8;
 
-    auto data = new ubyte[5000];
+		auto data = new ubyte[5000];
 
 		MemoryStream stream = new MemoryStream(data);
 		HTTPServerResponse res = createTestHTTPServerResponse(stream);
@@ -140,35 +145,42 @@ final class RequestRouter
 	}
 }
 
-class Response {
-  string bodyString;
-	private {
+class Response
+{
+	string bodyString;
+
+	private
+	{
 		Json _bodyJson;
 	}
 
 	string[string] headers;
-  int statusCode;
+	int statusCode;
 
-  this(string data) {
+	this(string data)
+	{
+		data = data.toStringz.to!string;
 		auto bodyIndex = data.indexOf("\r\n\r\n");
 
 		assert(bodyIndex != -1, "Invalid response data");
 
-		auto headers = data[0..bodyIndex].split("\r\n").array;
+		auto headers = data[0 .. bodyIndex].split("\r\n").array;
 
-		statusCode =  headers[0].split(" ")[1].to!int;
+		statusCode = headers[0].split(" ")[1].to!int;
 
-		foreach(i; 1..headers.length) {
+		foreach (i; 1 .. headers.length)
+		{
 			auto header = headers[i].split(": ");
 			this.headers[header[0]] = header[1];
 		}
 
-		bodyString = data[bodyIndex+4..$];
-  }
+		bodyString = data[bodyIndex + 4 .. $];
+	}
 
-	@property
-	Json bodyJson() {
-		if(_bodyJson.type == Json.Type.undefined) {
+	@property Json bodyJson()
+	{
+		if (_bodyJson.type == Json.Type.undefined)
+		{
 			_bodyJson = bodyString.parseJson;
 		}
 
