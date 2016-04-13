@@ -56,6 +56,11 @@ final class RequestRouter
 		return request!(HTTPMethod.POST)(URL("http://localhost" ~ path));
 	}
 
+	RequestRouter patch(string path)
+	{
+		return request!(HTTPMethod.PATCH)(URL("http://localhost" ~ path));
+	}
+
 	RequestRouter get(string path)
 	{
 		return request!(HTTPMethod.GET)(URL("http://localhost" ~ path));

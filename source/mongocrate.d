@@ -34,11 +34,11 @@ class MongoCrate(T) : Crate!T
 
 		static if (is(item.id == BsonObjectID))
 		{
-			item.id = id;
+			item._id = id;
 		}
 		else
 		{
-			item.id = id.to!string();
+			item._id = id.to!string();
 		}
 
 		collection.insert(item);
@@ -48,12 +48,20 @@ class MongoCrate(T) : Crate!T
 
 	T getItem(string id)
 	{
-		return collection.findOne!T(["id": id]);
+		return collection.findOne!T(["_id": id]);
 	}
 
-	void editItem(T item)
+	T editItem(string id, Json fields)
 	{
-		throw new Exception("Not implemented");
+		auto data = collection.findOne!Json(["_id": id]);
+
+		foreach(string field, value; fields) {
+			data[field] = value;
+		}
+
+		collection.findAndModify(["_id": id], data);
+
+		return getItem(id);
 	}
 
 	void deleteItem(string id)
@@ -65,10 +73,14 @@ class MongoCrate(T) : Crate!T
 version (unittest)
 {
 	import crate.request;
+	import vibe.data.serialization;
 
 	struct TestModel
 	{
-		@optional string id;
+		@optional {
+			string _id;
+			string other = "";
+		}
 		string name = "";
 	}
 }
@@ -113,6 +125,7 @@ unittest
 	auto crateRouter = new const CrateRouter!TestModel(router, crate);
 
 	request(router).get("/testmodels").expectHeader("Content-Type", "application/vnd.api+json")
+		.expectStatusCode(200)
 		.end((Response response) => {
 			assert(response.bodyJson["data"].length == 2);
 			assert(response.bodyJson["data"][0]["id"].to!string == "1");
@@ -134,7 +147,40 @@ unittest
 	auto crateRouter = new const CrateRouter!TestModel(router, crate);
 
 	request(router).get("/testmodels/1").expectHeader("Content-Type", "application/vnd.api+json")
+		.expectStatusCode(200)
 		.end((Response response) => {
 			assert(response.bodyJson["data"]["id"].to!string == "1");
+		});
+}
+
+unittest
+{
+	import vibe.db.mongo.mongo : connectMongoDB;
+
+	auto client = connectMongoDB("127.0.0.1");
+	auto collection = client.getCollection("test.model");
+	collection.drop;
+	collection.insert(TestModel("1", "", "testName"));
+
+	auto router = new URLRouter();
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new const CrateRouter!TestModel(router, crate);
+
+	auto data = Json.emptyObject;
+	data["data"] = Json.emptyObject;
+	data["type"] = "testmodels";
+	data["id"] = "1";
+	data["attributes"] = Json.emptyObject;
+	data["attributes"]["other"] = "other value";
+
+	request(router).patch("/testmodels/1").send(data)
+		.expectStatusCode(200)
+		.expectHeader("Content-Type", "application/vnd.api+json")
+
+		.end((Response response) => {
+			assert(response.bodyJson["data"]["id"].to!string == "1");
+			assert(response.bodyJson["data"]["type"].to!string == "testmodels");
+			assert(response.bodyJson["data"]["attributes"]["name"].to!string == "testName");
+			assert(response.bodyJson["data"]["attributes"]["other"].to!string == "other value");
 		});
 }

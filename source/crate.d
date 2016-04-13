@@ -25,7 +25,7 @@ interface Crate(T)
 
 	T addItem(T item);
 	T getItem(string id);
-	void editItem(T item);
+	T editItem(string id, Json fields);
 	void deleteItem(string id);
 }
 
@@ -240,7 +240,7 @@ class CrateRouter(T)
 		router.post("/" ~ config.plural, &postItem);
 
 		router.get("/" ~ config.plural ~ "/:id", &getItem);
-		router.post("/" ~ config.plural ~ "/:id", &updateItem);
+		router.patch("/" ~ config.plural ~ "/:id", &updateItem);
 		router.delete_("/" ~ config.plural ~ "/:id", &deleteItem);
 	}
 
@@ -252,7 +252,9 @@ class CrateRouter(T)
 
 	void updateItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
+		auto data = crate.editItem(request.params["id"], request.json.attributes);
 
+		response.writeJsonBody(serializer.serialize(data), 200, "application/vnd.api+json");
 	}
 
 	void deleteItem(HTTPServerRequest request, HTTPServerResponse response)
