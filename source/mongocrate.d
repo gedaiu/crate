@@ -185,7 +185,6 @@ unittest
 		});
 }
 
-
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
@@ -200,8 +199,8 @@ unittest
 
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
-	auto crateRouter = new const CrateRouter!TestModel(router, crate);
-	crateRouter.addAction("action", action);
+	auto crateRouter = new CrateRouter!TestModel(router, crate);
+	crateRouter.addAction!"action"(&action);
 
 	request(router).get("/testmodels/1/action")
 		.expectStatusCode(200)
@@ -209,6 +208,118 @@ unittest
 
 		.end((Response response) => {
 			assert(response.bodyString == "");
+			assert(actionCalled);
+		});
+}
+
+unittest
+{
+	import vibe.db.mongo.mongo : connectMongoDB;
+	bool actionCalled;
+
+	string action(TestModel) {
+		actionCalled = true;
+
+		return "test";
+	}
+
+	auto client = connectMongoDB("127.0.0.1");
+	auto collection = client.getCollection("test.model");
+
+	auto router = new URLRouter();
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new CrateRouter!TestModel(router, crate);
+	crateRouter.addAction!"action"(&action);
+
+	request(router).get("/testmodels/1/action")
+		.expectStatusCode(200)
+		.expectHeader("Content-Type", "application/vnd.api+json")
+
+		.end((Response response) => {
+			assert(response.bodyString == "test");
+			assert(actionCalled);
+		});
+}
+
+unittest
+{
+	import vibe.db.mongo.mongo : connectMongoDB;
+	bool actionCalled;
+
+	struct Operation {
+		int x;
+		int y;
+	}
+
+	void action(TestModel, Operation operation) {
+		assert(operation.x == 10);
+		assert(operation.y == 20);
+
+		actionCalled = true;
+	}
+
+	auto client = connectMongoDB("127.0.0.1");
+	auto collection = client.getCollection("test.model");
+
+	auto router = new URLRouter();
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new CrateRouter!TestModel(router, crate);
+	crateRouter.addAction!("action")(&action);
+
+	auto data = Json.emptyObject;
+	data.x = 10;
+	data.y = 20;
+
+	request(router).post("/testmodels/1/action")
+		.send(data)
+		.expectStatusCode(200)
+		.expectHeader("Content-Type", "application/vnd.api+json")
+
+		.end((Response response) => {
+			assert(response.bodyString == "");
+			assert(actionCalled);
+		});
+}
+
+
+unittest
+{
+	import vibe.db.mongo.mongo : connectMongoDB;
+	bool actionCalled;
+
+	struct Operation {
+		int x;
+		int y;
+	}
+
+	string action(TestModel, Operation operation) {
+		assert(operation.x == 10);
+		assert(operation.y == 20);
+
+		actionCalled = true;
+
+		return "test";
+	}
+
+	auto client = connectMongoDB("127.0.0.1");
+	auto collection = client.getCollection("test.model");
+
+	auto router = new URLRouter();
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new CrateRouter!TestModel(router, crate);
+	crateRouter.addAction!("action")(&action);
+
+	auto data = Json.emptyObject;
+	data.x = 10;
+	data.y = 20;
+
+	request(router).post("/testmodels/1/action")
+		.send(data)
+		.expectStatusCode(200)
+		.expectHeader("Content-Type", "application/vnd.api+json")
+
+		.end((Response response) => {
+			assert(response.bodyString == "test");
 			assert(actionCalled);
 		});
 }

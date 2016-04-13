@@ -229,12 +229,14 @@ class CrateRouter(T)
 	private
 	{
 		Crate!T crate;
+		URLRouter router;
 	}
 
 	this(URLRouter router, Crate!T crate)
 	{
 		this.serializer = new CrateJsonApiSerializer!T();
 		this.crate = crate;
+		this.router = router;
 
 		router.get("/" ~ config.plural, &getList);
 		router.post("/" ~ config.plural, &postItem);
@@ -276,5 +278,54 @@ class CrateRouter(T)
 		response.headers["Location"] = (request.fullURL ~ Path(data["data"]["id"].to!string))
 			.to!string;
 		response.writeJsonBody(data, 201, "application/vnd.api+json");
+	}
+
+	alias ActionDelegate = void delegate(T item);
+	alias ActionQueryDelegate = string delegate(T item);
+
+	void addAction(string actionName)(ActionDelegate action) {
+		void preparedAction(HTTPServerRequest request, HTTPServerResponse response) {
+			auto item = crate.getItem(request.params["id"]);
+			action(item);
+
+			response.writeBody("", 200, "application/vnd.api+json");
+		}
+
+		router.get("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
+	}
+
+	void addAction(string actionName)(ActionQueryDelegate action) {
+		void preparedAction(HTTPServerRequest request, HTTPServerResponse response) {
+			auto item = crate.getItem(request.params["id"]);
+
+			response.writeBody(action(item), 200, "application/vnd.api+json");
+		}
+
+		router.get("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
+	}
+
+	void addAction(string actionName, U)(void delegate(T item, U value) action) {
+		void preparedAction(HTTPServerRequest request, HTTPServerResponse response) {
+			auto item = crate.getItem(request.params["id"]);
+			auto value = request.json.deserializeJson!U;
+
+			action(item, value);
+
+			response.writeBody("", 200, "application/vnd.api+json");
+		}
+
+		router.post("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
+	}
+
+
+	void addAction(string actionName, U)(string delegate(T item, U value) action) {
+		void preparedAction(HTTPServerRequest request, HTTPServerResponse response) {
+			auto item = crate.getItem(request.params["id"]);
+			auto value = request.json.deserializeJson!U;
+
+			response.writeBody(action(item, value), 200, "application/vnd.api+json");
+		}
+
+		router.post("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
 	}
 }
