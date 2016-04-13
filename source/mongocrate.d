@@ -18,7 +18,14 @@ class MongoCrate(T) : Crate!T
 
 	T[] getList()
 	{
-		throw new Exception("Not implemented");
+		T[] list;
+		auto cursor = collection.find!T();
+
+		foreach(item; cursor) {
+			list ~= item;
+		}
+
+		return list;
 	}
 
 	T addItem(T item)
@@ -39,9 +46,9 @@ class MongoCrate(T) : Crate!T
 		return item;
 	}
 
-	T getItem()
+	T getItem(string id)
 	{
-		throw new Exception("Not implemented");
+		return collection.findOne!T(["id": id]);
 	}
 
 	void editItem(T item)
@@ -88,5 +95,46 @@ unittest
 		.end((Response response) => {
 			auto id = response.bodyJson["data"]["id"].to!string;
 			assert(response.headers["Location"] == "http://localhost/testmodels/" ~ id);
+		});
+}
+
+unittest
+{
+	import vibe.db.mongo.mongo : connectMongoDB;
+
+	auto client = connectMongoDB("127.0.0.1");
+	auto collection = client.getCollection("test.model");
+	collection.drop;
+	collection.insert(TestModel("1"));
+	collection.insert(TestModel("2"));
+
+	auto router = new URLRouter();
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new const CrateRouter!TestModel(router, crate);
+
+	request(router).get("/testmodels").expectHeader("Content-Type", "application/vnd.api+json")
+		.end((Response response) => {
+			assert(response.bodyJson["data"].length == 2);
+			assert(response.bodyJson["data"][0]["id"].to!string == "1");
+			assert(response.bodyJson["data"][1]["id"].to!string == "2");
+		});
+}
+
+unittest
+{
+	import vibe.db.mongo.mongo : connectMongoDB;
+
+	auto client = connectMongoDB("127.0.0.1");
+	auto collection = client.getCollection("test.model");
+	collection.drop;
+	collection.insert(TestModel("1"));
+
+	auto router = new URLRouter();
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new const CrateRouter!TestModel(router, crate);
+
+	request(router).get("/testmodels/1").expectHeader("Content-Type", "application/vnd.api+json")
+		.end((Response response) => {
+			assert(response.bodyJson["data"]["id"].to!string == "1");
 		});
 }

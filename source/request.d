@@ -56,6 +56,11 @@ final class RequestRouter
 		return request!(HTTPMethod.POST)(URL("http://localhost" ~ path));
 	}
 
+	RequestRouter get(string path)
+	{
+		return request!(HTTPMethod.GET)(URL("http://localhost" ~ path));
+	}
+
 	RequestRouter request(HTTPMethod method)(URL url)
 	{
 		preparedRequest = createTestHTTPServerRequest(url, method);
@@ -132,6 +137,9 @@ final class RequestRouter
 
 class Response {
   string bodyString;
+	private {
+		Json _bodyJson;
+	}
 
 	string[string] headers;
   int statusCode;
@@ -155,6 +163,10 @@ class Response {
 
 	@property
 	Json bodyJson() {
-		return bodyString.parseJson;
+		if(_bodyJson.type == Json.Type.undefined) {
+			_bodyJson = bodyString.parseJson;
+		}
+
+		return _bodyJson;
 	}
 }

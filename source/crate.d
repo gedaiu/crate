@@ -24,7 +24,7 @@ interface Crate(T)
 	T[] getList();
 
 	T addItem(T item);
-	T getItem();
+	T getItem(string id);
 	void editItem(T item);
 	void deleteItem(string id);
 }
@@ -32,41 +32,61 @@ interface Crate(T)
 interface CrateSerializer(T)
 {
 	Json serialize(T item);
+	Json serialize(T[] items);
+
 	T deserialize(Json data);
 }
 
 class CrateJsonApiSerializer(T) : CrateSerializer!T
 {
-
-	Json serialize(T item)
+	Json sertializeToData(T item)
 	{
 		Json original = item.serializeToJson;
-		Json value = Json.emptyObject;
-
-		value["data"] = Json.emptyObject;
+		auto value = Json.emptyObject;
 
 		static if (hasMember!(T, "id"))
 		{
-			value["data"]["id"] = original["id"];
+			value["id"] = original["id"];
 		}
 		else if (hasMember!(T, "_id"))
 		{
-			value["data"]["id"] = original["_id"];
+			value["id"] = original["_id"];
 		}
 		else
 		{
 			static assert(T.stringof ~ " must contain `id` or `_id` field.");
 		}
 
-		value["data"]["type"] = T.stringof.toLower ~ "s";
-		value["data"]["attributes"] = Json.emptyObject;
+		value["type"] = T.stringof.toLower ~ "s";
+		value["attributes"] = Json.emptyObject;
 
 		foreach (string key, val; original)
 		{
 			if (key.to!string != "id")
 			{
-				value["data"]["attributes"][key] = val;
+				value["attributes"][key] = val;
 			}
+		}
+
+		return value;
+	}
+
+	Json serialize(T item)
+	{
+		Json value = Json.emptyObject;
+
+		value["data"] = sertializeToData(item);
+
+		return value;
+	}
+
+	Json serialize(T[] items)
+	{
+		Json value = Json.emptyObject;
+		value["data"] = Json.emptyArray;
+
+		foreach(item; items) {
+			value["data"] ~= sertializeToData(item);
 		}
 
 		return value;
@@ -204,6 +224,7 @@ class CrateRouter(T)
 {
 	CrateConfig!T config;
 	CrateSerializer!T serializer;
+	enum string itemName = T.stringof.toLower ~ "s";
 
 	private
 	{
@@ -225,7 +246,8 @@ class CrateRouter(T)
 
 	void getItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
-
+		auto data = crate.getItem(request.params["id"]);
+		response.writeJsonBody(serializer.serialize(data), 200, "application/vnd.api+json");
 	}
 
 	void updateItem(HTTPServerRequest request, HTTPServerResponse response)
@@ -240,8 +262,8 @@ class CrateRouter(T)
 
 	void getList(HTTPServerRequest request, HTTPServerResponse response)
 	{
-		response.headers["Content-Type"] = "application/vnd.api+json";
-		response.writeJsonBody(crate.getList);
+		auto data = crate.getList;
+		response.writeJsonBody(serializer.serialize(data), 200, "application/vnd.api+json");
 	}
 
 	void postItem(HTTPServerRequest request, HTTPServerResponse response)
