@@ -185,25 +185,30 @@ unittest
 		});
 }
 
+
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
+	bool actionCalled;
+
+	void action(TestModel) {
+		actionCalled = true;
+	}
 
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
-	collection.drop;
-	collection.insert(TestModel("1", "", "testName"));
 
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
 	auto crateRouter = new const CrateRouter!TestModel(router, crate);
+	crateRouter.addAction("action", action);
 
-	request(router).delete_("/testmodels/1")
-		.expectStatusCode(204)
+	request(router).get("/testmodels/1/action")
+		.expectStatusCode(200)
 		.expectHeader("Content-Type", "application/vnd.api+json")
 
 		.end((Response response) => {
 			assert(response.bodyString == "");
-			assert(collection.count(["_id": "1"]) == 0);
+			assert(actionCalled);
 		});
 }
