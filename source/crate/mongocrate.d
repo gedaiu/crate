@@ -1,6 +1,7 @@
 module crate.mongo;
 
 import crate.base;
+import crate.error;
 
 import vibe.inet.url;
 import vibe.http.router;
@@ -48,6 +49,10 @@ class MongoCrate(T) : Crate!T
 
 	T getItem(string id)
 	{
+		if(collection.count(["_id": id]) == 0) {
+			throw new CrateNotFoundException("There is no `" ~ T.stringof ~ "` with id `" ~ id ~ "`");
+		}
+
 		return collection.findOne!T(["_id": id]);
 	}
 
@@ -321,5 +326,27 @@ unittest
 		.end((Response response) => {
 			assert(response.bodyString == "test");
 			assert(actionCalled);
+		});
+}
+
+unittest
+{
+	import vibe.db.mongo.mongo : connectMongoDB;
+	bool actionCalled;
+
+	auto client = connectMongoDB("127.0.0.1");
+	auto collection = client.getCollection("test.model");
+	collection.drop;
+
+	auto router = new URLRouter();
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new CrateRouter!TestModel(router, crate);
+
+	request(router).get("/testmodels/1")
+		.expectStatusCode(404)
+		.end((Response response) => {
+			assert(response.bodyJson["errors"][0]["status"] == 404);
+			assert(response.bodyJson["errors"][0]["title"] == "Crate not found");
+			assert(response.bodyJson["errors"][0]["description"] == "There is no `TestModel` with id `1`");
 		});
 }

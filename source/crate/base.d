@@ -5,6 +5,8 @@ import vibe.http.router;
 import vibe.data.json;
 import vibe.data.bson;
 
+import crate.error;
+
 import std.string, std.traits;
 
 struct CrateConfig(T)
@@ -245,23 +247,55 @@ class CrateRouter(T)
 		serializer.config = config;
 
 		if(config.getList) {
-			router.get("/" ~ config.plural, &getList);
+			router.get("/" ~ config.plural, &checkError!"getList");
 		}
 
 		if(config.addItem) {
-			router.post("/" ~ config.plural, &postItem);
+			router.post("/" ~ config.plural, &checkError!"postItem");
 		}
 
 		if(config.getItem) {
-			router.get("/" ~ config.plural ~ "/:id", &getItem);
+			router.get("/" ~ config.plural ~ "/:id", &checkError!"getItem");
 		}
 
 		if(config.updateItem) {
-			router.patch("/" ~ config.plural ~ "/:id", &updateItem);
+			router.patch("/" ~ config.plural ~ "/:id", &checkError!"updateItem");
 		}
 
 		if(config.deleteItem) {
-			router.delete_("/" ~ config.plural ~ "/:id", &deleteItem);
+			router.delete_("/" ~ config.plural ~ "/:id", &checkError!"deleteItem");
+		}
+	}
+
+	void checkError(string methodName)(HTTPServerRequest request, HTTPServerResponse response) {
+		auto func = &__traits(getMember, this, methodName);
+
+		try {
+			try {
+				func(request, response);
+			} catch (CrateException e) {
+				std.stdio.writeln(e.statusCode);
+
+				Json data = Json.emptyObject;
+				data.errors = Json.emptyArray;
+				data.errors ~= Json.emptyObject;
+
+				data.errors[0].status = e.statusCode;
+				data.errors[0].title = e.title;
+				data.errors[0].description = e.msg;
+
+				response.writeJsonBody(data, e.statusCode, "application/vnd.api+json");
+			}
+		} catch(Exception e) {
+			Json data = Json.emptyObject;
+			data.errors = Json.emptyArray;
+			data.errors ~= Json.emptyObject;
+
+			data.errors[0].status = 500;
+			data.errors[0].title = "Server error";
+			data.errors[0].description = e.msg;
+
+			response.writeJsonBody(data, 500, "application/vnd.api+json");
 		}
 	}
 
@@ -335,7 +369,6 @@ class CrateRouter(T)
 
 		router.post("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
 	}
-
 
 	void addAction(string actionName, U)(string delegate(T item, U value) action) {
 		void preparedAction(HTTPServerRequest request, HTTPServerResponse response) {
