@@ -233,7 +233,7 @@ class CrateRouter(T)
 		URLRouter router;
 	}
 
-	this(URLRouter router, Crate!T crate, CrateConfig!T config = CrateConfig!T())
+	this(URLRouter router, Crate!T crate, ref CrateConfig!T config = CrateConfig!T())
 	{
 		auto serializer = new CrateJsonApiSerializer!T();
 
