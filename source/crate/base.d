@@ -274,8 +274,6 @@ class CrateRouter(T)
 			try {
 				func(request, response);
 			} catch (CrateException e) {
-				std.stdio.writeln(e.statusCode);
-
 				Json data = Json.emptyObject;
 				data.errors = Json.emptyArray;
 				data.errors ~= Json.emptyObject;
