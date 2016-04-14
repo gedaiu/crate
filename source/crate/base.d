@@ -233,7 +233,7 @@ class CrateRouter(T)
 		URLRouter router;
 	}
 
-	this(URLRouter router, Crate!T crate, CrateConfig!T config)
+	this(URLRouter router, Crate!T crate, CrateConfig!T config = CrateConfig!T())
 	{
 		auto serializer = new CrateJsonApiSerializer!T();
 
@@ -273,7 +273,7 @@ class CrateRouter(T)
 
 	void updateItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
-		auto data = crate.editItem(request.params["id"], request.json.attributes);
+		auto data = crate.editItem(request.params["id"], request.json["data"].attributes);
 		response.writeJsonBody(serializer.serialize(data), 200, "application/vnd.api+json");
 	}
 

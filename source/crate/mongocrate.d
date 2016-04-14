@@ -95,7 +95,7 @@ unittest
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
 
-	auto crateRouter = new const CrateRouter!TestModel(router, crate);
+	auto crateRouter = new CrateRouter!TestModel(router, crate);
 
 	Json data = Json.emptyObject;
 	data["type"] = "testmodels";
@@ -168,10 +168,10 @@ unittest
 
 	auto data = Json.emptyObject;
 	data["data"] = Json.emptyObject;
-	data["type"] = "testmodels";
-	data["id"] = "1";
-	data["attributes"] = Json.emptyObject;
-	data["attributes"]["other"] = "other value";
+	data["data"]["type"] = "testmodels";
+	data["data"]["id"] = "1";
+	data["data"]["attributes"] = Json.emptyObject;
+	data["data"]["attributes"]["other"] = "other value";
 
 	request(router).patch("/testmodels/1").send(data)
 		.expectStatusCode(200)
