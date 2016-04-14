@@ -16,7 +16,7 @@ struct CrateConfig(T)
 	bool getItem = true;
 	bool addItem = true;
 	bool deleteItem = true;
-	bool editItem = true;
+	bool updateItem = true;
 }
 
 interface Crate(T)
@@ -224,7 +224,6 @@ class CrateRouter(T)
 {
 	CrateConfig!T config;
 	CrateSerializer!T serializer;
-	enum string itemName = T.stringof.toLower ~ "s";
 
 	private
 	{
@@ -232,18 +231,32 @@ class CrateRouter(T)
 		URLRouter router;
 	}
 
-	this(URLRouter router, Crate!T crate)
+	this(URLRouter router, Crate!T crate, CrateConfig!T config = CrateConfig!T())
 	{
 		this.serializer = new CrateJsonApiSerializer!T();
 		this.crate = crate;
 		this.router = router;
+		this.config = config;
 
-		router.get("/" ~ config.plural, &getList);
-		router.post("/" ~ config.plural, &postItem);
+		if(config.getList) {
+			router.get("/" ~ config.plural, &getList);
+		}
 
-		router.get("/" ~ config.plural ~ "/:id", &getItem);
-		router.patch("/" ~ config.plural ~ "/:id", &updateItem);
-		router.delete_("/" ~ config.plural ~ "/:id", &deleteItem);
+		if(config.addItem) {
+			router.post("/" ~ config.plural, &postItem);
+		}
+
+		if(config.getItem) {
+			router.get("/" ~ config.plural ~ "/:id", &getItem);
+		}
+
+		if(config.updateItem) {
+			router.patch("/" ~ config.plural ~ "/:id", &updateItem);
+		}
+
+		if(config.deleteItem) {
+			router.delete_("/" ~ config.plural ~ "/:id", &deleteItem);
+		}
 	}
 
 	void getItem(HTTPServerRequest request, HTTPServerResponse response)
