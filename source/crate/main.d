@@ -1,7 +1,7 @@
 module crate.main;
 import std.getopt;
 
-void crateMain(string[] args, void delegate() startWebServer)
+void crateMain(string[] args, void function() startWebServer)
 {
 	string arduinoPort = "";
 	int webPort = 8080;
