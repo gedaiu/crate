@@ -39,6 +39,8 @@ interface CrateSerializer(T)
 
 class CrateJsonApiSerializer(T) : CrateSerializer!T
 {
+	CrateConfig!T config;
+
 	Json sertializeToData(T item)
 	{
 		Json original = item.serializeToJson;
@@ -57,7 +59,7 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 			static assert(T.stringof ~ " must contain `id` or `_id` field.");
 		}
 
-		value["type"] = T.stringof.toLower ~ "s";
+		value["type"] = config.plural;
 		value["attributes"] = Json.emptyObject;
 
 		foreach (string key, val; original)
@@ -94,7 +96,7 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 
 	T deserialize(Json data)
 	{
-		assert(data["data"]["type"].to!string == T.stringof.toLower ~ "s");
+		assert(data["data"]["type"].to!string == config.plural);
 
 		Json normalised = data["data"]["attributes"];
 
@@ -233,10 +235,14 @@ class CrateRouter(T)
 
 	this(URLRouter router, Crate!T crate, CrateConfig!T config = CrateConfig!T())
 	{
-		this.serializer = new CrateJsonApiSerializer!T();
+		auto serializer = new CrateJsonApiSerializer!T();
+
+		this.serializer = serializer;
 		this.crate = crate;
 		this.router = router;
 		this.config = config;
+
+		serializer.config = config;
 
 		if(config.getList) {
 			router.get("/" ~ config.plural, &getList);
