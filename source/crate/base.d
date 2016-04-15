@@ -386,9 +386,16 @@ class CrateRouter(T)
 
 			pragma(msg, "RType ", RType, Param);
 
-			static if(is(RType == void) && Param.length == 1 && is(Param[0] == string)) {
-				static assert(true, "void!");
-				pragma(msg, "action found `" ~ actionName ~ "`");
+			static if(is(RType == void) && Param.length == 0) {
+				void preparedAction(HTTPServerRequest request, HTTPServerResponse response) {
+						auto item = crate.getItem(request.params["id"]);
+						auto func = &__traits(getMember, item, actionName);
+						func();
+
+						response.writeBody("", 200, "application/vnd.api+json");
+				}
+
+				router.get("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
 			} else {
 				pragma(msg, "There is no action named `" ~ actionName ~ "`");
 			}

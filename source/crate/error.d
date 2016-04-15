@@ -35,7 +35,6 @@ class CrateNotFoundException : CrateException
 	}
 }
 
-
 class CrateValidationException : CrateException
 {
 	this(string msg = null, Throwable next = null)

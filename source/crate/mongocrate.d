@@ -80,15 +80,21 @@ version (unittest)
 	import crate.request;
 	import vibe.data.serialization;
 
+	bool isTestActionCalled;
+	string calledId;
+
 	struct TestModel
 	{
 		@optional {
 			string _id;
 			string other = "";
 		}
+
 		string name = "";
 
-		void action(string) {}
+		void action() {
+			isTestActionCalled = true;
+		}
 	}
 }
 
@@ -360,7 +366,7 @@ unittest
 
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
-	collection.drop;
+	collection.insert(TestModel("1", "", "testName"));
 
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
@@ -371,5 +377,7 @@ unittest
 		.expectStatusCode(200)
 		.end((Response response) => {
 			assert(response.bodyString == "");
+
+			assert(isTestActionCalled);
 		});
 }
