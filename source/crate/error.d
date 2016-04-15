@@ -53,3 +53,22 @@ class CrateValidationException : CrateException
 		title = "Validation error";
 	}
 }
+
+class CrateToMannyRequestsException : CrateException
+{
+	this(string msg = null, Throwable next = null)
+	{
+		super(msg, next);
+
+		statusCode = 429;
+		title = "Too many requests";
+	}
+
+	this(string msg, string file, size_t line, Throwable next = null)
+	{
+		super(msg, file, line, next);
+
+		statusCode = 429;
+		title = "Too many requests";
+	}
+}
