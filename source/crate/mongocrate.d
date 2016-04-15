@@ -81,7 +81,6 @@ version (unittest)
 	import vibe.data.serialization;
 
 	bool isTestActionCalled;
-	string calledId;
 
 	struct TestModel
 	{
@@ -94,6 +93,12 @@ version (unittest)
 
 		void action() {
 			isTestActionCalled = true;
+		}
+
+		string actionResponse() {
+			isTestActionCalled = true;
+
+			return "ok.";
 		}
 	}
 }
@@ -362,11 +367,11 @@ unittest
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
-	bool actionCalled;
+	isTestActionCalled = false;
 
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
-	collection.insert(TestModel("1", "", "testName"));
+	collection.insert(TestModel("1"));
 
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
@@ -377,7 +382,29 @@ unittest
 		.expectStatusCode(200)
 		.end((Response response) => {
 			assert(response.bodyString == "");
+			assert(isTestActionCalled);
+		});
+}
 
+unittest
+{
+	import vibe.db.mongo.mongo : connectMongoDB;
+	isTestActionCalled = false;
+
+	auto client = connectMongoDB("127.0.0.1");
+	auto collection = client.getCollection("test.model");
+	collection.drop;
+	collection.insert(TestModel("1"));
+
+	auto router = new URLRouter();
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new CrateRouter!TestModel(router, crate);
+	crateRouter.enableAction!"actionResponse";
+
+	request(router).get("/testmodels/1/actionResponse")
+		.expectStatusCode(200)
+		.end((Response response) => {
+			assert(response.bodyString == "ok.");
 			assert(isTestActionCalled);
 		});
 }

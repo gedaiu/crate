@@ -89,7 +89,8 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 		Json value = Json.emptyObject;
 		value["data"] = Json.emptyArray;
 
-		foreach(item; items) {
+		foreach (item; items)
+		{
 			value["data"] ~= sertializeToData(item);
 		}
 
@@ -246,34 +247,44 @@ class CrateRouter(T)
 
 		serializer.config = config;
 
-		if(config.getList) {
+		if (config.getList)
+		{
 			router.get("/" ~ config.plural, &checkError!"getList");
 		}
 
-		if(config.addItem) {
+		if (config.addItem)
+		{
 			router.post("/" ~ config.plural, &checkError!"postItem");
 		}
 
-		if(config.getItem) {
+		if (config.getItem)
+		{
 			router.get("/" ~ config.plural ~ "/:id", &checkError!"getItem");
 		}
 
-		if(config.updateItem) {
+		if (config.updateItem)
+		{
 			router.patch("/" ~ config.plural ~ "/:id", &checkError!"updateItem");
 		}
 
-		if(config.deleteItem) {
+		if (config.deleteItem)
+		{
 			router.delete_("/" ~ config.plural ~ "/:id", &checkError!"deleteItem");
 		}
 	}
 
-	void checkError(string methodName)(HTTPServerRequest request, HTTPServerResponse response) {
+	void checkError(string methodName)(HTTPServerRequest request, HTTPServerResponse response)
+	{
 		auto func = &__traits(getMember, this, methodName);
 
-		try {
-			try {
+		try
+		{
+			try
+			{
 				func(request, response);
-			} catch (CrateException e) {
+			}
+			catch (CrateException e)
+			{
 				Json data = Json.emptyObject;
 				data.errors = Json.emptyArray;
 				data.errors ~= Json.emptyObject;
@@ -284,7 +295,9 @@ class CrateRouter(T)
 
 				response.writeJsonBody(data, e.statusCode, "application/vnd.api+json");
 			}
-		} catch(Exception e) {
+		}
+		catch (Exception e)
+		{
 			Json data = Json.emptyObject;
 			data.errors = Json.emptyArray;
 			data.errors ~= Json.emptyObject;
@@ -334,8 +347,10 @@ class CrateRouter(T)
 	alias ActionDelegate = void delegate(T item);
 	alias ActionQueryDelegate = string delegate(T item);
 
-	void addAction(string actionName)(ActionDelegate action) {
-		void preparedAction(HTTPServerRequest request, HTTPServerResponse response) {
+	void addAction(string actionName)(ActionDelegate action)
+	{
+		void preparedAction(HTTPServerRequest request, HTTPServerResponse response)
+		{
 			auto item = crate.getItem(request.params["id"]);
 			action(item);
 
@@ -345,8 +360,10 @@ class CrateRouter(T)
 		router.get("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
 	}
 
-	void addAction(string actionName)(ActionQueryDelegate action) {
-		void preparedAction(HTTPServerRequest request, HTTPServerResponse response) {
+	void addAction(string actionName)(ActionQueryDelegate action)
+	{
+		void preparedAction(HTTPServerRequest request, HTTPServerResponse response)
+		{
 			auto item = crate.getItem(request.params["id"]);
 
 			response.writeBody(action(item), 200, "application/vnd.api+json");
@@ -355,8 +372,10 @@ class CrateRouter(T)
 		router.get("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
 	}
 
-	void addAction(string actionName, U)(void delegate(T item, U value) action) {
-		void preparedAction(HTTPServerRequest request, HTTPServerResponse response) {
+	void addAction(string actionName, U)(void delegate(T item, U value) action)
+	{
+		void preparedAction(HTTPServerRequest request, HTTPServerResponse response)
+		{
 			auto item = crate.getItem(request.params["id"]);
 			auto value = request.json.deserializeJson!U;
 
@@ -368,8 +387,10 @@ class CrateRouter(T)
 		router.post("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
 	}
 
-	void addAction(string actionName, U)(string delegate(T item, U value) action) {
-		void preparedAction(HTTPServerRequest request, HTTPServerResponse response) {
+	void addAction(string actionName, U)(string delegate(T item, U value) action)
+	{
+		void preparedAction(HTTPServerRequest request, HTTPServerResponse response)
+		{
 			auto item = crate.getItem(request.params["id"]);
 			auto value = request.json.deserializeJson!U;
 
@@ -379,27 +400,47 @@ class CrateRouter(T)
 		router.post("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
 	}
 
-	void enableAction(string actionName)() {
-		static if(__traits(hasMember, T, actionName)) {
+	void enableAction(string actionName)()
+	{
+		static if (__traits(hasMember, T, actionName))
+		{
 			alias Param = Parameters!(__traits(getMember, T, actionName));
 			alias RType = ReturnType!(__traits(getMember, T, actionName));
 
 			pragma(msg, "RType ", RType, Param);
 
-			static if(is(RType == void) && Param.length == 0) {
-				void preparedAction(HTTPServerRequest request, HTTPServerResponse response) {
-						auto item = crate.getItem(request.params["id"]);
-						auto func = &__traits(getMember, item, actionName);
-						func();
+			static if (is(RType == void) && Param.length == 0)
+			{
+				void preparedAction(HTTPServerRequest request, HTTPServerResponse response)
+				{
+					auto item = crate.getItem(request.params["id"]);
+					auto func = &__traits(getMember, item, actionName);
+					func();
 
-						response.writeBody("", 200, "application/vnd.api+json");
+					response.writeBody("", 200, "application/vnd.api+json");
 				}
 
 				router.get("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
-			} else {
+			}
+			else static if (is(RType == string) && Param.length == 0)
+			{
+				void preparedAction(HTTPServerRequest request, HTTPServerResponse response)
+				{
+					auto item = crate.getItem(request.params["id"]);
+					auto func = &__traits(getMember, item, actionName);
+
+					response.writeBody(func(), 200, "application/vnd.api+json");
+				}
+
+				router.get("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
+			}
+			else
+			{
 				pragma(msg, "There is no action named `" ~ actionName ~ "`");
 			}
-		} else {
+		}
+		else
+		{
 			static assert(T.stringof ~ " has no `" ~ actionName ~ "` member.");
 		}
 	}
