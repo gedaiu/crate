@@ -34,3 +34,23 @@ class CrateNotFoundException : CrateException
 		title = "Crate not found";
 	}
 }
+
+
+class CrateValidationException : CrateException
+{
+	this(string msg = null, Throwable next = null)
+	{
+		super(msg, next);
+
+		statusCode = 403;
+		title = "Validation error";
+	}
+
+	this(string msg, string file, size_t line, Throwable next = null)
+	{
+		super(msg, file, line, next);
+
+		statusCode = 403;
+		title = "Validation error";
+	}
+}
