@@ -87,6 +87,8 @@ version (unittest)
 			string other = "";
 		}
 		string name = "";
+
+		void action(string) {}
 	}
 }
 
@@ -348,5 +350,26 @@ unittest
 			assert(response.bodyJson["errors"][0]["status"] == 404);
 			assert(response.bodyJson["errors"][0]["title"] == "Crate not found");
 			assert(response.bodyJson["errors"][0]["description"] == "There is no `TestModel` with id `1`");
+		});
+}
+
+unittest
+{
+	import vibe.db.mongo.mongo : connectMongoDB;
+	bool actionCalled;
+
+	auto client = connectMongoDB("127.0.0.1");
+	auto collection = client.getCollection("test.model");
+	collection.drop;
+
+	auto router = new URLRouter();
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new CrateRouter!TestModel(router, crate);
+	crateRouter.enableAction!"action";
+
+	request(router).get("/testmodels/1/action")
+		.expectStatusCode(200)
+		.end((Response response) => {
+			assert(response.bodyString == "");
 		});
 }

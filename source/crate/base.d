@@ -378,4 +378,22 @@ class CrateRouter(T)
 
 		router.post("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
 	}
+
+	void enableAction(string actionName)() {
+		static if(__traits(hasMember, T, actionName)) {
+			alias Param = Parameters!(__traits(getMember, T, actionName));
+			alias RType = ReturnType!(__traits(getMember, T, actionName));
+
+			pragma(msg, "RType ", RType, Param);
+
+			static if(is(RType == void) && Param.length == 1 && is(Param[0] == string)) {
+				static assert(true, "void!");
+				pragma(msg, "action found `" ~ actionName ~ "`");
+			} else {
+				pragma(msg, "There is no action named `" ~ actionName ~ "`");
+			}
+		} else {
+			static assert(T.stringof ~ " has no `" ~ actionName ~ "` member.");
+		}
+	}
 }
