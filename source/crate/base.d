@@ -7,7 +7,7 @@ import vibe.data.bson;
 
 import crate.error;
 
-import std.string, std.traits;
+import std.string, std.traits, std.conv;
 
 struct CrateConfig(T)
 {
@@ -275,7 +275,7 @@ class CrateRouter(T)
 
 	void checkError(string methodName)(HTTPServerRequest request, HTTPServerResponse response)
 	{
-		auto func = &__traits(getMember, this, methodName);
+		mixin("auto func = &this." ~ methodName ~ ";");
 
 		try
 		{
@@ -405,34 +405,11 @@ class CrateRouter(T)
 		static if (__traits(hasMember, T, actionName))
 		{
 			alias Param = Parameters!(__traits(getMember, T, actionName));
-			alias RType = ReturnType!(__traits(getMember, T, actionName));
 
-			pragma(msg, "RType ", RType, Param);
-
-			static if (is(RType == void) && Param.length == 0)
+			static if (Param.length == 0)
 			{
-				void preparedAction(HTTPServerRequest request, HTTPServerResponse response)
-				{
-					auto item = crate.getItem(request.params["id"]);
-					auto func = &__traits(getMember, item, actionName);
-					func();
-
-					response.writeBody("", 200, "application/vnd.api+json");
-				}
-
-				router.get("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
-			}
-			else static if (is(RType == string) && Param.length == 0)
-			{
-				void preparedAction(HTTPServerRequest request, HTTPServerResponse response)
-				{
-					auto item = crate.getItem(request.params["id"]);
-					auto func = &__traits(getMember, item, actionName);
-
-					response.writeBody(func(), 200, "application/vnd.api+json");
-				}
-
-				router.get("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
+				router.get("/" ~ config.plural ~ "/:id/" ~ actionName,
+						&checkError!("callCrateAction!\"" ~ actionName ~ "\""));
 			}
 			else
 			{
@@ -442,6 +419,24 @@ class CrateRouter(T)
 		else
 		{
 			static assert(T.stringof ~ " has no `" ~ actionName ~ "` member.");
+		}
+	}
+
+	void callCrateAction(string actionName)(HTTPServerRequest request, HTTPServerResponse response)
+	{
+		auto item = crate.getItem(request.params["id"]);
+		auto func = &__traits(getMember, item, actionName);
+
+		alias RType = ReturnType!(__traits(getMember, T, actionName));
+
+		static if (is(RType == void))
+		{
+			func();
+			response.writeBody("", 200, "application/vnd.api+json");
+		}
+		else
+		{
+			response.writeBody(func().to!string, 200, "application/vnd.api+json");
 		}
 	}
 }

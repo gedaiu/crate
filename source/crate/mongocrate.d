@@ -8,6 +8,8 @@ import vibe.http.router;
 import vibe.data.json;
 import vibe.db.mongo.collection;
 
+import std.conv;
+
 class MongoCrate(T) : Crate!T
 {
 	private MongoCollection collection;
