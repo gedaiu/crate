@@ -102,6 +102,11 @@ version (unittest)
 
 			return "ok.";
 		}
+
+		void actionChange() {
+			name = "changed";
+			std.stdio.writeln("changed here");
+		}
 	}
 }
 
@@ -408,5 +413,31 @@ unittest
 		.end((Response response) => {
 			assert(response.bodyString == "ok.");
 			assert(isTestActionCalled);
+		});
+}
+
+unittest
+{
+	import std.stdio;
+	import vibe.db.mongo.mongo : connectMongoDB;
+	isTestActionCalled = false;
+
+	auto client = connectMongoDB("127.0.0.1");
+	auto collection = client.getCollection("test.model");
+	collection.drop;
+	collection.insert(TestModel("1", "not changed", "not changed"));
+
+	auto router = new URLRouter();
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new CrateRouter!TestModel(router, crate);
+	crateRouter.enableAction!"actionChange";
+
+	request(router).get("/testmodels/1/actionChange")
+		.expectStatusCode(200)
+		.end((Response response) => {
+			auto value = crate.getItem("1");
+
+			writeln("==>", value.name);
+			assert(value.name == "changed");
 		});
 }

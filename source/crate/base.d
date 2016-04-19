@@ -418,7 +418,7 @@ class CrateRouter(T)
 		}
 		else
 		{
-			static assert(T.stringof ~ " has no `" ~ actionName ~ "` member.");
+			static assert(false, T.stringof ~ " has no `" ~ actionName ~ "` member.");
 		}
 	}
 
@@ -428,15 +428,18 @@ class CrateRouter(T)
 		auto func = &__traits(getMember, item, actionName);
 
 		alias RType = ReturnType!(__traits(getMember, T, actionName));
+		string result;
 
 		static if (is(RType == void))
 		{
 			func();
-			response.writeBody("", 200, "application/vnd.api+json");
 		}
 		else
 		{
-			response.writeBody(func().to!string, 200, "application/vnd.api+json");
+			result = func().to!string;
 		}
+
+		crate.editItem(request.params["id"], item.serializeToJson);
+		response.writeBody(result, 200, "application/vnd.api+json");
 	}
 }

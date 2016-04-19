@@ -1,11 +1,15 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"memutils": "0.4.5",
-		"vibe-d": "0.7.28",
 		"libevent": "2.0.1+2.0.16",
 		"libev": "5.0.0+4.04",
+		"tinyendian": "0.1.2",
+		"dyaml": "0.5.2",
 		"openssl": "1.1.4+1.0.1g",
-		"libasync": "0.7.9"
+		"swaggerize": "0.1.2",
+		"memutils": "0.4.5",
+		"vibe-d": "0.7.28",
+		"libasync": "0.7.9",
+		"tested": "0.9.4"
 	}
 }
