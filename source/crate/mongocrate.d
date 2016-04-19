@@ -105,7 +105,6 @@ version (unittest)
 
 		void actionChange() {
 			name = "changed";
-			std.stdio.writeln("changed here");
 		}
 	}
 }
@@ -435,9 +434,6 @@ unittest
 	request(router).get("/testmodels/1/actionChange")
 		.expectStatusCode(200)
 		.end((Response response) => {
-			auto value = crate.getItem("1");
-
-			writeln("==>", value.name);
 			assert(value.name == "changed");
 		});
 }
