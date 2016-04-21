@@ -443,3 +443,65 @@ class CrateRouter(T)
 		response.writeBody(result, 200, "application/vnd.api+json");
 	}
 }
+
+version(unittest) {
+	import crate.request;
+
+	struct TestModel
+	{
+		@optional
+		string _id = "1";
+		string name = "";
+
+		void actionChange() {
+			name = "changed";
+		}
+	}
+
+	class TestCrate : Crate!TestModel {
+		TestModel item;
+
+		TestModel[] getList() {
+			return [ item ];
+		}
+
+		TestModel addItem(TestModel item) {
+			throw new Exception("addItem not implemented");
+		}
+
+		TestModel getItem(string id) {
+			return item;
+		}
+
+		TestModel editItem(string id, Json fields) {
+			item.name = fields.name.to!string;
+
+			return item;
+		}
+
+		void deleteItem(string id) {
+			throw new Exception("deleteItem not implemented");
+		}
+	}
+}
+
+unittest
+{
+	import std.stdio;
+
+	auto router = new URLRouter();
+	auto crate = new TestCrate();
+	auto crateRouter = new CrateRouter!TestModel(router, crate);
+
+	crateRouter.enableAction!"actionChange";
+
+	request(router).get("/testmodels/1/actionChange")
+		.expectStatusCode(200)
+		.end((Response response) => {
+			auto value = crate.getItem("1");
+
+			writeln("value.name = ", value.name);
+
+			assert(value.name == "changed");
+		});
+}
