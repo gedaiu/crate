@@ -1,6 +1,7 @@
 module crate.mongo;
 
 import crate.base;
+import crate.router;
 import crate.error;
 
 import vibe.inet.url;
