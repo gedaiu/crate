@@ -6,7 +6,7 @@ license "MIT"
 targetType "library"
 
 
-dependency "swaggerize" version="*"
+dependency "swaggerize" path="../swaggarize"
 dependency "vibe-d:data" version="*"
 dependency "vibe-d:http" version="*"
 dependency "vibe-d:mongodb" version="*"

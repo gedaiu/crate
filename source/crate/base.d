@@ -4,6 +4,8 @@ import vibe.data.json;
 
 import std.string, std.traits, std.conv;
 
+import swaggerize.definitions;
+
 struct CrateConfig(T)
 {
 	string singular = T.stringof.toLower;
@@ -32,4 +34,6 @@ interface CrateSerializer(T)
 	Json serialize(T[] items);
 
 	T deserialize(Json data);
+
+	string mime();
 }

@@ -5,6 +5,8 @@ import crate.base;
 import vibe.data.json;
 import vibe.data.bson;
 
+import swaggerize.definitions;
+
 import std.traits;
 
 class CrateJsonApiSerializer(T) : CrateSerializer!T
@@ -85,6 +87,10 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 		}
 
 		return deserializeJson!T(normalised);
+	}
+
+	string mime() {
+		return "application/vnd.api+json";
 	}
 }
 

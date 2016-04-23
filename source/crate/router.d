@@ -15,6 +15,7 @@ class CrateRouter(T)
 {
 	CrateConfig!T config;
 	CrateSerializer!T serializer;
+	bool[string] actions;
 
 	private
 	{
@@ -79,7 +80,7 @@ class CrateRouter(T)
 				data.errors[0].title = e.title;
 				data.errors[0].description = e.msg;
 
-				response.writeJsonBody(data, e.statusCode, "application/vnd.api+json");
+				response.writeJsonBody(data, e.statusCode, serializer.mime);
 			}
 		}
 		catch (Exception e)
@@ -92,32 +93,32 @@ class CrateRouter(T)
 			data.errors[0].title = "Server error";
 			data.errors[0].description = e.msg;
 
-			response.writeJsonBody(data, 500, "application/vnd.api+json");
+			response.writeJsonBody(data, 500, serializer.mime);
 		}
 	}
 
 	void getItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		auto data = crate.getItem(request.params["id"]);
-		response.writeJsonBody(serializer.serialize(data), 200, "application/vnd.api+json");
+		response.writeJsonBody(serializer.serialize(data), 200, serializer.mime);
 	}
 
 	void updateItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		auto data = crate.editItem(request.params["id"], request.json["data"].attributes);
-		response.writeJsonBody(serializer.serialize(data), 200, "application/vnd.api+json");
+		response.writeJsonBody(serializer.serialize(data), 200, serializer.mime);
 	}
 
 	void deleteItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		crate.deleteItem(request.params["id"]);
-		response.writeBody("", 204, "application/vnd.api+json");
+		response.writeBody("", 204, serializer.mime);
 	}
 
 	void getList(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		auto data = crate.getList;
-		response.writeJsonBody(serializer.serialize(data), 200, "application/vnd.api+json");
+		response.writeJsonBody(serializer.serialize(data), 200, serializer.mime);
 	}
 
 	void postItem(HTTPServerRequest request, HTTPServerResponse response)
@@ -127,7 +128,7 @@ class CrateRouter(T)
 
 		response.headers["Location"] = (request.fullURL ~ Path(data["data"]["id"].to!string))
 			.to!string;
-		response.writeJsonBody(data, 201, "application/vnd.api+json");
+		response.writeJsonBody(data, 201, serializer.mime);
 	}
 
 	alias ActionDelegate = void delegate(T item);
@@ -140,7 +141,7 @@ class CrateRouter(T)
 			auto item = crate.getItem(request.params["id"]);
 			action(item);
 
-			response.writeBody("", 200, "application/vnd.api+json");
+			response.writeBody("", 200, serializer.mime);
 		}
 
 		router.get("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
@@ -152,7 +153,7 @@ class CrateRouter(T)
 		{
 			auto item = crate.getItem(request.params["id"]);
 
-			response.writeBody(action(item), 200, "application/vnd.api+json");
+			response.writeBody(action(item), 200, serializer.mime);
 		}
 
 		router.get("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
@@ -167,7 +168,7 @@ class CrateRouter(T)
 
 			action(item, value);
 
-			response.writeBody("", 200, "application/vnd.api+json");
+			response.writeBody("", 200, serializer.mime);
 		}
 
 		router.post("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
@@ -180,7 +181,7 @@ class CrateRouter(T)
 			auto item = crate.getItem(request.params["id"]);
 			auto value = request.json.deserializeJson!U;
 
-			response.writeBody(action(item, value), 200, "application/vnd.api+json");
+			response.writeBody(action(item, value), 200, serializer.mime);
 		}
 
 		router.post("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
@@ -191,6 +192,14 @@ class CrateRouter(T)
 		static if (__traits(hasMember, T, actionName))
 		{
 			alias Param = Parameters!(__traits(getMember, T, actionName));
+			alias RType = ReturnType!(__traits(getMember, T, actionName));
+
+
+			static if(is(RType == void)) {
+				actions[actionName] = false;
+			} else {
+				actions[actionName] = true;
+			}
 
 			static if (Param.length == 0)
 			{
@@ -226,7 +235,7 @@ class CrateRouter(T)
 		}
 
 		crate.editItem(request.params["id"], item.serializeToJson);
-		response.writeBody(result, 200, "application/vnd.api+json");
+		response.writeBody(result, 200, serializer.mime);
 	}
 }
 
