@@ -36,7 +36,7 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 
 		foreach (string key, val; original)
 		{
-			if (key.to!string != "id")
+			if (key.to!string != "id" && key.to!string != "_id")
 			{
 				value["attributes"][key] = val;
 			}
@@ -130,6 +130,8 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 	Json[string] schemas() {
 		Json[string] schemaList;
 
+		schemaList[T.stringof ~ "Item"] = schemaItem;
+		schemaList[T.stringof ~ "NewItem"] = schemaNewItem;
 		schemaList[T.stringof ~ "List"] = schemaGetList;
 		schemaList[T.stringof ~ "Response"] = schemaResponse;
 		schemaList[T.stringof ~ "Request"] = schemaRequest;
@@ -147,31 +149,55 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 			data["properties"]["data"] = Json.emptyObject;
 			data["properties"]["data"]["type"] = "array";
 			data["properties"]["data"]["items"] = Json.emptyObject;
-			data["properties"]["data"]["items"]["$ref"] = "#/definitions/" ~ T.stringof ~ "Response";
+			data["properties"]["data"]["items"]["$ref"] = "#/definitions/" ~ T.stringof ~ "Item";
 
 			return data;
 		}
 
+		Json schemaItem() {
+			Json item = schemaNewItem;
+
+			item["properties"]["id"] = Json.emptyObject;
+			item["properties"]["id"]["type"] = "string";
+
+			return item;
+		}
+
+		Json schemaNewItem() {
+			Json item = Json.emptyObject;
+
+			item["type"] = "object";
+			item["properties"] = Json.emptyObject;
+			item["properties"]["type"] = Json.emptyObject;
+			item["properties"]["type"]["type"] = "string";
+			item["properties"]["attributes"] = Json.emptyObject;
+			item["properties"]["attributes"]["$ref"] = "#/definitions/" ~ T.stringof ~ "Attributes";
+
+			return item;
+		}
+
 		Json schemaResponse() {
-			Json response = schemaRequest;
+			Json item = Json.emptyObject;
 
-			response["properties"]["id"] = Json.emptyObject;
-			response["properties"]["id"]["type"] = "string";
+			item["type"] = "object";
 
-			return response;
+			item["properties"] = Json.emptyObject;
+			item["properties"]["data"] = Json.emptyObject;
+			item["properties"]["data"]["$ref"] = "#/definitions/" ~ T.stringof ~ "Item";
+
+			return item;
 		}
 
 		Json schemaRequest() {
-			Json response = Json.emptyObject;
+			Json item = Json.emptyObject;
 
-			response["type"] = "object";
-			response["properties"] = Json.emptyObject;
-			response["properties"]["type"] = Json.emptyObject;
-			response["properties"]["type"]["type"] = "string";
-			response["properties"]["attributes"] = Json.emptyObject;
-			response["properties"]["attributes"]["$ref"] = "#/definitions/" ~ T.stringof ~ "Attributes";
+			item["type"] = "object";
 
-			return response;
+			item["properties"] = Json.emptyObject;
+			item["properties"]["data"] = Json.emptyObject;
+			item["properties"]["data"]["$ref"] = "#/definitions/" ~ T.stringof ~ "NewItem";
+
+			return item;
 		}
 
 		Json schemaAttributes() {

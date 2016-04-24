@@ -123,9 +123,10 @@ unittest
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 
 	Json data = Json.emptyObject;
-	data["type"] = "testmodels";
-	data["attributes"] = Json.emptyObject;
-	data["attributes"]["name"] = "test name";
+	data["data"] = Json.emptyObject;
+	data["data"]["type"] = "testmodels";
+	data["data"]["attributes"] = Json.emptyObject;
+	data["data"]["attributes"]["name"] = "test name";
 
 	request(router).post("/testmodels").send(data).expectHeader("Content-Type", "application/vnd.api+json")
 		.expectHeaderContains("Location", "http://localhost/testmodels/").expectStatusCode(201)
@@ -413,5 +414,26 @@ unittest
 		.end((Response response) => {
 			assert(response.bodyString == "ok.");
 			assert(isTestActionCalled);
+		});
+}
+
+unittest
+{
+	import vibe.db.mongo.mongo : connectMongoDB;
+	isTestActionCalled = false;
+
+	auto client = connectMongoDB("127.0.0.1");
+	auto collection = client.getCollection("test.model");
+	collection.drop;
+	collection.insert(TestModel("1"));
+
+	auto router = new URLRouter();
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new CrateRouter!TestModel(router, crate);
+
+	request(router).get("/testmodels")
+		.expectHeader("Access-Control-Allow-Origin", "*")
+		.end((Response response) => {
+
 		});
 }

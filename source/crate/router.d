@@ -11,6 +11,7 @@ import crate.serializer.jsonapi;
 
 import std.traits;
 
+
 class CrateRouter(T)
 {
 	CrateConfig!T config;
@@ -58,6 +59,9 @@ class CrateRouter(T)
 		{
 			router.delete_("/" ~ config.plural ~ "/:id", &checkError!"deleteItem");
 		}
+
+		router.match(HTTPMethod.OPTIONS, "/" ~ config.plural ~ "/:id", &checkError!"optionsItem");
+		router.match(HTTPMethod.OPTIONS, "/" ~ config.plural, &checkError!"optionsList");
 	}
 
 	void checkError(string methodName)(HTTPServerRequest request, HTTPServerResponse response)
@@ -97,33 +101,52 @@ class CrateRouter(T)
 		}
 	}
 
+	void optionsItem(HTTPServerRequest request, HTTPServerResponse response)
+	{
+		addItemCORS(response);
+		crate.getItem(request.params["id"]);
+		response.writeBody("", 200);
+	}
+
+	void optionsList(HTTPServerRequest, HTTPServerResponse response)
+	{
+		addListCORS(response);
+		response.writeBody("", 200);
+	}
+
 	void getItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
+		addItemCORS(response);
 		auto data = crate.getItem(request.params["id"]);
 		response.writeJsonBody(serializer.serialize(data), 200, serializer.mime);
 	}
 
 	void updateItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
+		addItemCORS(response);
 		auto data = crate.editItem(request.params["id"], request.json["data"].attributes);
 		response.writeJsonBody(serializer.serialize(data), 200, serializer.mime);
 	}
 
 	void deleteItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
+		addItemCORS(response);
+		crate.getItem(request.params["id"]);
 		crate.deleteItem(request.params["id"]);
 		response.writeBody("", 204, serializer.mime);
 	}
 
-	void getList(HTTPServerRequest request, HTTPServerResponse response)
+	void getList(HTTPServerRequest, HTTPServerResponse response)
 	{
+		addListCORS(response);
 		auto data = crate.getList;
 		response.writeJsonBody(serializer.serialize(data), 200, serializer.mime);
 	}
 
 	void postItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
-		auto item = crate.addItem(request.json.attributes.deserializeJson!T);
+		addListCORS(response);
+		auto item = crate.addItem(serializer.deserialize(request.json));
 		auto data = serializer.serialize(item);
 
 		response.headers["Location"] = (request.fullURL ~ Path(data["data"]["id"].to!string))
@@ -219,6 +242,7 @@ class CrateRouter(T)
 
 	void callCrateAction(string actionName)(HTTPServerRequest request, HTTPServerResponse response)
 	{
+		addItemCORS(response);
 		auto item = crate.getItem(request.params["id"]);
 		auto func = &__traits(getMember, item, actionName);
 
@@ -235,7 +259,43 @@ class CrateRouter(T)
 		}
 
 		crate.editItem(request.params["id"], item.serializeToJson);
-		response.writeBody(result, 200, serializer.mime);
+		response.writeBody(result, 200);
+	}
+
+	private void addListCORS(HTTPServerResponse response) {
+		string methods = "OPTIONS";
+
+		if(config.getList) {
+			methods ~= ", GET";
+		}
+
+		if(config.addItem) {
+			methods ~= ", POST";
+		}
+
+		response.headers["Access-Control-Allow-Origin"] = "*";
+		response.headers["Access-Control-Allow-Methods"] = methods;
+		response.headers["Access-Control-Allow-Headers"] = "Content-Type";
+	}
+
+	private void addItemCORS(HTTPServerResponse response) {
+		string methods = "OPTIONS";
+
+		if(config.getList) {
+			methods ~= ", GET";
+		}
+
+		if(config.updateItem) {
+			methods ~= ", PATCH";
+		}
+
+		if(config.deleteItem) {
+			methods ~= ", DELETE";
+		}
+
+		response.headers["Access-Control-Allow-Origin"] = "*";
+		response.headers["Access-Control-Allow-Methods"] = methods;
+		response.headers["Access-Control-Allow-Headers"] = "Content-Type";
 	}
 }
 
@@ -260,21 +320,21 @@ version(unittest) {
 			return [ item ];
 		}
 
-		TestModel addItem(TestModel item) {
+		TestModel addItem(TestModel) {
 			throw new Exception("addItem not implemented");
 		}
 
-		TestModel getItem(string id) {
+		TestModel getItem(string) {
 			return item;
 		}
 
-		TestModel editItem(string id, Json fields) {
+		TestModel editItem(string, Json fields) {
 			item.name = fields.name.to!string;
 
 			return item;
 		}
 
-		void deleteItem(string id) {
+		void deleteItem(string) {
 			throw new Exception("deleteItem not implemented");
 		}
 	}
@@ -282,8 +342,6 @@ version(unittest) {
 
 unittest
 {
-	import std.stdio;
-
 	auto router = new URLRouter();
 	auto crate = new TestCrate();
 	auto crateRouter = new CrateRouter!TestModel(router, crate);

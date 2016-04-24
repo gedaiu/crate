@@ -269,8 +269,6 @@ unittest
 
 	auto api = crateRouter.toOpenApi;
 
-	api.serializeToJson.toPrettyString.writeln;
-
 	assert(api.paths.length == 4);
 	assert(Path.OperationsType.get in api.paths["/testmodels/{id}/action"].operations);
 	assert(api.paths["/testmodels/{id}/action"]["get"].parameters.length == 1);

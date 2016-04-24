@@ -32,10 +32,10 @@ shared static this() {
 	auto router = new URLRouter;
 
 	auto collection = client.getCollection("test.model");
-	collection.drop;
 
 	auto crate = new MongoCrate!TestModel(collection);
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
+	crateRouter.enableAction!"action";
 	crateRouter.enableAction!"actionResponse";
 
 	listenHTTP(settings, router);
