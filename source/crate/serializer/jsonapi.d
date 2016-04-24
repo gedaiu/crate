@@ -108,7 +108,11 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 			mixin("alias symbol = instance." ~ name ~ ";");
 
 			if(!hasUDA!(symbol, ignore)) {
-				model.fields[name] = ModelType(fields[0]);
+				model.fields[name] = ModelType(fields[0], hasUDA!(symbol, optional));
+
+				if(name == "id" || name == "_id") {
+					model.idField = name;
+				}
 			}
 
 			fields = fields[1..$];
@@ -133,15 +137,47 @@ unittest {
 	auto serializer = new CrateJsonApiSerializer!TestModel();
 
 	auto definition = serializer.definition;
-	definition.idField = "id";
+	assert(definition.idField == "id");
 	assert(definition.fields["id"].type == "string");
 	assert(definition.fields["id"].isComposite == false);
+	assert(definition.fields["id"].isOptional == false);
 	assert(definition.fields["field1"].type == "string");
 	assert(definition.fields["field1"].isComposite == false);
+	assert(definition.fields["field1"].isOptional == false);
 	assert(definition.fields["field2"].type == "int");
 	assert(definition.fields["field2"].isComposite == false);
+	assert(definition.fields["field2"].isOptional == false);
 
 	assert("field3" !in definition.fields);
+
+	definition.writeln;
+}
+
+unittest {
+	struct TestModel
+	{
+		string _id;
+	}
+
+	auto serializer = new CrateJsonApiSerializer!TestModel();
+
+	auto definition = serializer.definition;
+	assert(definition.idField == "_id");
+}
+
+unittest {
+	struct TestModel
+	{
+		string _id;
+
+		@optional
+		string optionalField;
+	}
+
+	auto serializer = new CrateJsonApiSerializer!TestModel();
+
+	auto definition = serializer.definition;
+	assert(definition.fields["optionalField"].isOptional);
 }
 
 unittest

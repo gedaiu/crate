@@ -20,6 +20,7 @@ struct CrateConfig(T)
 
 struct ModelType {
 	string type;
+	bool isOptional;
 	bool isComposite;
 }
 
