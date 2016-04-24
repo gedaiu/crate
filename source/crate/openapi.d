@@ -10,24 +10,27 @@ Swagger toOpenApi(T)(CrateRouter!T router)
 {
 	Swagger openApi;
 	openApi.host = "localhost";
-	openApi.schemes = [ Schemes.http, Schemes.https ];
-	openApi.produces = [ router.serializer.mime ];
-	openApi.consumes = [ router.serializer.mime ];
+	openApi.schemes = [Schemes.http, Schemes.https];
+	openApi.produces = [router.serializer.mime];
+	openApi.consumes = [router.serializer.mime];
 	openApi.definitions = errorDefinitions;
 
 	auto schemas = router.serializer.schemas;
 
-	foreach(string key, schema; schemas) {
+	foreach (string key, schema; schemas)
+	{
 		openApi.definitions[key] = Schema(schema);
 	}
 
 	openApi.paths["/" ~ router.config.plural] = itemListPath(router);
 	openApi.paths["/" ~ router.config.plural ~ "/{id}"] = itemPath(router);
 
-	foreach(string action, hasParam; router.actions) {
+	foreach (string action, hasParam; router.actions)
+	{
 		auto path = actionPath;
 
-		if(hasParam) {
+		if (hasParam)
+		{
 			path["get"].responses["200"].schema.fields = Json.emptyObject;
 			path["get"].responses["200"].schema.fields["type"] = "string";
 		}
@@ -38,7 +41,8 @@ Swagger toOpenApi(T)(CrateRouter!T router)
 	return openApi;
 }
 
-private Path itemListPath(T)(CrateRouter!T router) {
+private Path itemListPath(T)(CrateRouter!T router)
+{
 	auto path = Path();
 
 	auto optionsOperation = Operation();
@@ -58,7 +62,7 @@ private Path itemListPath(T)(CrateRouter!T router) {
 	addParameter.required = true;
 	addParameter.schema.fields["$ref"] = "#/definitions/" ~ T.stringof ~ "Request";
 
-	addOperation.parameters = [ addParameter ];
+	addOperation.parameters = [addParameter];
 
 	addOperation.responses["201"] = swaggerize.definitions.Response();
 	addOperation.responses["201"].schema = Schema(Json.emptyObject);
@@ -71,7 +75,8 @@ private Path itemListPath(T)(CrateRouter!T router) {
 	return path;
 }
 
-private Path itemPath(T)(CrateRouter!T router) {
+private Path itemPath(T)(CrateRouter!T router)
+{
 	auto path = Path();
 
 	auto optionsOperation = Operation();
@@ -79,10 +84,10 @@ private Path itemPath(T)(CrateRouter!T router) {
 	auto editOperation = Operation();
 	auto deleteOperation = Operation();
 
-	optionsOperation.parameters = [ itemId ];
+	optionsOperation.parameters = [itemId];
 	optionsOperation.responses["200"] = swaggerize.definitions.Response();
 
-	getOperation.parameters = [ itemId ];
+	getOperation.parameters = [itemId];
 	getOperation.responses["200"] = swaggerize.definitions.Response();
 	getOperation.responses["200"].schema = Schema(Json.emptyObject);
 	getOperation.responses["200"].schema.fields["$ref"] = "#/definitions/" ~ T.stringof ~ "Response";
@@ -96,11 +101,11 @@ private Path itemPath(T)(CrateRouter!T router) {
 	editParameter.required = true;
 	editParameter.schema.fields["$ref"] = "#/definitions/" ~ T.stringof ~ "Request";
 
-	editOperation.parameters = [ itemId, editParameter ];
+	editOperation.parameters = [itemId, editParameter];
 	editOperation.responses["200"] = getOperation.responses["200"];
 	editOperation.responses["404"] = notFoundResponse;
 
-	deleteOperation.parameters = [ itemId ];
+	deleteOperation.parameters = [itemId];
 	deleteOperation.responses["201"] = swaggerize.definitions.Response();
 	deleteOperation.responses["404"] = notFoundResponse;
 
@@ -112,10 +117,10 @@ private Path itemPath(T)(CrateRouter!T router) {
 	return path;
 }
 
-private Path actionPath() {
+private Path actionPath()
+{
 	auto actionPath = Path();
 	auto operation = Operation();
-
 
 	operation.tags = ["action"];
 	operation.parameters ~= itemId;
@@ -126,7 +131,8 @@ private Path actionPath() {
 	return actionPath;
 }
 
-private Parameter itemId() {
+private Parameter itemId()
+{
 	auto parameter = Parameter();
 	parameter.name = "id";
 	parameter.in_ = Parameter.In.path;
@@ -138,7 +144,8 @@ private Parameter itemId() {
 	return parameter;
 }
 
-private swaggerize.definitions.Response[string] standardResponses() {
+private swaggerize.definitions.Response[string] standardResponses()
+{
 	swaggerize.definitions.Response[string] responses;
 
 	auto okResponse = swaggerize.definitions.Response();
@@ -156,7 +163,8 @@ private swaggerize.definitions.Response[string] standardResponses() {
 	return responses;
 }
 
-private swaggerize.definitions.Response notFoundResponse() {
+private swaggerize.definitions.Response notFoundResponse()
+{
 	auto notFoundResponse = swaggerize.definitions.Response();
 	notFoundResponse.description = "not found";
 	notFoundResponse.schema.fields = Json.emptyObject;
@@ -165,7 +173,8 @@ private swaggerize.definitions.Response notFoundResponse() {
 	return notFoundResponse;
 }
 
-private swaggerize.definitions.Response errorResponse() {
+private swaggerize.definitions.Response errorResponse()
+{
 	auto errorResponse = swaggerize.definitions.Response();
 	errorResponse.description = "server error";
 	errorResponse.schema.fields = Json.emptyObject;
@@ -174,7 +183,8 @@ private swaggerize.definitions.Response errorResponse() {
 	return errorResponse;
 }
 
-private Schema[string] errorDefinitions() {
+private Schema[string] errorDefinitions()
+{
 	Schema[string] errors;
 
 	Schema error = Schema(Json.emptyObject);
@@ -214,45 +224,54 @@ version (unittest)
 
 	struct TestModel
 	{
-		@optional {
+		@optional
+		{
 			string _id;
 			string other = "";
 		}
 
 		string name = "";
 
-		void action() {
+		void action()
+		{
 			isTestActionCalled = true;
 		}
 
-		string actionResponse() {
+		string actionResponse()
+		{
 			isTestActionCalled = true;
 			return "ok.";
 		}
 	}
 
-	class TestCrate : Crate!TestModel {
+	class TestCrate : Crate!TestModel
+	{
 		TestModel item;
 
-		TestModel[] getList() {
-			return [ item ];
+		TestModel[] getList()
+		{
+			return [item];
 		}
 
-		TestModel addItem(TestModel item) {
+		TestModel addItem(TestModel item)
+		{
 			throw new Exception("addItem not implemented");
 		}
 
-		TestModel getItem(string id) {
+		TestModel getItem(string id)
+		{
 			return item;
 		}
 
-		TestModel editItem(string id, Json fields) {
+		TestModel editItem(string id, Json fields)
+		{
 			item.name = fields.name.to!string;
 
 			return item;
 		}
 
-		void deleteItem(string id) {
+		void deleteItem(string id)
+		{
 			throw new Exception("deleteItem not implemented");
 		}
 	}

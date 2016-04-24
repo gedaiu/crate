@@ -25,7 +25,8 @@ class MongoCrate(T) : Crate!T
 		T[] list;
 		auto cursor = collection.find!T();
 
-		foreach(item; cursor) {
+		foreach (item; cursor)
+		{
 			list ~= item;
 		}
 
@@ -52,29 +53,31 @@ class MongoCrate(T) : Crate!T
 
 	T getItem(string id)
 	{
-		if(collection.count(["_id": id]) == 0) {
+		if (collection.count(["_id" : id]) == 0)
+		{
 			throw new CrateNotFoundException("There is no `" ~ T.stringof ~ "` with id `" ~ id ~ "`");
 		}
 
-		return collection.findOne!T(["_id": id]);
+		return collection.findOne!T(["_id" : id]);
 	}
 
 	T editItem(string id, Json fields)
 	{
-		auto data = collection.findOne!Json(["_id": id]);
+		auto data = collection.findOne!Json(["_id" : id]);
 
-		foreach(string field, value; fields) {
+		foreach (string field, value; fields)
+		{
 			data[field] = value;
 		}
 
-		collection.findAndModify(["_id": id], data);
+		collection.findAndModify(["_id" : id], data);
 
 		return getItem(id);
 	}
 
 	void deleteItem(string id)
 	{
-		collection.remove(["_id": id]);
+		collection.remove(["_id" : id]);
 	}
 }
 
@@ -87,24 +90,28 @@ version (unittest)
 
 	struct TestModel
 	{
-		@optional {
+		@optional
+		{
 			string _id;
 			string other = "";
 		}
 
 		string name = "";
 
-		void action() {
+		void action()
+		{
 			isTestActionCalled = true;
 		}
 
-		string actionResponse() {
+		string actionResponse()
+		{
 			isTestActionCalled = true;
 
 			return "ok.";
 		}
 
-		void actionChange() {
+		void actionChange()
+		{
 			name = "changed";
 		}
 	}
@@ -150,13 +157,12 @@ unittest
 	auto crate = new MongoCrate!TestModel(collection);
 	auto crateRouter = new const CrateRouter!TestModel(router, crate);
 
-	request(router).get("/testmodels").expectHeader("Content-Type", "application/vnd.api+json")
-		.expectStatusCode(200)
-		.end((Response response) => {
-			assert(response.bodyJson["data"].length == 2);
-			assert(response.bodyJson["data"][0]["id"].to!string == "1");
-			assert(response.bodyJson["data"][1]["id"].to!string == "2");
-		});
+	request(router).get("/testmodels").expectHeader("Content-Type",
+			"application/vnd.api+json").expectStatusCode(200).end((Response response) => {
+		assert(response.bodyJson["data"].length == 2);
+		assert(response.bodyJson["data"][0]["id"].to!string == "1");
+		assert(response.bodyJson["data"][1]["id"].to!string == "2");
+	});
 }
 
 unittest
@@ -172,11 +178,10 @@ unittest
 	auto crate = new MongoCrate!TestModel(collection);
 	auto crateRouter = new const CrateRouter!TestModel(router, crate);
 
-	request(router).get("/testmodels/1").expectHeader("Content-Type", "application/vnd.api+json")
-		.expectStatusCode(200)
-		.end((Response response) => {
-			assert(response.bodyJson["data"]["id"].to!string == "1");
-		});
+	request(router).get("/testmodels/1").expectHeader("Content-Type",
+			"application/vnd.api+json").expectStatusCode(200).end((Response response) => {
+		assert(response.bodyJson["data"]["id"].to!string == "1");
+	});
 }
 
 unittest
@@ -199,11 +204,8 @@ unittest
 	data["data"]["attributes"] = Json.emptyObject;
 	data["data"]["attributes"]["other"] = "other value";
 
-	request(router).patch("/testmodels/1").send(data)
-		.expectStatusCode(200)
-		.expectHeader("Content-Type", "application/vnd.api+json")
-
-		.end((Response response) => {
+	request(router).patch("/testmodels/1").send(data).expectStatusCode(200)
+		.expectHeader("Content-Type", "application/vnd.api+json").end((Response response) => {
 			assert(response.bodyJson["data"]["id"].to!string == "1");
 			assert(response.bodyJson["data"]["type"].to!string == "testmodels");
 			assert(response.bodyJson["data"]["attributes"]["name"].to!string == "testName");
@@ -214,9 +216,11 @@ unittest
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
+
 	bool actionCalled;
 
-	void action(TestModel) {
+	void action(TestModel)
+	{
 		actionCalled = true;
 	}
 
@@ -228,11 +232,8 @@ unittest
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 	crateRouter.addAction!"action"(&action);
 
-	request(router).get("/testmodels/1/action")
-		.expectStatusCode(200)
-		.expectHeader("Content-Type", "application/vnd.api+json")
-
-		.end((Response response) => {
+	request(router).get("/testmodels/1/action").expectStatusCode(200)
+		.expectHeader("Content-Type", "application/vnd.api+json").end((Response response) => {
 			assert(response.bodyString == "");
 			assert(actionCalled);
 		});
@@ -241,9 +242,11 @@ unittest
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
+
 	bool actionCalled;
 
-	string action(TestModel) {
+	string action(TestModel)
+	{
 		actionCalled = true;
 
 		return "test";
@@ -257,11 +260,8 @@ unittest
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 	crateRouter.addAction!"action"(&action);
 
-	request(router).get("/testmodels/1/action")
-		.expectStatusCode(200)
-		.expectHeader("Content-Type", "application/vnd.api+json")
-
-		.end((Response response) => {
+	request(router).get("/testmodels/1/action").expectStatusCode(200)
+		.expectHeader("Content-Type", "application/vnd.api+json").end((Response response) => {
 			assert(response.bodyString == "test");
 			assert(actionCalled);
 		});
@@ -270,14 +270,17 @@ unittest
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
+
 	bool actionCalled;
 
-	struct Operation {
+	struct Operation
+	{
 		int x;
 		int y;
 	}
 
-	void action(TestModel, Operation operation) {
+	void action(TestModel, Operation operation)
+	{
 		assert(operation.x == 10);
 		assert(operation.y == 20);
 
@@ -296,29 +299,27 @@ unittest
 	data.x = 10;
 	data.y = 20;
 
-	request(router).post("/testmodels/1/action")
-		.send(data)
-		.expectStatusCode(200)
-		.expectHeader("Content-Type", "application/vnd.api+json")
-
-		.end((Response response) => {
+	request(router).post("/testmodels/1/action").send(data).expectStatusCode(200)
+		.expectHeader("Content-Type", "application/vnd.api+json").end((Response response) => {
 			assert(response.bodyString == "");
 			assert(actionCalled);
 		});
 }
 
-
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
+
 	bool actionCalled;
 
-	struct Operation {
+	struct Operation
+	{
 		int x;
 		int y;
 	}
 
-	string action(TestModel, Operation operation) {
+	string action(TestModel, Operation operation)
+	{
 		assert(operation.x == 10);
 		assert(operation.y == 20);
 
@@ -339,12 +340,8 @@ unittest
 	data.x = 10;
 	data.y = 20;
 
-	request(router).post("/testmodels/1/action")
-		.send(data)
-		.expectStatusCode(200)
-		.expectHeader("Content-Type", "application/vnd.api+json")
-
-		.end((Response response) => {
+	request(router).post("/testmodels/1/action").send(data).expectStatusCode(200)
+		.expectHeader("Content-Type", "application/vnd.api+json").end((Response response) => {
 			assert(response.bodyString == "test");
 			assert(actionCalled);
 		});
@@ -353,6 +350,7 @@ unittest
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
+
 	bool actionCalled;
 
 	auto client = connectMongoDB("127.0.0.1");
@@ -363,18 +361,18 @@ unittest
 	auto crate = new MongoCrate!TestModel(collection);
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 
-	request(router).get("/testmodels/1")
-		.expectStatusCode(404)
-		.end((Response response) => {
-			assert(response.bodyJson["errors"][0]["status"] == 404);
-			assert(response.bodyJson["errors"][0]["title"] == "Crate not found");
-			assert(response.bodyJson["errors"][0]["description"] == "There is no `TestModel` with id `1`");
-		});
+	request(router).get("/testmodels/1").expectStatusCode(404).end((Response response) => {
+		assert(response.bodyJson["errors"][0]["status"] == 404);
+		assert(response.bodyJson["errors"][0]["title"] == "Crate not found");
+		assert(
+			response.bodyJson["errors"][0]["description"] == "There is no `TestModel` with id `1`");
+	});
 }
 
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
+
 	isTestActionCalled = false;
 
 	auto client = connectMongoDB("127.0.0.1");
@@ -386,17 +384,16 @@ unittest
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 	crateRouter.enableAction!"action";
 
-	request(router).get("/testmodels/1/action")
-		.expectStatusCode(200)
-		.end((Response response) => {
-			assert(response.bodyString == "");
-			assert(isTestActionCalled);
-		});
+	request(router).get("/testmodels/1/action").expectStatusCode(200).end((Response response) => {
+		assert(response.bodyString == "");
+		assert(isTestActionCalled);
+	});
 }
 
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
+
 	isTestActionCalled = false;
 
 	auto client = connectMongoDB("127.0.0.1");
@@ -409,8 +406,7 @@ unittest
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 	crateRouter.enableAction!"actionResponse";
 
-	request(router).get("/testmodels/1/actionResponse")
-		.expectStatusCode(200)
+	request(router).get("/testmodels/1/actionResponse").expectStatusCode(200)
 		.end((Response response) => {
 			assert(response.bodyString == "ok.");
 			assert(isTestActionCalled);
@@ -420,6 +416,7 @@ unittest
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
+
 	isTestActionCalled = false;
 
 	auto client = connectMongoDB("127.0.0.1");
@@ -432,8 +429,7 @@ unittest
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 
 	request(router).get("/testmodels")
-		.expectHeader("Access-Control-Allow-Origin", "*")
-		.end((Response response) => {
+		.expectHeader("Access-Control-Allow-Origin", "*").end((Response response) => {
 
 		});
 }

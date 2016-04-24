@@ -5,27 +5,30 @@ import crate.router;
 
 struct TestModel
 {
-	@optional {
+	@optional
+	{
 		string _id;
 		string other = "";
 	}
 
 	string name = "";
 
-	void action() {}
+	void action()
+	{
+	}
 
-	string actionResponse() {
+	string actionResponse()
+	{
 		return "ok.";
 	}
 }
 
-
-shared static this() {
+shared static this()
+{
 	auto settings = new HTTPServerSettings;
 	settings.port = 9090;
-	settings.options = HTTPServerOption.parseQueryString |
-		HTTPServerOption.parseFormBody |
-		HTTPServerOption.parseJsonBody;
+	settings.options = HTTPServerOption.parseQueryString
+		| HTTPServerOption.parseFormBody | HTTPServerOption.parseJsonBody;
 
 	auto client = connectMongoDB("127.0.0.1");
 

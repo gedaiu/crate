@@ -11,7 +11,6 @@ import crate.serializer.jsonapi;
 
 import std.traits;
 
-
 class CrateRouter(T)
 {
 	CrateConfig!T config;
@@ -217,10 +216,12 @@ class CrateRouter(T)
 			alias Param = Parameters!(__traits(getMember, T, actionName));
 			alias RType = ReturnType!(__traits(getMember, T, actionName));
 
-
-			static if(is(RType == void)) {
+			static if (is(RType == void))
+			{
 				actions[actionName] = false;
-			} else {
+			}
+			else
+			{
 				actions[actionName] = true;
 			}
 
@@ -262,14 +263,17 @@ class CrateRouter(T)
 		response.writeBody(result, 200);
 	}
 
-	private void addListCORS(HTTPServerResponse response) {
+	private void addListCORS(HTTPServerResponse response)
+	{
 		string methods = "OPTIONS";
 
-		if(config.getList) {
+		if (config.getList)
+		{
 			methods ~= ", GET";
 		}
 
-		if(config.addItem) {
+		if (config.addItem)
+		{
 			methods ~= ", POST";
 		}
 
@@ -278,18 +282,22 @@ class CrateRouter(T)
 		response.headers["Access-Control-Allow-Headers"] = "Content-Type";
 	}
 
-	private void addItemCORS(HTTPServerResponse response) {
+	private void addItemCORS(HTTPServerResponse response)
+	{
 		string methods = "OPTIONS";
 
-		if(config.getList) {
+		if (config.getList)
+		{
 			methods ~= ", GET";
 		}
 
-		if(config.updateItem) {
+		if (config.updateItem)
+		{
 			methods ~= ", PATCH";
 		}
 
-		if(config.deleteItem) {
+		if (config.deleteItem)
+		{
 			methods ~= ", DELETE";
 		}
 
@@ -299,42 +307,49 @@ class CrateRouter(T)
 	}
 }
 
-version(unittest) {
+version (unittest)
+{
 	import crate.request;
 
 	struct TestModel
 	{
-		@optional
-		string _id = "1";
+		@optional string _id = "1";
 		string name = "";
 
-		void actionChange() {
+		void actionChange()
+		{
 			name = "changed";
 		}
 	}
 
-	class TestCrate : Crate!TestModel {
+	class TestCrate : Crate!TestModel
+	{
 		TestModel item;
 
-		TestModel[] getList() {
-			return [ item ];
+		TestModel[] getList()
+		{
+			return [item];
 		}
 
-		TestModel addItem(TestModel) {
+		TestModel addItem(TestModel)
+		{
 			throw new Exception("addItem not implemented");
 		}
 
-		TestModel getItem(string) {
+		TestModel getItem(string)
+		{
 			return item;
 		}
 
-		TestModel editItem(string, Json fields) {
+		TestModel editItem(string, Json fields)
+		{
 			item.name = fields.name.to!string;
 
 			return item;
 		}
 
-		void deleteItem(string) {
+		void deleteItem(string)
+		{
 			throw new Exception("deleteItem not implemented");
 		}
 	}
@@ -348,8 +363,7 @@ unittest
 
 	crateRouter.enableAction!"actionChange";
 
-	request(router).get("/testmodels/1/actionChange")
-		.expectStatusCode(200)
+	request(router).get("/testmodels/1/actionChange").expectStatusCode(200)
 		.end((Response response) => {
 			auto value = crate.getItem("1");
 			assert(value.name == "changed");

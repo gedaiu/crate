@@ -89,45 +89,55 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 		return deserializeJson!T(normalised);
 	}
 
-	string mime() {
+	string mime()
+	{
 		return "application/vnd.api+json";
 	}
 
-	ModelDefinition definition() {
+	ModelDefinition definition()
+	{
 		ModelDefinition model;
 
-		string typeString(T)() {
+		string typeString(T)()
+		{
 			return T.stringof;
 		}
 
-		auto fields = [ staticMap!(typeString, Fields!T) ];
+		auto fields = [staticMap!(typeString, Fields!T)];
 		alias names = FieldNameTuple!T;
 		T instance;
 
-		foreach(name; names) {
+		foreach (name; names)
+		{
 			mixin("alias symbol = instance." ~ name ~ ";");
 
-			if(!hasUDA!(symbol, ignore)) {
-				static if(hasUDA!(symbol, NameAttribute)) {
+			if (!hasUDA!(symbol, ignore))
+			{
+				static if (hasUDA!(symbol, NameAttribute))
+				{
 					string fieldName = getUDAs!(symbol, NameAttribute)[0].name;
-				} else {
+				}
+				else
+				{
 					string fieldName = name;
 				}
 
 				model.fields[fieldName] = ModelType(fields[0], hasUDA!(symbol, optional));
 
-				if(name == "id" || name == "_id") {
+				if (name == "id" || name == "_id")
+				{
 					model.idField = name;
 				}
 			}
 
-			fields = fields[1..$];
+			fields = fields[1 .. $];
 		}
 
 		return model;
 	}
 
-	Json[string] schemas() {
+	Json[string] schemas()
+	{
 		Json[string] schemaList;
 
 		schemaList[T.stringof ~ "Item"] = schemaItem;
@@ -140,8 +150,10 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 		return schemaList;
 	}
 
-	private {
-		Json schemaGetList() {
+	private
+	{
+		Json schemaGetList()
+		{
 			Json data = Json.emptyObject;
 
 			data["type"] = "object";
@@ -154,7 +166,8 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 			return data;
 		}
 
-		Json schemaItem() {
+		Json schemaItem()
+		{
 			Json item = schemaNewItem;
 
 			item["properties"]["id"] = Json.emptyObject;
@@ -163,7 +176,8 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 			return item;
 		}
 
-		Json schemaNewItem() {
+		Json schemaNewItem()
+		{
 			Json item = Json.emptyObject;
 
 			item["type"] = "object";
@@ -176,7 +190,8 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 			return item;
 		}
 
-		Json schemaResponse() {
+		Json schemaResponse()
+		{
 			Json item = Json.emptyObject;
 
 			item["type"] = "object";
@@ -188,7 +203,8 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 			return item;
 		}
 
-		Json schemaRequest() {
+		Json schemaRequest()
+		{
 			Json item = Json.emptyObject;
 
 			item["type"] = "object";
@@ -200,19 +216,23 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 			return item;
 		}
 
-		Json schemaAttributes() {
+		Json schemaAttributes()
+		{
 			Json attributes = Json.emptyObject;
 			auto model = definition;
 			attributes["type"] = "object";
 			attributes["required"] = Json.emptyArray;
 			attributes["properties"] = Json.emptyObject;
 
-			foreach(string name, field; model.fields) {
-				if(name != model.idField) {
+			foreach (string name, field; model.fields)
+			{
+				if (name != model.idField)
+				{
 					attributes["properties"][name] = Json.emptyObject;
 					attributes["properties"][name]["type"] = "string";
 
-					if(!field.isOptional) {
+					if (!field.isOptional)
+					{
 						attributes["required"] ~= name;
 					}
 				}
@@ -223,7 +243,8 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 	}
 }
 
-unittest {
+unittest
+{
 	struct TestModel
 	{
 		string id;
@@ -231,8 +252,7 @@ unittest {
 		string field1;
 		int field2;
 
-		@ignore
-		int field3;
+		@ignore int field3;
 	}
 
 	auto serializer = new CrateJsonApiSerializer!TestModel();
@@ -252,7 +272,8 @@ unittest {
 	assert("field3" !in definition.fields);
 }
 
-unittest {
+unittest
+{
 	struct TestModel
 	{
 		string _id;
@@ -264,13 +285,13 @@ unittest {
 	assert(definition.idField == "_id");
 }
 
-unittest {
+unittest
+{
 	struct TestModel
 	{
 		string _id;
 
-		@optional
-		string optionalField;
+		@optional string optionalField;
 	}
 
 	auto serializer = new CrateJsonApiSerializer!TestModel();
@@ -279,7 +300,8 @@ unittest {
 	assert(definition.fields["optionalField"].isOptional);
 }
 
-unittest {
+unittest
+{
 	struct TestModel
 	{
 		string _id;

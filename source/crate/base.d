@@ -18,13 +18,15 @@ struct CrateConfig(T)
 	bool updateItem = true;
 }
 
-struct ModelType {
+struct ModelType
+{
 	string type;
 	bool isOptional;
 	bool isComposite;
 }
 
-struct ModelDefinition {
+struct ModelDefinition
+{
 	string idField;
 	ModelType[string] fields;
 }
