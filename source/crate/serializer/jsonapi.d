@@ -180,6 +180,22 @@ unittest {
 	assert(definition.fields["optionalField"].isOptional);
 }
 
+unittest {
+	struct TestModel
+	{
+		string _id;
+
+		@name("optional-field")
+		string optionalField;
+	}
+
+	auto serializer = new CrateJsonApiSerializer!TestModel();
+
+	auto definition = serializer.definition;
+	assert("optional-field" in definition.fields);
+	assert("optionalField" !in definition.fields);
+}
+
 unittest
 {
 	struct TestModel
