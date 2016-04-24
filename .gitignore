@@ -4,3 +4,5 @@ __dummy.html
 *.o
 *.obj
 libcrate.a
+.DS_Store
+dub.selections.json

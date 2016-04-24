@@ -135,8 +135,6 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 		schemaList[T.stringof ~ "Request"] = schemaRequest;
 		schemaList[T.stringof ~ "Attributes"] = schemaAttributes;
 
-		writeln("schema", schemaList);
-
 		return schemaList;
 	}
 
