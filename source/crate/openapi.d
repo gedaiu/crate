@@ -2,6 +2,7 @@ module crate.openapi;
 
 import vibe.http.router;
 import crate.base;
+import crate.router;
 import swaggerize.definitions;
 import std.stdio, std.string;
 import vibe.data.json;
@@ -206,7 +207,6 @@ private Schema[string] errorDefinitions() {
 version (unittest)
 {
 	import crate.request;
-	import crate.router;
 	import vibe.data.serialization;
 	import vibe.data.json;
 
