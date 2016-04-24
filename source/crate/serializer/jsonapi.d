@@ -114,7 +114,6 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 					string fieldName = name;
 				}
 
-				fieldName.writeln(" ", hasUDA!(symbol, NameAttribute));
 				model.fields[fieldName] = ModelType(fields[0], hasUDA!(symbol, optional));
 
 				if(name == "id" || name == "_id") {
@@ -156,8 +155,6 @@ unittest {
 	assert(definition.fields["field2"].isOptional == false);
 
 	assert("field3" !in definition.fields);
-
-	definition.writeln;
 }
 
 unittest {
