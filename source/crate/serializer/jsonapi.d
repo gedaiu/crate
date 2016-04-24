@@ -108,7 +108,14 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 			mixin("alias symbol = instance." ~ name ~ ";");
 
 			if(!hasUDA!(symbol, ignore)) {
-				model.fields[name] = ModelType(fields[0], hasUDA!(symbol, optional));
+				static if(hasUDA!(symbol, NameAttribute)) {
+					string fieldName = getUDAs!(symbol, NameAttribute)[0].name;
+				} else {
+					string fieldName = name;
+				}
+
+				fieldName.writeln(" ", hasUDA!(symbol, NameAttribute));
+				model.fields[fieldName] = ModelType(fields[0], hasUDA!(symbol, optional));
 
 				if(name == "id" || name == "_id") {
 					model.idField = name;
