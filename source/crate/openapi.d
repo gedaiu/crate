@@ -47,27 +47,32 @@ private Path itemListPath(T)(CrateRouter!T router) {
 	auto addOperation = Operation();
 
 	optionsOperation.responses["200"] = swaggerize.definitions.Response();
-
-	listOperation.responses["200"] = swaggerize.definitions.Response();
-	listOperation.responses["200"].schema = Schema(Json.emptyObject);
-	listOperation.responses["200"].schema.fields["$ref"] = "#/definitions/" ~ T.stringof ~ "List";
-
-	auto addParameter = Parameter();
-	addParameter.in_ = Parameter.In.body_;
-	addParameter.schema = Schema(Json.emptyObject);
-	addParameter.name = T.stringof.toLower;
-	addParameter.required = true;
-	addParameter.schema.fields["$ref"] = "#/definitions/" ~ T.stringof ~ "Request";
-
-	addOperation.parameters = [ addParameter ];
-
-	addOperation.responses["201"] = swaggerize.definitions.Response();
-	addOperation.responses["201"].schema = Schema(Json.emptyObject);
-	addOperation.responses["201"].schema.fields["$ref"] = "#/definitions/" ~ T.stringof ~ "Response";
-
 	path.operations["options"] = optionsOperation;
-	path.operations["get"] = listOperation;
-	path.operations["post"] = addOperation;
+
+	if(router.config.getList) {
+		listOperation.responses["200"] = swaggerize.definitions.Response();
+		listOperation.responses["200"].schema = Schema(Json.emptyObject);
+		listOperation.responses["200"].schema.fields["$ref"] = "#/definitions/" ~ T.stringof ~ "List";
+
+		path.operations["get"] = listOperation;
+	}
+
+	if(router.config.addItem) {
+		auto addParameter = Parameter();
+		addParameter.in_ = Parameter.In.body_;
+		addParameter.schema = Schema(Json.emptyObject);
+		addParameter.name = T.stringof.toLower;
+		addParameter.required = true;
+		addParameter.schema.fields["$ref"] = "#/definitions/" ~ T.stringof ~ "Request";
+
+		addOperation.parameters = [ addParameter ];
+
+		addOperation.responses["201"] = swaggerize.definitions.Response();
+		addOperation.responses["201"].schema = Schema(Json.emptyObject);
+		addOperation.responses["201"].schema.fields["$ref"] = "#/definitions/" ~ T.stringof ~ "Response";
+
+		path.operations["post"] = addOperation;
+	}
 
 	return path;
 }
