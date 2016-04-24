@@ -15,6 +15,12 @@ Swagger toOpenApi(T)(CrateRouter!T router)
 	openApi.consumes = [ router.serializer.mime ];
 	openApi.definitions = errorDefinitions;
 
+	auto schemas = router.serializer.schemas;
+
+	foreach(string key, schema; schemas) {
+		openApi.definitions[key] = Schema(schema);
+	}
+
 	openApi.paths["/" ~ router.config.plural] = itemListPath(router);
 	openApi.paths["/" ~ router.config.plural ~ "/{id}"] = itemPath(router);
 
@@ -264,7 +270,7 @@ unittest
 	auto api = crateRouter.toOpenApi;
 
 	api.serializeToJson.toPrettyString.writeln;
-/*
+
 	assert(api.paths.length == 4);
 	assert(Path.OperationsType.get in api.paths["/testmodels/{id}/action"].operations);
 	assert(api.paths["/testmodels/{id}/action"]["get"].parameters.length == 1);
@@ -272,9 +278,10 @@ unittest
 
 	assert("ErrorList" in api.definitions);
 	assert("Error" in api.definitions);
+	assert("TestModelList" in api.definitions);
 	assert("TestModelResponse" in api.definitions);
 	assert("TestModelRequest" in api.definitions);
-*/
+
 	assert(Path.OperationsType.get in api.paths["/testmodels/{id}/actionResponse"].operations);
 
 }

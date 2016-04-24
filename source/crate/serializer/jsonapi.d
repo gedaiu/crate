@@ -126,6 +126,77 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 
 		return model;
 	}
+
+	Json[string] schemas() {
+		Json[string] schemaList;
+
+		schemaList[T.stringof ~ "List"] = schemaGetList;
+		schemaList[T.stringof ~ "Response"] = schemaResponse;
+		schemaList[T.stringof ~ "Request"] = schemaRequest;
+		schemaList[T.stringof ~ "Attributes"] = schemaAttributes;
+
+		writeln("schema", schemaList);
+
+		return schemaList;
+	}
+
+	private {
+		Json schemaGetList() {
+			Json data = Json.emptyObject;
+
+			data["type"] = "object";
+			data["properties"] = Json.emptyObject;
+			data["properties"]["data"] = Json.emptyObject;
+			data["properties"]["data"]["type"] = "array";
+			data["properties"]["data"]["items"] = Json.emptyObject;
+			data["properties"]["data"]["items"]["$ref"] = "#/definitions/" ~ T.stringof ~ "Response";
+
+			return data;
+		}
+
+		Json schemaResponse() {
+			Json response = schemaRequest;
+
+			response["properties"]["id"] = Json.emptyObject;
+			response["properties"]["id"]["type"] = "string";
+
+			return response;
+		}
+
+		Json schemaRequest() {
+			Json response = Json.emptyObject;
+
+			response["type"] = "object";
+			response["properties"] = Json.emptyObject;
+			response["properties"]["type"] = Json.emptyObject;
+			response["properties"]["type"]["type"] = "string";
+			response["properties"]["attributes"] = Json.emptyObject;
+			response["properties"]["attributes"]["$ref"] = "#/definitions/" ~ T.stringof ~ "Attributes";
+
+			return response;
+		}
+
+		Json schemaAttributes() {
+			Json attributes = Json.emptyObject;
+			auto model = definition;
+			attributes["type"] = "object";
+			attributes["required"] = Json.emptyArray;
+			attributes["properties"] = Json.emptyObject;
+
+			foreach(string name, field; model.fields) {
+				if(name != model.idField) {
+					attributes["properties"][name] = Json.emptyObject;
+					attributes["properties"][name]["type"] = "string";
+
+					if(!field.isOptional) {
+						attributes["required"] ~= name;
+					}
+				}
+			}
+
+			return attributes;
+		}
+	}
 }
 
 unittest {
