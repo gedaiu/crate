@@ -59,8 +59,13 @@ class CrateRouter(T)
 			router.delete_("/" ~ config.plural ~ "/:id", &checkError!"deleteItem");
 		}
 
-		router.match(HTTPMethod.OPTIONS, "/" ~ config.plural ~ "/:id", &checkError!"optionsItem");
-		router.match(HTTPMethod.OPTIONS, "/" ~ config.plural, &checkError!"optionsList");
+		if (config.getList || config.addItem) {
+			router.match(HTTPMethod.OPTIONS, "/" ~ config.plural, &checkError!"optionsList");
+		}
+
+		if (config.getItem || config.updateItem || config.deleteItem) {
+			router.match(HTTPMethod.OPTIONS, "/" ~ config.plural ~ "/:id", &checkError!"optionsItem");
+		}
 	}
 
 	void checkError(string methodName)(HTTPServerRequest request, HTTPServerResponse response)
