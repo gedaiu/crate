@@ -7,7 +7,7 @@ import vibe.data.bson;
 
 import swaggerize.definitions;
 
-import std.traits;
+import std.traits, std.stdio, std.meta;
 
 class CrateJsonApiSerializer(T) : CrateSerializer!T
 {
@@ -92,6 +92,56 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 	string mime() {
 		return "application/vnd.api+json";
 	}
+
+	ModelDefinition definition() {
+		ModelDefinition model;
+
+		string typeString(T)() {
+			return T.stringof;
+		}
+
+		auto fields = [ staticMap!(typeString, Fields!T) ];
+		alias names = FieldNameTuple!T;
+		T instance;
+
+		foreach(name; names) {
+			mixin("alias symbol = instance." ~ name ~ ";");
+
+			if(!hasUDA!(symbol, ignore)) {
+				model.fields[name] = ModelType(fields[0]);
+			}
+
+			fields = fields[1..$];
+		}
+
+		return model;
+	}
+}
+
+unittest {
+	struct TestModel
+	{
+		string id;
+
+		string field1;
+		int field2;
+
+		@ignore
+		int field3;
+	}
+
+	auto serializer = new CrateJsonApiSerializer!TestModel();
+
+	auto definition = serializer.definition;
+	definition.idField = "id";
+	assert(definition.fields["id"].type == "string");
+	assert(definition.fields["id"].isComposite == false);
+	assert(definition.fields["field1"].type == "string");
+	assert(definition.fields["field1"].isComposite == false);
+	assert(definition.fields["field2"].type == "int");
+	assert(definition.fields["field2"].isComposite == false);
+
+	assert("field3" !in definition.fields);
 }
 
 unittest

@@ -18,6 +18,16 @@ struct CrateConfig(T)
 	bool updateItem = true;
 }
 
+struct ModelType {
+	string type;
+	bool isComposite;
+}
+
+struct ModelDefinition {
+	string idField;
+	ModelType[string] fields;
+}
+
 interface Crate(T)
 {
 	T[] getList();
@@ -36,4 +46,5 @@ interface CrateSerializer(T)
 	T deserialize(Json data);
 
 	string mime();
+	ModelDefinition definition();
 }
