@@ -421,3 +421,25 @@ unittest
 
 	assert(raised);
 }
+
+unittest
+{
+	struct TestModel {
+		string name;
+	}
+
+	struct ComposedModel
+	{
+		string _id;
+
+		TestModel child;
+	}
+
+	auto serializer = new CrateJsonApiSerializer!ComposedModel;
+
+	auto value = ComposedModel();
+	value.child.name = "test";
+
+	auto serializedValue = serializer.serialize(value);
+	assert(serializedValue.data.attributes.child.name == "test");
+}
