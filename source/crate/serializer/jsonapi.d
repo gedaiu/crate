@@ -6,39 +6,316 @@ import vibe.data.json;
 import vibe.data.bson;
 
 import swaggerize.definitions;
+import std.meta;
 
 import std.traits, std.stdio, std.meta;
+
+struct FieldDescription
+{
+	string name;
+	string[] attributes;
+	string type;
+	bool isBasicType;
+	bool isRelation;
+	bool isId;
+}
+
+template OriginalFieldType(alias F)
+{
+	static if (is(FunctionTypeOf!F == function))
+	{
+
+		static if (is(ReturnType!(F) == void) && arity!(F) == 1)
+		{
+			alias OriginalFieldType = Unqual!(ParameterTypeTuple!F);
+		}
+		else
+		{
+			alias OriginalFieldType = Unqual!(ReturnType!F);
+		}
+
+	}
+	else
+	{
+		alias OriginalFieldType = typeof(F);
+	}
+}
+
+template ArrayType(T : T[])
+{
+	alias ArrayType = T;
+}
+
+template FieldType(alias F)
+{
+
+	alias FT = OriginalFieldType!F;
+
+	static if (!isSomeString!(FT) && isArray!(FT))
+	{
+
+		alias FieldType = ArrayType!(FT);
+	}
+	else static if (isAssociativeArray!(FT))
+	{
+		alias FieldType = ValueType!(FT);
+	}
+	else
+	{
+		alias FieldType = Unqual!(FT);
+	}
+}
+
+/**
+ * Get all attributes
+ */
+template GetAttributes(string name, Prototype)
+{
+	template GetFuncAttributes(TL...)
+	{
+		static if (TL.length == 1)
+		{
+			alias GetFuncAttributes = AliasSeq!(__traits(getAttributes, TL[0]));
+		}
+		else static if (TL.length > 1)
+		{
+			alias GetFuncAttributes = AliasSeq!(GetFuncAttributes!(TL[0 .. $ / 2]),
+					GetFuncAttributes!(TL[$ / 2 .. $]));
+		}
+		else
+		{
+			alias GetFuncAttributes = AliasSeq!();
+		}
+	}
+
+	static if (is(FunctionTypeOf!(ItemProperty!(Prototype, name)) == function))
+	{
+		static if (__traits(getOverloads, Prototype, name).length == 1)
+		{
+			alias GetAttributes = AliasSeq!(__traits(getAttributes,
+					ItemProperty!(Prototype, name)));
+		}
+		else
+		{
+			alias GetAttributes = AliasSeq!(GetFuncAttributes!(AliasSeq!(__traits(getOverloads,
+					Prototype, name))));
+		}
+	}
+	else
+	{
+		alias GetAttributes = AliasSeq!(__traits(getAttributes, ItemProperty!(Prototype, name)));
+	}
+}
+
+template StringOfSeq(TL...)
+{
+	static if (TL.length == 1)
+	{
+		static if (is(typeof(TL[0]) == string))
+			alias StringOfSeq = AliasSeq!(TL[0]);
+		else
+			alias StringOfSeq = AliasSeq!(TL[0].stringof);
+	}
+	else static if (TL.length > 1)
+	{
+		alias StringOfSeq = AliasSeq!(StringOfSeq!(TL[0 .. $ / 2]), StringOfSeq!(TL[$ / 2 .. $]));
+	}
+	else
+	{
+		alias StringOfSeq = AliasSeq!();
+	}
+}
+
+/**
+ * Get a class property.
+ *
+ * Example:
+ * --------------------
+ * class BookItemPrototype {
+ * 	@("field", "primary")
+ *	ulong id;
+ *
+ *	@("field") string name = "unknown";
+ * 	@("field") string author = "unknown";
+ * }
+ *
+ * assert(__traits(isIntegral, ItemProperty!(BookItemPrototype, "id")) == true);
+ * --------------------
+ */
+template ItemProperty(item, string method)
+{
+	static if (__traits(hasMember, item, method))
+	{
+		static if (__traits(getProtection, mixin("item." ~ method)).stringof[1 .. $ - 1] == "public")
+		{
+			alias ItemProperty = AliasSeq!(__traits(getMember, item, method));
+		}
+		else
+		{
+			alias ItemProperty = AliasSeq!();
+		}
+	}
+	else
+	{
+		alias ItemProperty = AliasSeq!();
+	}
+}
+
+template Join(List...)
+{
+
+	static if (List.length == 1)
+	{
+		enum l = List[0].stringof[1 .. $ - 1];
+	}
+	else static if (List.length > 1)
+	{
+		enum l = List[0].stringof[1 .. $ - 1] ~ ", " ~ Join!(List[1 .. $]);
+	}
+	else
+	{
+		enum l = "";
+	}
+
+	alias Join = l;
+}
+
+template IsBasicType(T)
+{
+	static if (isBasicType!T || is(T == string))
+	{
+		enum isBasicType = true;
+	}
+	else
+	{
+		enum isBasicType = false;
+	}
+
+	alias IsBasicType = isBasicType;
+}
+
+template IsRelation(T)
+{
+	static if (isBasicType!T || is(T == string))
+	{
+		enum isRelation = false;
+	}
+	else
+	{
+		static if (is(T == class) || is(T == struct))
+		{
+			static if (__traits(hasMember, T, "id") || __traits(hasMember, T, "_id"))
+			{
+				enum isRelation = true;
+			}
+			else
+			{
+				enum isRelation = false;
+			}
+		}
+		else
+		{
+			enum isRelation = false;
+		}
+	}
+
+	alias IsRelation = isRelation;
+}
+
+template getFields(Prototype)
+{
+	/**
+	 * Get all the metods
+	 */
+	template ItemFields(FIELDS...)
+	{
+
+		static if (FIELDS.length > 1)
+		{
+			alias ItemFields = AliasSeq!(ItemFields!(FIELDS[0 .. $ / 2]),
+					ItemFields!(FIELDS[$ / 2 .. $]));
+		}
+		else static if (FIELDS.length == 1)
+		{
+
+			static if (ItemProperty!(Prototype, FIELDS[0]).length == 1)
+			{
+				alias Type = FieldType!(ItemProperty!(Prototype, FIELDS[0]));
+
+				static if(FIELDS[0] == "id" || FIELDS[0] == "_id") {
+					enum isId = true;
+				} else {
+					enum isId = false;
+				}
+
+				alias ItemFields = AliasSeq!([FieldDescription(FIELDS[0], [StringOfSeq!(GetAttributes!(FIELDS[0],
+						Prototype))], Type.stringof, IsBasicType!Type, IsRelation!Type, isId)]);
+			}
+			else
+			{
+				alias ItemFields = AliasSeq!();
+			}
+		}
+		else
+			alias ItemFields = AliasSeq!();
+	}
+
+	mixin("enum list = [ " ~ Join!(ItemFields!(__traits(allMembers, Prototype))) ~ " ];");
+
+	alias getFields = list;
+}
 
 class CrateJsonApiSerializer(T) : CrateSerializer!T
 {
 	CrateConfig!T config;
 
-	Json sertializeToData(T item)
+	Json serializeToData(T item)
 	{
+		enum fields = getFields!T;
+
 		Json original = item.serializeToJson;
 		auto value = Json.emptyObject;
 
-		static if (hasMember!(T, "id"))
-		{
-			value["id"] = original["id"];
-		}
-		else if (hasMember!(T, "_id"))
-		{
-			value["id"] = original["_id"];
-		}
-		else
-		{
-			static assert(T.stringof ~ " must contain `id` or `_id` field.");
-		}
-
 		value["type"] = config.plural;
 		value["attributes"] = Json.emptyObject;
+		value["relationships"] = Json.emptyObject;
 
-		foreach (string key, val; original)
-		{
-			if (key.to!string != "id" && key.to!string != "_id")
-			{
-				value["attributes"][key] = val;
+		void addAttributes(FieldDescription[] fields)(ref Json serialized) {
+			static if(fields.length == 1) {
+				static if(!fields[0].isRelation && !fields[0].isId && fields[0].type != "void") {
+					enum key = fields[0].name;
+					serialized["attributes"][key] = serializeToJson(__traits(getMember, item, key));
+				}
+			} else if(fields.length > 1) {
+				addAttributes!([fields[0]])(serialized);
+				addAttributes!(fields[1..$])(serialized);
+			}
+		}
+
+		void addRelationships(FieldDescription[] fields)(ref Json serialized) {
+			auto serializeMember(T)(T member) {
+				auto serializer = new CrateJsonApiSerializer!T;
+				return serializer.serialize(member);
+			}
+
+			static if(fields.length == 1) {
+				static if(fields[0].isRelation && !fields[0].isId && fields[0].type != "void") {
+					enum key = fields[0].name;
+
+					serialized["relationships"][key] = serializeMember(__traits(getMember, item, key));
+				}
+			} else if(fields.length > 1) {
+				addRelationships!([fields[0]])(serialized);
+				addRelationships!(fields[1..$])(serialized);
+			}
+		}
+
+		addAttributes!fields(value);
+		addRelationships!fields(value);
+
+		foreach(field; fields) {
+			if(field.isId) {
+				value["id"] = original[field.name];
 			}
 		}
 
@@ -49,7 +326,7 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 	{
 		Json value = Json.emptyObject;
 
-		value["data"] = sertializeToData(item);
+		value["data"] = serializeToData(item);
 
 		return value;
 	}
@@ -61,7 +338,7 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 
 		foreach (item; items)
 		{
-			value["data"] ~= sertializeToData(item);
+			value["data"] ~= serializeToData(item);
 		}
 
 		return value;
@@ -424,7 +701,8 @@ unittest
 
 unittest
 {
-	struct TestModel {
+	struct TestModel
+	{
 		string name;
 	}
 
@@ -442,4 +720,32 @@ unittest
 
 	auto serializedValue = serializer.serialize(value);
 	assert(serializedValue.data.attributes.child.name == "test");
+}
+
+unittest
+{
+	struct TestModel
+	{
+		string id;
+		string name;
+	}
+
+	struct ComposedModel
+	{
+		@optional @("ignore")
+		{
+			string _id;
+		}
+
+		TestModel child;
+	}
+
+	auto serializer = new CrateJsonApiSerializer!ComposedModel;
+
+	auto value = ComposedModel();
+	value.child.name = "test";
+
+	auto serializedValue = serializer.serialize(value);
+
+	assert(serializedValue.data.relationships.child.data.attributes.name == "test");
 }
