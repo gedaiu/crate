@@ -1,0 +1,13 @@
+{
+    "name": "crate",
+    "description": "A minimal D application.",
+    "copyright": "Copyright © 2016, gedaiu",
+    "authors": ["gedaiu"],
+    "license": "MIT",
+    "targetType": "library",
+
+    "dependencies": {
+      "swaggerize": "*",
+      "vibe-d": "*"
+    }
+}

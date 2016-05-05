@@ -18,17 +18,23 @@ struct CrateConfig(T)
 	bool updateItem = true;
 }
 
-struct ModelType
+struct FieldDefinition
 {
+	string name;
+	string originalName;
+
+	string[] attributes;
 	string type;
+	bool isBasicType;
+	bool isRelation;
+	bool isId;
 	bool isOptional;
-	bool isComposite;
 }
 
 struct ModelDefinition
 {
 	string idField;
-	ModelType[string] fields;
+	FieldDefinition[string] fields;
 }
 
 interface Crate(T)

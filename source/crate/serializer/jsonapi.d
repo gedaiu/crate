@@ -6,19 +6,11 @@ import vibe.data.json;
 import vibe.data.bson;
 
 import swaggerize.definitions;
+
 import std.meta;
+import std.algorithm.searching;
 
 import std.traits, std.stdio, std.meta;
-
-struct FieldDescription
-{
-	string name;
-	string[] attributes;
-	string type;
-	bool isBasicType;
-	bool isRelation;
-	bool isId;
-}
 
 template OriginalFieldType(alias F)
 {
@@ -33,7 +25,6 @@ template OriginalFieldType(alias F)
 		{
 			alias OriginalFieldType = Unqual!(ReturnType!F);
 		}
-
 	}
 	else
 	{
@@ -240,16 +231,42 @@ template getFields(Prototype)
 
 			static if (ItemProperty!(Prototype, FIELDS[0]).length == 1)
 			{
-				alias Type = FieldType!(ItemProperty!(Prototype, FIELDS[0]));
+				enum attributes = [StringOfSeq!(GetAttributes!(FIELDS[0], Prototype))];
 
-				static if(FIELDS[0] == "id" || FIELDS[0] == "_id") {
-					enum isId = true;
+				static if((cast(string[]) attributes).canFind("ignore()", "ignore")) {
+						alias ItemFields = AliasSeq!();
 				} else {
-					enum isId = false;
-				}
+					alias Type = FieldType!(ItemProperty!(Prototype, FIELDS[0]));
+					static if (hasUDA!(ItemProperty!(Prototype, FIELDS[0]), NameAttribute))
+					{
+						enum fieldName = getUDAs!(ItemProperty!(Prototype, FIELDS[0]), NameAttribute)[0].name;
+					}
+					else
+					{
+						enum fieldName = FIELDS[0];
+					}
 
-				alias ItemFields = AliasSeq!([FieldDescription(FIELDS[0], [StringOfSeq!(GetAttributes!(FIELDS[0],
-						Prototype))], Type.stringof, IsBasicType!Type, IsRelation!Type, isId)]);
+					static if (FIELDS[0] == "id" || FIELDS[0] == "_id")
+					{
+						enum isId = true;
+					}
+					else
+					{
+						enum isId = false;
+					}
+
+					static if((cast(string[]) attributes).canFind("optional()", "optional"))
+					{
+						enum isOptional = true;
+					}
+					else
+					{
+						enum isOptional = false;
+					}
+
+					alias ItemFields = AliasSeq!([FieldDefinition(fieldName, FIELDS[0], attributes,
+							Type.stringof, IsBasicType!Type, IsRelation!Type, isId, isOptional)]);
+					}
 			}
 			else
 			{
@@ -280,41 +297,55 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 		value["attributes"] = Json.emptyObject;
 		value["relationships"] = Json.emptyObject;
 
-		void addAttributes(FieldDescription[] fields)(ref Json serialized) {
-			static if(fields.length == 1) {
-				static if(!fields[0].isRelation && !fields[0].isId && fields[0].type != "void") {
-					enum key = fields[0].name;
+		void addAttributes(FieldDefinition[] fields)(ref Json serialized)
+		{
+			static if (fields.length == 1)
+			{
+				static if (!fields[0].isRelation && !fields[0].isId && fields[0].type != "void")
+				{
+					enum key = fields[0].originalName;
 					serialized["attributes"][key] = serializeToJson(__traits(getMember, item, key));
 				}
-			} else if(fields.length > 1) {
+			}
+			else if (fields.length > 1)
+			{
 				addAttributes!([fields[0]])(serialized);
-				addAttributes!(fields[1..$])(serialized);
+				addAttributes!(fields[1 .. $])(serialized);
 			}
 		}
 
-		void addRelationships(FieldDescription[] fields)(ref Json serialized) {
-			auto serializeMember(T)(T member) {
+		void addRelationships(FieldDefinition[] fields)(ref Json serialized)
+		{
+			auto serializeMember(T)(T member)
+			{
 				auto serializer = new CrateJsonApiSerializer!T;
 				return serializer.serialize(member);
 			}
 
-			static if(fields.length == 1) {
-				static if(fields[0].isRelation && !fields[0].isId && fields[0].type != "void") {
+			static if (fields.length == 1)
+			{
+				static if (fields[0].isRelation && !fields[0].isId && fields[0].type != "void")
+				{
 					enum key = fields[0].name;
 
-					serialized["relationships"][key] = serializeMember(__traits(getMember, item, key));
+					serialized["relationships"][key] = serializeMember(__traits(getMember,
+							item, key));
 				}
-			} else if(fields.length > 1) {
+			}
+			else if (fields.length > 1)
+			{
 				addRelationships!([fields[0]])(serialized);
-				addRelationships!(fields[1..$])(serialized);
+				addRelationships!(fields[1 .. $])(serialized);
 			}
 		}
 
 		addAttributes!fields(value);
 		addRelationships!fields(value);
 
-		foreach(field; fields) {
-			if(field.isId) {
+		foreach (field; fields)
+		{
+			if (field.isId)
+			{
 				value["id"] = original[field.name];
 			}
 		}
@@ -375,39 +406,16 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 	{
 		ModelDefinition model;
 
-		string typeString(T)()
+		enum fields = getFields!T;
+
+		foreach (index, field; fields)
 		{
-			return T.stringof;
-		}
+			model.fields[field.name] = field;
 
-		auto fields = [staticMap!(typeString, Fields!T)];
-		alias names = FieldNameTuple!T;
-		T instance;
-
-		foreach (name; names)
-		{
-			mixin("alias symbol = instance." ~ name ~ ";");
-
-			if (!hasUDA!(symbol, ignore))
+			if (field.isId)
 			{
-				static if (hasUDA!(symbol, NameAttribute))
-				{
-					string fieldName = getUDAs!(symbol, NameAttribute)[0].name;
-				}
-				else
-				{
-					string fieldName = name;
-				}
-
-				model.fields[fieldName] = ModelType(fields[0], hasUDA!(symbol, optional));
-
-				if (name == "id" || name == "_id")
-				{
-					model.idField = name;
-				}
+				model.idField = field.name;
 			}
-
-			fields = fields[1 .. $];
 		}
 
 		return model;
@@ -537,13 +545,13 @@ unittest
 	auto definition = serializer.definition;
 	assert(definition.idField == "id");
 	assert(definition.fields["id"].type == "string");
-	assert(definition.fields["id"].isComposite == false);
+	assert(definition.fields["id"].isBasicType);
 	assert(definition.fields["id"].isOptional == false);
 	assert(definition.fields["field1"].type == "string");
-	assert(definition.fields["field1"].isComposite == false);
+	assert(definition.fields["field1"].isBasicType);
 	assert(definition.fields["field1"].isOptional == false);
 	assert(definition.fields["field2"].type == "int");
-	assert(definition.fields["field2"].isComposite == false);
+	assert(definition.fields["field2"].isBasicType);
 	assert(definition.fields["field2"].isOptional == false);
 
 	assert("field3" !in definition.fields);
@@ -590,6 +598,7 @@ unittest
 	auto serializer = new CrateJsonApiSerializer!TestModel();
 
 	auto definition = serializer.definition;
+
 	assert("optional-field" in definition.fields);
 	assert("optionalField" !in definition.fields);
 }
