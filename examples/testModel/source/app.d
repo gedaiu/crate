@@ -2,6 +2,18 @@ import vibe.d;
 
 import crate.mongo;
 import crate.router;
+import crate.openapi;
+import std.stdio;
+
+
+struct ChildModel {
+
+	@optional {
+		string _id;
+	}
+
+	string name;
+}
 
 struct TestModel
 {
@@ -12,6 +24,7 @@ struct TestModel
 	}
 
 	string name = "";
+	ChildModel child;
 
 	void action()
 	{
@@ -41,5 +54,16 @@ shared static this()
 	crateRouter.enableAction!"action";
 	crateRouter.enableAction!"actionResponse";
 
+	crateRouter.generateOpenApi;
+
 	listenHTTP(settings, router);
+}
+
+void generateOpenApi(T)(T crateRouter)
+{
+	auto api = crateRouter.toOpenApi;
+
+	auto f = File("openApi.json", "w");
+
+	f.write(api.serializeToJson.toPrettyString);
 }

@@ -6,3 +6,4 @@ __dummy.html
 libcrate.a
 .DS_Store
 dub.selections.json
+__test__unittest__
