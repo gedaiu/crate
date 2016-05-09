@@ -209,6 +209,47 @@ template IsRelation(T)
 	alias IsRelation = isRelation;
 }
 
+template IsOptional(string property, Prototype) {
+  enum attributes = [StringOfSeq!(GetAttributes!(property, Prototype))];
+
+  static if((cast(string[]) attributes).canFind("optional()", "optional"))
+  {
+    enum isOptional = true;
+  }
+  else
+  {
+    enum isOptional = false;
+  }
+
+  alias IsOptional = isOptional;
+}
+
+template IsId(string name) {
+  static if (name == "id" || name == "_id")
+  {
+    enum isId = true;
+  }
+  else
+  {
+    enum isId = false;
+  }
+
+  alias IsId = isId;
+}
+
+template FieldName(string property, Prototype) {
+  static if (hasUDA!(ItemProperty!(Prototype, property), NameAttribute))
+  {
+    enum fieldName = getUDAs!(ItemProperty!(Prototype, property), NameAttribute)[0].name;
+  }
+  else
+  {
+    enum fieldName = property;
+  }
+
+  alias FieldName = fieldName;
+}
+
 template getFields(Prototype)
 {
 	/**
@@ -233,32 +274,10 @@ template getFields(Prototype)
 						alias ItemFields = AliasSeq!();
 				} else {
 					alias Type = FieldType!(ItemProperty!(Prototype, FIELDS[0]));
-					static if (hasUDA!(ItemProperty!(Prototype, FIELDS[0]), NameAttribute))
-					{
-						enum fieldName = getUDAs!(ItemProperty!(Prototype, FIELDS[0]), NameAttribute)[0].name;
-					}
-					else
-					{
-						enum fieldName = FIELDS[0];
-					}
 
-					static if (FIELDS[0] == "id" || FIELDS[0] == "_id")
-					{
-						enum isId = true;
-					}
-					else
-					{
-						enum isId = false;
-					}
-
-					static if((cast(string[]) attributes).canFind("optional()", "optional"))
-					{
-						enum isOptional = true;
-					}
-					else
-					{
-						enum isOptional = false;
-					}
+          enum fieldName = FieldName!(FIELDS[0], Prototype);
+          enum isId = IsId!(FIELDS[0]);
+          enum isOptional = IsOptional!(FIELDS[0], Prototype);
 
 					alias ItemFields = AliasSeq!([FieldDefinition(fieldName, FIELDS[0], attributes,
 							Type.stringof, IsBasicType!Type, IsRelation!Type, isId, isOptional)]);

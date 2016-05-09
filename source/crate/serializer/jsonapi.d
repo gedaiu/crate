@@ -107,24 +107,49 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 
 	T deserialize(Json data)
 	{
+
+		return deserializeJson!T(normalise(data));
+	}
+
+	Json normalise(Json data)
+	{
 		assert(data["data"]["type"].to!string == config.plural);
 
-		Json normalised = data["data"]["attributes"];
+		auto normalised = Json.emptyObject;
 
-		static if (hasMember!(T, "id"))
+		void setValues(alias Fields)()
 		{
-			normalised["id"] = data["data"]["id"];
-		}
-		else if (hasMember!(T, "_id"))
-		{
-			normalised["_id"] = data["data"]["id"];
-		}
-		else
-		{
-			static assert(T.stringof ~ " must contain either `id` or `_id` field.");
+
+			static if (Fields.length >= 1)
+			{
+				enum Field = Fields[0];
+
+				static if (Field.isId)
+				{
+					normalised[Field.name] = data["data"]["id"];
+				}
+				else static if (Field.isBasicType)
+				{
+					normalised[Field.name] = data["data"]["attributes"][Field.name];
+				}
+				else static if (Field.isRelation)
+				{
+					alias RelationType = typeof(__traits(getMember, T, Field.name));
+					auto relationDeserializer = new CrateJsonApiSerializer!RelationType;
+					normalised[Field.name] = relationDeserializer.normalise(
+							data["data"]["relationships"][Field.name]);
+				}
+			}
+
+			static if (Fields.length > 1)
+			{
+				setValues!(Fields[1 .. $]);
+			}
 		}
 
-		return deserializeJson!T(normalised);
+		setValues!(getFields!T);
+
+		return normalised;
 	}
 
 	string mime()
@@ -471,7 +496,7 @@ unittest
 
 	struct ComposedModel
 	{
-		@optional @("ignore")
+		@optional
 		{
 			string _id;
 		}
@@ -482,9 +507,58 @@ unittest
 	auto serializer = new CrateJsonApiSerializer!ComposedModel;
 
 	auto value = ComposedModel();
+	value._id = "id1";
 	value.child.name = "test";
+	value.child.id = "id2";
 
 	auto serializedValue = serializer.serialize(value);
 
 	assert(serializedValue.data.relationships.child.data.attributes.name == "test");
+	assert(serializedValue.data.relationships.child.data.id == "id2");
+	assert(serializedValue.data.id == "id1");
+}
+
+unittest
+{
+	struct TestModel
+	{
+		string id;
+		string name;
+	}
+
+	struct ComposedModel
+	{
+		@optional
+		{
+			string _id;
+		}
+
+		TestModel child;
+	}
+
+	auto serializer = new CrateJsonApiSerializer!ComposedModel;
+
+	auto serializedValue = `{
+	"data": {
+		"attributes": {},
+		"relationships": {
+			"child": {
+				"data": {
+					"attributes": {
+						"name": "test"
+					},
+					"relationships": {},
+					"type": "testmodels",
+					"id": "id2"
+				}
+			}
+		},
+		"type": "composedmodels",
+		"id": "id1"
+	}
+}`.parseJsonString;
+
+	auto value = serializer.deserialize(serializedValue);
+
+	assert(value.child.name == "test");
 }

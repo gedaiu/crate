@@ -334,5 +334,4 @@ unittest
 	assert("TestModelRequest" in api.definitions);
 
 	assert(Path.OperationsType.get in api.paths["/testmodels/{id}/actionResponse"].operations);
-
 }
