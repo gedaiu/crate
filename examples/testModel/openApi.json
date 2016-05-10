@@ -20,6 +20,9 @@
 				"attributes": {
 					"$ref": "#/definitions/TestModelAttributes"
 				},
+				"relationships": {
+					"$ref": "#/definitions/TestModelRelationships"
+				},
 				"type": {
 					"type": "string"
 				}
@@ -27,23 +30,11 @@
 		},
 		"TestModelAttributes": {
 			"required": [
-				"name",
-				"action",
-				"child",
-				"actionResponse"
+				"name"
 			],
 			"type": "object",
 			"properties": {
 				"name": {
-					"type": "string"
-				},
-				"action": {
-					"type": "object"
-				},
-				"child": {
-					"type": "object"
-				},
-				"actionResponse": {
 					"type": "string"
 				},
 				"other": {
@@ -59,6 +50,17 @@
 					"items": {
 						"$ref": "#/definitions/Error"
 					}
+				}
+			}
+		},
+		"TestModelRelationships": {
+			"required": [
+				"child"
+			],
+			"type": "object",
+			"properties": {
+				"child": {
+					"$ref": "#/definitions/ChildModelRelation"
 				}
 			}
 		},
@@ -93,11 +95,37 @@
 				}
 			}
 		},
+		"ChildModelRelation": {
+			"required": [
+				"data"
+			],
+			"type": "object",
+			"properties": {
+				"data": {
+					"required": [
+						"type",
+						"id"
+					],
+					"type": "object",
+					"properties": {
+						"type": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
+						}
+					}
+				}
+			}
+		},
 		"TestModelItem": {
 			"type": "object",
 			"properties": {
 				"attributes": {
 					"$ref": "#/definitions/TestModelAttributes"
+				},
+				"relationships": {
+					"$ref": "#/definitions/TestModelRelationships"
 				},
 				"type": {
 					"type": "string"

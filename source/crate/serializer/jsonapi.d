@@ -182,6 +182,9 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 		schemaList[T.stringof ~ "Response"] = schemaResponse;
 		schemaList[T.stringof ~ "Request"] = schemaRequest;
 		schemaList[T.stringof ~ "Attributes"] = schemaAttributes;
+		schemaList[T.stringof ~ "Relationships"] = schemaRelationships;
+
+		addRelationshipDefinitions(schemaList);
 
 		return schemaList;
 	}
@@ -222,6 +225,8 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 			item["properties"]["type"]["type"] = "string";
 			item["properties"]["attributes"] = Json.emptyObject;
 			item["properties"]["attributes"]["$ref"] = "#/definitions/" ~ T.stringof ~ "Attributes";
+			item["properties"]["relationships"] = Json.emptyObject;
+			item["properties"]["relationships"]["$ref"] = "#/definitions/" ~ T.stringof ~ "Relationships";
 
 			return item;
 		}
@@ -257,24 +262,95 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 			Json attributes = Json.emptyObject;
 			auto model = definition;
 			attributes["type"] = "object";
-			attributes["required"] = Json.emptyArray;
 			attributes["properties"] = Json.emptyObject;
 
-			foreach (string name, field; model.fields)
+			foreach (field; model.fields)
 			{
-				if (name != model.idField)
+				if (!field.isId && !field.isRelation)
 				{
-					attributes["properties"][name] = Json.emptyObject;
-					attributes["properties"][name]["type"] = field.type.asOpenApiType;
+					attributes["properties"][field.name] = Json.emptyObject;
+					attributes["properties"][field.name]["type"] = field.type.asOpenApiType;
 
 					if (!field.isOptional)
 					{
-						attributes["required"] ~= name;
+						if(attributes["required"].type == Json.Type.undefined) {
+							attributes["required"] = Json.emptyArray;
+						}
+						attributes["required"] ~= field.name;
 					}
 				}
 			}
 
 			return attributes;
+		}
+
+		Json schemaRelationships()
+		{
+			Json attributes = Json.emptyObject;
+			auto model = definition;
+			attributes["type"] = "object";
+			attributes["properties"] = Json.emptyObject;
+
+			void addRelationships(FieldDefinition[] fields)() {
+				static if (fields.length == 1)
+				{
+					static if (fields[0].isRelation && !fields[0].isId)
+					{
+						attributes["properties"][fields[0].name] = Json.emptyObject;
+						attributes["properties"][fields[0].name]["$ref"] = "#/definitions/" ~ fields[0].type ~ "Relation";
+
+						static if(!fields[0].isOptional) {
+							if(attributes["required"].type == Json.Type.undefined) {
+								attributes["required"] = Json.emptyArray;
+							}
+
+							attributes["required"] ~= fields[0].name;
+						}
+					}
+				}
+				else if (fields.length > 1)
+				{
+					addRelationships!([fields[0]])();
+					addRelationships!(fields[1 .. $])();
+				}
+			}
+
+			addRelationships!(getFields!T);
+
+			return attributes;
+		}
+
+		void addRelationshipDefinitions(ref Json[string] schemaList) {
+			void addRelationships(FieldDefinition[] fields)() {
+				static if (fields.length == 1)
+				{
+					static if (fields[0].isRelation && !fields[0].isId)
+					{
+						enum key = fields[0].type ~ "Relation";
+
+						schemaList[key] = Json.emptyObject;
+						schemaList[key]["required"] = [ Json("data") ];
+						schemaList[key]["properties"] = Json.emptyObject;
+						schemaList[key]["properties"]["data"] = Json.emptyObject;
+						schemaList[key]["properties"]["data"]["type"] = "object";
+						schemaList[key]["properties"]["data"]["required"] = [ Json("type"), Json("id") ];
+						schemaList[key]["properties"]["data"]["properties"] = Json.emptyObject;
+						schemaList[key]["properties"]["data"]["properties"]["type"] = Json.emptyObject;
+						schemaList[key]["properties"]["data"]["properties"]["type"]["type"] = "string";
+						schemaList[key]["properties"]["data"]["properties"]["id"] = Json.emptyObject;
+						schemaList[key]["properties"]["data"]["properties"]["id"]["type"] = "string";
+
+						schemaList[key]["type"] = "object";
+					}
+				}
+				else if (fields.length > 1)
+				{
+					addRelationships!([fields[0]])();
+					addRelationships!(fields[1 .. $])();
+				}
+			}
+
+			addRelationships!(getFields!T);
 		}
 	}
 }

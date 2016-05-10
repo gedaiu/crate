@@ -5,7 +5,6 @@ import crate.router;
 import crate.openapi;
 import std.stdio;
 
-
 struct ChildModel {
 
 	@optional {

@@ -297,7 +297,6 @@ template getFields(Prototype)
 	alias getFields = list;
 }
 
-
 version(unittest) {
 	struct ActionModel
 	{
