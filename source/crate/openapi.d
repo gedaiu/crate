@@ -335,3 +335,68 @@ unittest
 
 	assert(Path.OperationsType.get in api.paths["/testmodels/{id}/actionResponse"].operations);
 }
+
+
+
+string asOpenApiType(string dType) {
+	switch(dType) {
+		case "int":
+			return "integer";
+
+		case "long":
+			return "integer";
+
+		case "float":
+			return "number";
+
+		case "double":
+			return "number";
+
+		case "string":
+			return "string";
+
+		case "bool":
+			return "boolean";
+
+		case "SysTime":
+			return "string";
+
+		case "DateTime":
+			return "string";
+
+		default:
+			return "object";
+	}
+}
+
+string asOpenApiFormat(string dType) {
+	switch(dType) {
+		case "int":
+			return "int32";
+
+		case "long":
+			return "int64";
+
+		case "float":
+			return "float";
+
+		case "double":
+			return "double";
+
+		case "string":
+			return "";
+
+		case "bool":
+			return "";
+
+		case "SysTime":
+		case "DateTime":
+			return "date-time";
+
+		case "Date":
+			return "date";
+
+		default:
+			return "";
+	}
+}

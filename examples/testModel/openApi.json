@@ -38,10 +38,10 @@
 					"type": "string"
 				},
 				"action": {
-					"type": "string"
+					"type": "object"
 				},
 				"child": {
-					"type": "string"
+					"type": "object"
 				},
 				"actionResponse": {
 					"type": "string"
