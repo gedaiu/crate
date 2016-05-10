@@ -118,7 +118,6 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 
 		void setValues(alias Fields)()
 		{
-
 			static if (Fields.length >= 1)
 			{
 				enum Field = Fields[0];

@@ -270,7 +270,7 @@ template getFields(Prototype)
 			{
 				enum attributes = [StringOfSeq!(GetAttributes!(FIELDS[0], Prototype))];
 
-				static if((cast(string[]) attributes).canFind("ignore()", "ignore")) {
+				static if((cast(string[]) attributes).canFind("ignore()", "ignore") || isSomeFunction!(ItemProperty!(Prototype, FIELDS[0]))) {
 						alias ItemFields = AliasSeq!();
 				} else {
 					alias Type = FieldType!(ItemProperty!(Prototype, FIELDS[0]));
@@ -295,4 +295,26 @@ template getFields(Prototype)
 	mixin("enum list = [ " ~ Join!(ItemFields!(__traits(allMembers, Prototype))) ~ " ];");
 
 	alias getFields = list;
+}
+
+
+version(unittest) {
+	struct ActionModel
+	{
+		string _id;
+		string name;
+
+		void action() {}
+	}
+}
+
+unittest
+{
+	enum fields = getFields!ActionModel;
+
+	foreach(field; fields) {
+		assert(field.name != "action");
+	}
+
+	assert(fields.length == 2);
 }
