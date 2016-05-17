@@ -7,3 +7,5 @@ libcrate.a
 .DS_Store
 dub.selections.json
 __test__unittest__
+examples/testJsonApiModel/testModel
+examples/testRestApiModel/testModel

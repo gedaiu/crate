@@ -1,0 +1,319 @@
+{
+	"consumes": [
+		"application/json"
+	],
+	"definitions": {
+		"ErrorList": {
+			"type": "object",
+			"properties": {
+				"errors": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/Error"
+					}
+				}
+			}
+		},
+		"TestModelRequest": {
+			"type": "object",
+			"properties": {
+				"testModel": {
+					"required": [
+						"name",
+						"child"
+					],
+					"type": "object",
+					"properties": {
+						"name": {
+							"type": "string"
+						},
+						"child": {
+							"type": "object"
+						},
+						"other": {
+							"type": "string"
+						}
+					}
+				}
+			}
+		},
+		"TestModelResponse": {
+			"type": "object",
+			"properties": {
+				"testModel": {
+					"$ref": "#/definitions/TestModel"
+				}
+			}
+		},
+		"TestModelList": {
+			"type": "object",
+			"properties": {
+				"testModels": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/TestModel"
+					}
+				}
+			}
+		},
+		"Error": {
+			"type": "object",
+			"properties": {
+				"description": {
+					"type": "string"
+				},
+				"title": {
+					"type": "string"
+				},
+				"status": {
+					"format": "int32",
+					"type": "integer"
+				}
+			}
+		}
+	},
+	"security": [],
+	"securityDefinitions": {},
+	"responses": {},
+	"produces": [
+		"application/json"
+	],
+	"schemes": [
+		"http",
+		"https"
+	],
+	"externalDocs": {
+		"description": "",
+		"url": ""
+	},
+	"parameters": {},
+	"swagger": "2.0",
+	"tags": [],
+	"basePath": "/",
+	"paths": {
+		"/testmodels": {
+			"get": {
+				"responses": {
+					"200": {
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/TestModelList"
+						}
+					}
+				}
+			},
+			"options": {
+				"responses": {
+					"200": {
+						"description": ""
+					}
+				}
+			},
+			"post": {
+				"parameters": [
+					{
+						"name": "testmodel",
+						"required": true,
+						"in": "body",
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/TestModelRequest"
+						}
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/TestModelResponse"
+						}
+					}
+				}
+			}
+		},
+		"/testmodels/{id}/actionResponse": {
+			"get": {
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"type": "string",
+						"in": "path",
+						"description": "The item id"
+					}
+				],
+				"tags": [
+					"action"
+				],
+				"responses": {
+					"500": {
+						"description": "server error",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"404": {
+						"description": "not found",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"200": {
+						"description": "success",
+						"schema": {
+							"type": "string"
+						}
+					}
+				}
+			}
+		},
+		"/testmodels/{id}/action": {
+			"get": {
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"type": "string",
+						"in": "path",
+						"description": "The item id"
+					}
+				],
+				"tags": [
+					"action"
+				],
+				"responses": {
+					"500": {
+						"description": "server error",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"404": {
+						"description": "not found",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"200": {
+						"description": "success"
+					}
+				}
+			}
+		},
+		"/testmodels/{id}": {
+			"delete": {
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"type": "string",
+						"in": "path",
+						"description": "The item id"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": ""
+					},
+					"404": {
+						"description": "not found",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					}
+				}
+			},
+			"get": {
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"type": "string",
+						"in": "path",
+						"description": "The item id"
+					}
+				],
+				"responses": {
+					"404": {
+						"description": "not found",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"200": {
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/TestModelResponse"
+						}
+					}
+				}
+			},
+			"options": {
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"type": "string",
+						"in": "path",
+						"description": "The item id"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": ""
+					}
+				}
+			},
+			"patch": {
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"type": "string",
+						"in": "path",
+						"description": "The item id"
+					},
+					{
+						"name": "testmodel",
+						"required": true,
+						"in": "body",
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/TestModelRequest"
+						}
+					}
+				],
+				"responses": {
+					"404": {
+						"description": "not found",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"200": {
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/TestModelResponse"
+						}
+					}
+				}
+			}
+		}
+	},
+	"host": "localhost",
+	"info": {
+		"version": "",
+		"license": {
+			"name": "",
+			"url": ""
+		},
+		"description": "",
+		"title": "",
+		"contact": {
+			"name": "",
+			"email": "",
+			"url": ""
+		},
+		"termsOfService": ""
+	}
+}

@@ -23,8 +23,8 @@ Swagger toOpenApi(T)(CrateRouter!T router)
 		openApi.definitions[key] = Schema(schema);
 	}
 
-	openApi.paths["/" ~ router.config.plural] = itemListPath(router);
-	openApi.paths["/" ~ router.config.plural ~ "/{id}"] = itemPath(router);
+	openApi.paths["/" ~ router.config.plural.toLower] = itemListPath(router);
+	openApi.paths["/" ~ router.config.plural.toLower ~ "/{id}"] = itemPath(router);
 
 	foreach (string action, hasParam; router.actions)
 	{
@@ -36,7 +36,7 @@ Swagger toOpenApi(T)(CrateRouter!T router)
 			path["get"].responses["200"].schema.fields["type"] = "string";
 		}
 
-		openApi.paths["/" ~ router.config.plural ~ "/{id}/" ~ action] = path;
+		openApi.paths["/" ~ router.config.plural.toLower ~ "/{id}/" ~ action] = path;
 	}
 
 	return openApi;

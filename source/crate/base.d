@@ -8,8 +8,8 @@ import swaggerize.definitions;
 
 struct CrateConfig(T)
 {
-	string singular = T.stringof.toLower;
-	string plural = T.stringof.toLower ~ "s";
+	enum string singular = T.stringof[0..1].toLower ~ T.stringof[1..$];
+	enum string plural = T.stringof[0..1].toLower ~ T.stringof[1..$] ~ "s";
 
 	bool getList = true;
 	bool getItem = true;

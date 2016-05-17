@@ -9,7 +9,7 @@ import crate.error;
 import crate.base;
 import crate.serializer.jsonapi;
 
-import std.traits;
+import std.traits, std.conv, std.string;
 
 class CrateRouter(T)
 {
@@ -36,35 +36,35 @@ class CrateRouter(T)
 
 		if (config.getList)
 		{
-			router.get("/" ~ config.plural, &checkError!"getList");
+			router.get("/" ~ config.plural.toLower, &checkError!"getList");
 		}
 
 		if (config.addItem)
 		{
-			router.post("/" ~ config.plural, &checkError!"postItem");
+			router.post("/" ~ config.plural.toLower, &checkError!"postItem");
 		}
 
 		if (config.getItem)
 		{
-			router.get("/" ~ config.plural ~ "/:id", &checkError!"getItem");
+			router.get("/" ~ config.plural.toLower ~ "/:id", &checkError!"getItem");
 		}
 
 		if (config.updateItem)
 		{
-			router.patch("/" ~ config.plural ~ "/:id", &checkError!"updateItem");
+			router.patch("/" ~ config.plural.toLower ~ "/:id", &checkError!"updateItem");
 		}
 
 		if (config.deleteItem)
 		{
-			router.delete_("/" ~ config.plural ~ "/:id", &checkError!"deleteItem");
+			router.delete_("/" ~ config.plural.toLower ~ "/:id", &checkError!"deleteItem");
 		}
 
 		if (config.getList || config.addItem) {
-			router.match(HTTPMethod.OPTIONS, "/" ~ config.plural, &checkError!"optionsList");
+			router.match(HTTPMethod.OPTIONS, "/" ~ config.plural.toLower, &checkError!"optionsList");
 		}
 
 		if (config.getItem || config.updateItem || config.deleteItem) {
-			router.match(HTTPMethod.OPTIONS, "/" ~ config.plural ~ "/:id", &checkError!"optionsItem");
+			router.match(HTTPMethod.OPTIONS, "/" ~ config.plural.toLower ~ "/:id", &checkError!"optionsItem");
 		}
 	}
 
@@ -171,7 +171,7 @@ class CrateRouter(T)
 			response.writeBody("", 200, serializer.mime);
 		}
 
-		router.get("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
+		router.get("/" ~ config.plural.toLower ~ "/:id/" ~ actionName, &preparedAction);
 	}
 
 	void addAction(string actionName)(ActionQueryDelegate action)
@@ -183,7 +183,7 @@ class CrateRouter(T)
 			response.writeBody(action(item), 200, serializer.mime);
 		}
 
-		router.get("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
+		router.get("/" ~ config.plural.toLower ~ "/:id/" ~ actionName, &preparedAction);
 	}
 
 	void addAction(string actionName, U)(void delegate(T item, U value) action)
@@ -198,7 +198,7 @@ class CrateRouter(T)
 			response.writeBody("", 200, serializer.mime);
 		}
 
-		router.post("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
+		router.post("/" ~ config.plural.toLower ~ "/:id/" ~ actionName, &preparedAction);
 	}
 
 	void addAction(string actionName, U)(string delegate(T item, U value) action)
@@ -211,7 +211,7 @@ class CrateRouter(T)
 			response.writeBody(action(item, value), 200, serializer.mime);
 		}
 
-		router.post("/" ~ config.plural ~ "/:id/" ~ actionName, &preparedAction);
+		router.post("/" ~ config.plural.toLower ~ "/:id/" ~ actionName, &preparedAction);
 	}
 
 	void enableAction(string actionName)()
@@ -232,7 +232,7 @@ class CrateRouter(T)
 
 			static if (Param.length == 0)
 			{
-				router.get("/" ~ config.plural ~ "/:id/" ~ actionName,
+				router.get("/" ~ config.plural.toLower ~ "/:id/" ~ actionName,
 						&checkError!("callCrateAction!\"" ~ actionName ~ "\""));
 			}
 			else

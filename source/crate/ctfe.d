@@ -101,7 +101,10 @@ template StringOfSeq(TL...)
 		static if (is(typeof(TL[0]) == string))
 			alias StringOfSeq = AliasSeq!(TL[0]);
 		else
-			alias StringOfSeq = AliasSeq!(TL[0].stringof);
+		{
+			enum strVal = TL[0].stringof;
+			alias StringOfSeq = AliasSeq!(strVal);
+		}
 	}
 	else static if (TL.length > 1)
 	{
@@ -209,45 +212,50 @@ template IsRelation(T)
 	alias IsRelation = isRelation;
 }
 
-template IsOptional(string property, Prototype) {
-  enum attributes = [StringOfSeq!(GetAttributes!(property, Prototype))];
+template IsOptional(string property, Prototype)
+{
+	enum attributes = [StringOfSeq!(GetAttributes!(property, Prototype))];
 
-  static if((cast(string[]) attributes).canFind("optional()", "optional"))
-  {
-    enum isOptional = true;
-  }
-  else
-  {
-    enum isOptional = false;
-  }
+	static if ((cast(string[]) attributes).canFind("optional()", "optional"))
+	{
+		enum isOptional = true;
+	}
+	else
+	{
+		enum isOptional = false;
+	}
 
-  alias IsOptional = isOptional;
+	alias IsOptional = isOptional;
 }
 
-template IsId(string name) {
-  static if (name == "id" || name == "_id")
-  {
-    enum isId = true;
-  }
-  else
-  {
-    enum isId = false;
-  }
+template IsId(string name)
+{
+	static if (name == "id" || name == "_id")
+	{
+		enum isId = true;
+	}
+	else
+	{
+		enum isId = false;
+	}
 
-  alias IsId = isId;
+	alias IsId = isId;
 }
 
-template FieldName(string property, Prototype) {
-  static if (hasUDA!(ItemProperty!(Prototype, property), NameAttribute))
-  {
-    enum fieldName = getUDAs!(ItemProperty!(Prototype, property), NameAttribute)[0].name;
-  }
-  else
-  {
-    enum fieldName = property;
-  }
+template FieldName(string property, Prototype)
+{
+	alias NameAttr = typeof(name(""));
 
-  alias FieldName = fieldName;
+	static if (hasUDA!(ItemProperty!(Prototype, property), NameAttr))
+	{
+		enum fieldName = getUDAs!(ItemProperty!(Prototype, property), NameAttr)[0].name;
+	}
+	else
+	{
+		enum fieldName = property;
+	}
+
+	alias FieldName = fieldName;
 }
 
 template getFields(Prototype)
@@ -270,18 +278,22 @@ template getFields(Prototype)
 			{
 				enum attributes = [StringOfSeq!(GetAttributes!(FIELDS[0], Prototype))];
 
-				static if((cast(string[]) attributes).canFind("ignore()", "ignore") || isSomeFunction!(ItemProperty!(Prototype, FIELDS[0]))) {
-						alias ItemFields = AliasSeq!();
-				} else {
+				static if ((cast(string[]) attributes).canFind("ignore()", "ignore")
+						|| isSomeFunction!(ItemProperty!(Prototype, FIELDS[0])))
+				{
+					alias ItemFields = AliasSeq!();
+				}
+				else
+				{
 					alias Type = FieldType!(ItemProperty!(Prototype, FIELDS[0]));
 
-          enum fieldName = FieldName!(FIELDS[0], Prototype);
-          enum isId = IsId!(FIELDS[0]);
-          enum isOptional = IsOptional!(FIELDS[0], Prototype);
+					enum fieldName = FieldName!(FIELDS[0], Prototype);
+					enum isId = IsId!(FIELDS[0]);
+					enum isOptional = IsOptional!(FIELDS[0], Prototype);
 
 					alias ItemFields = AliasSeq!([FieldDefinition(fieldName, FIELDS[0], attributes,
 							Type.stringof, IsBasicType!Type, IsRelation!Type, isId, isOptional)]);
-					}
+				}
 			}
 			else
 			{
@@ -297,13 +309,16 @@ template getFields(Prototype)
 	alias getFields = list;
 }
 
-version(unittest) {
+version (unittest)
+{
 	struct ActionModel
 	{
 		string _id;
 		string name;
 
-		void action() {}
+		void action()
+		{
+		}
 	}
 }
 
@@ -311,7 +326,8 @@ unittest
 {
 	enum fields = getFields!ActionModel;
 
-	foreach(field; fields) {
+	foreach (field; fields)
+	{
 		assert(field.name != "action");
 	}
 

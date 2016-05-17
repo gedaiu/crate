@@ -7,10 +7,10 @@ import vibe.data.bson;
 
 import swaggerize.definitions;
 
-import std.meta;
+import std.meta, std.conv;
 import std.algorithm.searching, std.algorithm.iteration;
 
-import std.traits, std.stdio, std.meta;
+import std.traits, std.stdio, std.string;
 
 class CrateJsonApiSerializer(T) : CrateSerializer!T
 {
@@ -23,7 +23,7 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 		Json original = item.serializeToJson;
 		auto value = Json.emptyObject;
 
-		value["type"] = config.plural;
+		value["type"] = config.plural.toLower;
 		value["attributes"] = Json.emptyObject;
 		value["relationships"] = Json.emptyObject;
 
@@ -112,7 +112,7 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 
 	Json normalise(Json data)
 	{
-		assert(data["data"]["type"].to!string == config.plural);
+		assert(data["data"]["type"].to!string == config.plural.toLower);
 
 		auto normalised = Json.emptyObject;
 
@@ -412,6 +412,7 @@ unittest
 	assert(definition.fields["optionalField"].isOptional);
 }
 
+@("Use the custom property names")
 unittest
 {
 	struct TestModel
