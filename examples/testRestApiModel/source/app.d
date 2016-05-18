@@ -48,10 +48,10 @@ shared static this()
 	auto router = new URLRouter;
 
 	auto collection = client.getCollection("test.model");
-
 	auto crate = new MongoCrate!TestModel(collection);
-	auto crateRouter = new CrateRouter!TestModel(router, crate);
-	crateRouter.serializer = new CrateRestApiSerializer!TestModel;
+	auto serializer = new CrateRestApiSerializer!TestModel;
+
+	auto crateRouter = new CrateRouter!TestModel(router, crate, serializer);
 	crateRouter.enableAction!"action";
 	crateRouter.enableAction!"actionResponse";
 

@@ -14,7 +14,20 @@ import std.traits, std.stdio, std.string;
 
 class CrateJsonApiSerializer(T) : CrateSerializer!T
 {
-	CrateConfig!T config;
+	protected {
+		CrateConfig!T _config;
+	}
+
+	@property {
+		CrateConfig!T config() {
+			return _config;
+		}
+
+		void config(CrateConfig!T config) {
+			this.config = config;
+		}
+	}
+
 
 	Json serializeToData(T item)
 	{

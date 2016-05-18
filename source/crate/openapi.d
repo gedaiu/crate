@@ -12,11 +12,11 @@ Swagger toOpenApi(T)(CrateRouter!T router)
 	Swagger openApi;
 	openApi.host = "localhost";
 	openApi.schemes = [Schemes.http, Schemes.https];
-	openApi.produces = [router.serializer.mime];
-	openApi.consumes = [router.serializer.mime];
+	openApi.produces = router.mime;
+	openApi.consumes = router.mime;
 	openApi.definitions = errorDefinitions;
 
-	auto schemas = router.serializer.schemas;
+	auto schemas = router.schemas;
 
 	foreach (string key, schema; schemas)
 	{

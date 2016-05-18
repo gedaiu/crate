@@ -13,8 +13,12 @@ import std.traits, std.conv, std.string;
 
 class CrateRouter(T)
 {
-	CrateConfig!T config;
-	CrateSerializer!T serializer;
+	const CrateConfig!T config;
+
+	private {
+		CrateSerializer!T serializer;
+	}
+
 	bool[string] actions;
 
 	private
@@ -23,10 +27,13 @@ class CrateRouter(T)
 		URLRouter router;
 	}
 
-	this(URLRouter router, Crate!T crate, CrateConfig!T config = CrateConfig!T())
+	this(URLRouter router, Crate!T crate, CrateSerializer!T serializer)
 	{
-		auto serializer = new CrateJsonApiSerializer!T();
+		this(router, crate, CrateConfig!T(), serializer);
+	}
 
+	this(URLRouter router, Crate!T crate, CrateConfig!T config = CrateConfig!T(), CrateSerializer!T serializer = new CrateJsonApiSerializer!T())
+	{
 		this.serializer = serializer;
 		this.crate = crate;
 		this.router = router;
@@ -266,6 +273,14 @@ class CrateRouter(T)
 
 		crate.editItem(request.params["id"], item.serializeToJson);
 		response.writeBody(result, 200);
+	}
+
+	Json[string] schemas() {
+		return serializer.schemas;
+	}
+
+	string[] mime() {
+		return [ serializer.mime ];
 	}
 
 	private void addListCORS(HTTPServerResponse response)

@@ -57,4 +57,7 @@ interface CrateSerializer(T)
 	string mime();
 	ModelDefinition definition();
 	Json[string] schemas();
+
+	CrateConfig!T config();
+	void config(CrateConfig!T);
 }
