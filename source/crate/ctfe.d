@@ -186,27 +186,20 @@ template IsBasicType(T)
 
 template IsRelation(T)
 {
-	static if (isBasicType!T || is(T == string))
+	static if (is(T == class) || is(T == struct))
 	{
-		enum isRelation = false;
-	}
-	else
-	{
-		static if (is(T == class) || is(T == struct))
+		static if (__traits(hasMember, T, "id") || __traits(hasMember, T, "_id"))
 		{
-			static if (__traits(hasMember, T, "id") || __traits(hasMember, T, "_id"))
-			{
-				enum isRelation = true;
-			}
-			else
-			{
-				enum isRelation = false;
-			}
+			enum isRelation = true;
 		}
 		else
 		{
 			enum isRelation = false;
 		}
+	}
+	else
+	{
+		enum isRelation = false;
 	}
 
 	alias IsRelation = isRelation;

@@ -19,8 +19,7 @@
 			"properties": {
 				"testModel": {
 					"required": [
-						"name",
-						"child"
+						"name"
 					],
 					"type": "object",
 					"properties": {
@@ -28,7 +27,8 @@
 							"type": "string"
 						},
 						"child": {
-							"type": "object"
+							"type": "string",
+							"description": "The id of an existing `ChildModel`"
 						},
 						"other": {
 							"type": "string"
@@ -53,6 +53,27 @@
 					"items": {
 						"$ref": "#/definitions/TestModel"
 					}
+				}
+			}
+		},
+		"TestModel": {
+			"required": [
+				"name"
+			],
+			"type": "object",
+			"properties": {
+				"_id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"child": {
+					"type": "string",
+					"description": "The id of an existing `ChildModel`"
+				},
+				"other": {
+					"type": "string"
 				}
 			}
 		},

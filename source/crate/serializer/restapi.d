@@ -81,6 +81,7 @@ class CrateRestApiSerializer(T) : CrateSerializer!T
 		schemaList[T.stringof ~ "Response"] = schemaResponse;
 		schemaList[T.stringof ~ "List"] = schemaResponseList;
 		schemaList[T.stringof ~ "Request"] = schemaRequest;
+		schemaList[T.stringof] = schemaModel;
 
 		return schemaList;
 	}
@@ -111,35 +112,69 @@ class CrateRestApiSerializer(T) : CrateSerializer!T
 			return data;
 		}
 
+		void schemaObject(T, bool includeId = true)(ref Json data) {
+			data["type"] = "object";
+			data["properties"] = Json.emptyObject;
+
+			void addFields(FieldDefinition[] fields)() {
+				static if (fields.length == 1)
+				{
+					static if (fields[0].isId && !includeId) {
+						return;
+					} else static if (fields[0].isRelation) {
+						data["properties"][fields[0].name] = Json.emptyObject;
+						data["properties"][fields[0].name]["type"] = "string";
+						data["properties"][fields[0].name]["description"] = "The id of an existing `" ~ fields[0].type ~ "`";
+					} else {
+						enum type = fields[0].type.asOpenApiType;
+						data["properties"][fields[0].name] = Json.emptyObject;
+						data["properties"][fields[0].name]["type"] = type;
+
+						static if(type == "object") {
+							alias U = typeof(__traits(getMember, T, fields[0].originalName));
+							data["properties"][fields[0].name]["properties"] = Json.emptyObject;
+							schemaObject!U(data["properties"][fields[0].name]);
+						}
+
+						if (!fields[0].isOptional)
+						{
+							if (data["required"].type == Json.Type.undefined)
+							{
+								data["required"] = Json.emptyArray;
+							}
+
+							data["required"] ~= fields[0].name;
+						}
+					}
+				}
+				else if (fields.length > 1)
+				{
+					addFields!([fields[0]])();
+					addFields!(fields[1 .. $])();
+				}
+			}
+
+			addFields!(getFields!T);
+		}
+
 		Json schemaRequest()
 		{
 			auto data = Json.emptyObject;
 			data["type"] = "object";
 			data["properties"] = Json.emptyObject;
 			data["properties"][config.singular] = Json.emptyObject;
-			data["properties"][config.singular]["type"] = "object";
-			data["properties"][config.singular]["properties"] = Json.emptyObject;
 
-			auto model = definition;
+			schemaObject!(T, false)(data["properties"][config.singular]);
 
-			foreach (field; model.fields)
-			{
-				if (!field.isId)
-				{
-					data["properties"][config.singular]["properties"][field.name] = Json.emptyObject;
-					data["properties"][config.singular]["properties"][field.name]["type"] = field.type.asOpenApiType;
+			return data;
+		}
 
-					if (!field.isOptional)
-					{
-						if (data["properties"][config.singular]["required"].type == Json.Type.undefined)
-						{
-							data["properties"][config.singular]["required"] = Json.emptyArray;
-						}
 
-						data["properties"][config.singular]["required"] ~= field.name;
-					}
-				}
-			}
+		Json schemaModel()
+		{
+			auto data = Json.emptyObject;
+
+			schemaObject!T(data);
 
 			return data;
 		}
@@ -223,8 +258,6 @@ unittest
 
 	auto schema = serializer.schemas;
 
-	schema.writeln;
-
 	assert(schema["TestModelResponse"]["type"] == "object");
 	assert(schema["TestModelResponse"]["properties"]["testModel"]["$ref"] == "#/definitions/TestModel");
 
@@ -234,6 +267,68 @@ unittest
 
 	assert(schema["TestModelRequest"]["type"] == "object");
 	assert(schema["TestModelRequest"]["properties"]["testModel"]["type"] == "object");
+	assert(schema["TestModelRequest"]["properties"]["testModel"]["properties"]["id"].type == Json.Type.undefined);
 	assert(schema["TestModelRequest"]["properties"]["testModel"]["properties"]["field1"]["type"] == "string");
 	assert(schema["TestModelRequest"]["properties"]["testModel"]["properties"]["field2"]["type"] == "integer");
+
+	assert(schema["TestModel"]["type"] == "object");
+	assert(schema["TestModel"]["properties"]["id"]["type"] == "string");
+	assert(schema["TestModel"]["properties"]["field1"]["type"] == "string");
+	assert(schema["TestModel"]["properties"]["field2"]["type"] == "integer");
+}
+
+@("Open api schema with detailed objects")
+unittest
+{
+	struct TestModel
+	{
+		string name;
+	}
+
+	struct ComposedModel
+	{
+		@optional
+		{
+			string _id;
+		}
+
+		TestModel child;
+	}
+
+	auto serializer = new CrateRestApiSerializer!ComposedModel;
+
+	auto schema = serializer.schemas;
+
+	assert(schema["ComposedModel"]["type"] == "object");
+	assert(schema["ComposedModel"]["properties"]["child"]["type"] == "object");
+	assert(schema["ComposedModel"]["properties"]["child"]["properties"]["name"]["type"] == "string");
+}
+
+
+
+@("Open api schema with relations")
+unittest
+{
+	struct TestModel
+	{
+		string id;
+		string name;
+	}
+
+	struct ComposedModel
+	{
+		@optional
+		{
+			string _id;
+		}
+
+		TestModel child;
+	}
+
+	auto serializer = new CrateRestApiSerializer!ComposedModel;
+
+	auto schema = serializer.schemas;
+
+	assert(schema["ComposedModel"]["type"] == "object");
+	assert(schema["ComposedModel"]["properties"]["child"]["type"] == "string");
 }
