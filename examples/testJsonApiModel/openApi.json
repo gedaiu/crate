@@ -3,42 +3,11 @@
 		"application/vnd.api+json"
 	],
 	"definitions": {
-		"TestModelList": {
+		"BookResponse": {
 			"type": "object",
 			"properties": {
 				"data": {
-					"type": "array",
-					"items": {
-						"$ref": "#/definitions/TestModelItem"
-					}
-				}
-			}
-		},
-		"TestModelNewItem": {
-			"type": "object",
-			"properties": {
-				"attributes": {
-					"$ref": "#/definitions/TestModelAttributes"
-				},
-				"relationships": {
-					"$ref": "#/definitions/TestModelRelationships"
-				},
-				"type": {
-					"type": "string"
-				}
-			}
-		},
-		"TestModelAttributes": {
-			"required": [
-				"name"
-			],
-			"type": "object",
-			"properties": {
-				"name": {
-					"type": "string"
-				},
-				"other": {
-					"type": "string"
+					"$ref": "#/definitions/BookItem"
 				}
 			}
 		},
@@ -53,14 +22,21 @@
 				}
 			}
 		},
-		"TestModelRelationships": {
-			"required": [
-				"child"
-			],
+		"BookRelationships": {
+			"type": "object",
+			"properties": {}
+		},
+		"StringResponse": {
+			"type": "string"
+		},
+		"BookList": {
 			"type": "object",
 			"properties": {
-				"child": {
-					"$ref": "#/definitions/ChildModelRelation"
+				"data": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/BookItem"
+					}
 				}
 			}
 		},
@@ -79,58 +55,71 @@
 				}
 			}
 		},
-		"TestModelRequest": {
+		"BookRequest": {
 			"type": "object",
 			"properties": {
 				"data": {
-					"$ref": "#/definitions/TestModelNewItem"
+					"$ref": "#/definitions/BookNewItem"
 				}
 			}
 		},
-		"TestModelResponse": {
-			"type": "object",
-			"properties": {
-				"data": {
-					"$ref": "#/definitions/TestModelItem"
-				}
-			}
-		},
-		"ChildModelRelation": {
-			"required": [
-				"data"
-			],
-			"type": "object",
-			"properties": {
-				"data": {
-					"required": [
-						"type",
-						"id"
-					],
-					"type": "object",
-					"properties": {
-						"type": {
-							"type": "string"
-						},
-						"id": {
-							"type": "string"
-						}
-					}
-				}
-			}
-		},
-		"TestModelItem": {
+		"BookNewItem": {
 			"type": "object",
 			"properties": {
 				"attributes": {
-					"$ref": "#/definitions/TestModelAttributes"
+					"$ref": "#/definitions/BookAttributes"
 				},
 				"relationships": {
-					"$ref": "#/definitions/TestModelRelationships"
+					"$ref": "#/definitions/BookRelationships"
+				},
+				"type": {
+					"type": "string"
+				}
+			}
+		},
+		"BookItem": {
+			"type": "object",
+			"properties": {
+				"attributes": {
+					"$ref": "#/definitions/BookAttributes"
+				},
+				"relationships": {
+					"$ref": "#/definitions/BookRelationships"
 				},
 				"type": {
 					"type": "string"
 				},
 				"id": {
+					"type": "string"
+				}
+			}
+		},
+		"BookAttributes": {
+			"required": [
+				"price",
+				"name",
+				"category",
+				"inStock",
+				"author"
+			],
+			"type": "object",
+			"properties": {
+				"comments": {
+					"type": "object"
+				},
+				"price": {
+					"type": "number"
+				},
+				"name": {
+					"type": "string"
+				},
+				"inStock": {
+					"type": "boolean"
+				},
+				"author": {
+					"type": "string"
+				},
+				"category": {
 					"type": "string"
 				}
 			}
@@ -155,116 +144,40 @@
 	"tags": [],
 	"basePath": "/",
 	"paths": {
-		"/testmodels": {
+		"/books": {
 			"get": {
 				"responses": {
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/TestModelList"
+							"$ref": "#/definitions/BookList"
 						}
-					}
-				}
-			},
-			"options": {
-				"responses": {
-					"200": {
-						"description": ""
 					}
 				}
 			},
 			"post": {
 				"parameters": [
 					{
-						"name": "testmodel",
+						"name": "BookRequest",
 						"required": true,
 						"in": "body",
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/TestModelRequest"
+							"$ref": "#/definitions/BookRequest"
 						}
 					}
 				],
 				"responses": {
-					"201": {
+					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/TestModelResponse"
+							"$ref": "#/definitions/BookResponse"
 						}
 					}
 				}
 			}
 		},
-		"/testmodels/{id}/actionResponse": {
-			"get": {
-				"parameters": [
-					{
-						"name": "id",
-						"required": true,
-						"type": "string",
-						"in": "path",
-						"description": "The item id"
-					}
-				],
-				"tags": [
-					"action"
-				],
-				"responses": {
-					"500": {
-						"description": "server error",
-						"schema": {
-							"$ref": "#/definitions/ErrorList"
-						}
-					},
-					"404": {
-						"description": "not found",
-						"schema": {
-							"$ref": "#/definitions/ErrorList"
-						}
-					},
-					"200": {
-						"description": "success",
-						"schema": {
-							"type": "string"
-						}
-					}
-				}
-			}
-		},
-		"/testmodels/{id}/action": {
-			"get": {
-				"parameters": [
-					{
-						"name": "id",
-						"required": true,
-						"type": "string",
-						"in": "path",
-						"description": "The item id"
-					}
-				],
-				"tags": [
-					"action"
-				],
-				"responses": {
-					"500": {
-						"description": "server error",
-						"schema": {
-							"$ref": "#/definitions/ErrorList"
-						}
-					},
-					"404": {
-						"description": "not found",
-						"schema": {
-							"$ref": "#/definitions/ErrorList"
-						}
-					},
-					"200": {
-						"description": "success"
-					}
-				}
-			}
-		},
-		"/testmodels/{id}": {
+		"/books/{id}": {
 			"delete": {
 				"parameters": [
 					{
@@ -276,6 +189,12 @@
 					}
 				],
 				"responses": {
+					"500": {
+						"description": "server error",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
 					"201": {
 						"description": ""
 					},
@@ -298,6 +217,12 @@
 					}
 				],
 				"responses": {
+					"500": {
+						"description": "server error",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
 					"404": {
 						"description": "not found",
 						"schema": {
@@ -307,24 +232,8 @@
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/TestModelResponse"
+							"$ref": "#/definitions/BookResponse"
 						}
-					}
-				}
-			},
-			"options": {
-				"parameters": [
-					{
-						"name": "id",
-						"required": true,
-						"type": "string",
-						"in": "path",
-						"description": "The item id"
-					}
-				],
-				"responses": {
-					"200": {
-						"description": ""
 					}
 				}
 			},
@@ -338,16 +247,22 @@
 						"description": "The item id"
 					},
 					{
-						"name": "testmodel",
+						"name": "BookRequest",
 						"required": true,
 						"in": "body",
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/TestModelRequest"
+							"$ref": "#/definitions/BookRequest"
 						}
 					}
 				],
 				"responses": {
+					"500": {
+						"description": "server error",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
 					"404": {
 						"description": "not found",
 						"schema": {
@@ -357,7 +272,70 @@
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/TestModelResponse"
+							"$ref": "#/definitions/BookResponse"
+						}
+					}
+				}
+			}
+		},
+		"/books/{id}/action": {
+			"get": {
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"type": "string",
+						"in": "path",
+						"description": "The item id"
+					}
+				],
+				"responses": {
+					"500": {
+						"description": "server error",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"404": {
+						"description": "not found",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"200": {
+						"description": ""
+					}
+				}
+			}
+		},
+		"/books/{id}/actionResponse": {
+			"get": {
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"type": "string",
+						"in": "path",
+						"description": "The item id"
+					}
+				],
+				"responses": {
+					"500": {
+						"description": "server error",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"404": {
+						"description": "not found",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"200": {
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/StringResponse"
 						}
 					}
 				}

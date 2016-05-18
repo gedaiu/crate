@@ -23,8 +23,9 @@ Swagger toOpenApi(T)(CrateRouter!T router)
 		openApi.definitions[key] = Schema(schema);
 	}
 
-	foreach (string path, methods; routes.paths)
+	foreach (string definedPath, methods; routes.paths)
 	{
+		string path = definedPath.toOpenApiPath;
 		openApi.paths[path] = Path();
 
 		foreach (method, responses; methods)
@@ -32,18 +33,24 @@ Swagger toOpenApi(T)(CrateRouter!T router)
 			string strMethod = method.to!string.toLower;
 			openApi.paths[path].operations[Path.strToType(strMethod)] = Operation();
 
-			foreach (response, schemaName; responses)
+			foreach (response, pathDefinition; responses)
 			{
 				string strResponse = response.to!string;
 				openApi.paths[path].operations[strMethod].responses[strResponse] = swaggerize.definitions.Response();
 
-				writeln("===>", path, " ",strMethod , " ", strResponse, " ", schemaName);
-				writeln(openApi.paths[path].operations[strMethod]);
+				if(pathDefinition.schemaName != "") {
+					openApi.paths[path][strMethod].responses[strResponse].schema = Schema(Json.emptyObject);
+					openApi.paths[path][strMethod].responses[strResponse].schema.fields["$ref"] = "#/definitions/" ~ pathDefinition.schemaName;
+				}
 
-				openApi.paths[path][strMethod].responses[strResponse].schema = Schema(Json.emptyObject);
+				if(pathDefinition.operation.isItemOperation) {
+					openApi.paths[path].operations[strMethod].parameters = [ itemId ];
+					openApi.paths[path][strMethod].responses["404"] = notFoundResponse;
+					openApi.paths[path][strMethod].responses["500"] = errorResponse;
+				}
 
-				if(schemaName) {
-					openApi.paths[path][strMethod].responses[strResponse].schema.fields["$ref"] = "#/definitions/" ~ schemaName;
+				if(pathDefinition.schemaBody != "") {
+					openApi.paths[path].operations[strMethod].parameters ~= bodyParameter(pathDefinition.schemaBody);
 				}
 			}
 		}
@@ -52,114 +59,16 @@ Swagger toOpenApi(T)(CrateRouter!T router)
 	return openApi;
 }
 
-private Path itemListPath(T)(CrateRouter!T router)
-{
-	auto path = Path();
-
-	if (router.config.getList)
-	{
-		auto listOperation = Operation();
-
-		listOperation.responses["200"] = swaggerize.definitions.Response();
-		listOperation.responses["200"].schema = Schema(Json.emptyObject);
-		listOperation.responses["200"].schema.fields["$ref"] = "#/definitions/" ~ T.stringof
-			~ "List";
-
-		path.operations["get"] = listOperation;
-	}
-
-	if (router.config.addItem)
-	{
-		auto addOperation = Operation();
-
-		auto addParameter = Parameter();
-		addParameter.in_ = Parameter.In.body_;
-		addParameter.schema = Schema(Json.emptyObject);
-		addParameter.name = T.stringof.toLower;
-		addParameter.required = true;
-		addParameter.schema.fields["$ref"] = "#/definitions/" ~ T.stringof ~ "Request";
-
-		addOperation.parameters = [addParameter];
-
-		addOperation.responses["201"] = swaggerize.definitions.Response();
-		addOperation.responses["201"].schema = Schema(Json.emptyObject);
-		addOperation.responses["201"].schema.fields["$ref"] = "#/definitions/"
-			~ T.stringof ~ "Response";
-
-		path.operations["post"] = addOperation;
-	}
-
-	if (router.config.getList || router.config.addItem)
-	{
-		auto optionsOperation = Operation();
-
-		optionsOperation.responses["200"] = swaggerize.definitions.Response();
-		path.operations["options"] = optionsOperation;
-	}
-
-	return path;
+private bool isItemOperation(CrateOperation operation) {
+	return operation == CrateOperation.getItem ||
+				operation == CrateOperation.updateItem ||
+				operation == CrateOperation.replaceItem ||
+				operation == CrateOperation.deleteItem ||
+				operation == CrateOperation.otherItem;
 }
 
-private Path itemPath(T)(CrateRouter!T router)
-{
-	auto path = Path();
-
-	auto editOperation = Operation();
-	auto deleteOperation = Operation();
-
-	if (router.config.getItem || router.config.updateItem || router.config.deleteItem)
-	{
-		auto optionsOperation = Operation();
-		optionsOperation.parameters = [itemId];
-		optionsOperation.responses["200"] = swaggerize.definitions.Response();
-
-		path.operations["options"] = optionsOperation;
-	}
-
-	if (router.config.getItem)
-	{
-		auto getOperation = Operation();
-		getOperation.parameters = [itemId];
-		getOperation.responses["200"] = swaggerize.definitions.Response();
-		getOperation.responses["200"].schema = Schema(Json.emptyObject);
-		getOperation.responses["200"].schema.fields["$ref"] = "#/definitions/"
-			~ T.stringof ~ "Response";
-
-		getOperation.responses["404"] = notFoundResponse;
-
-		path.operations["get"] = getOperation;
-	}
-
-	if (router.config.updateItem)
-	{
-		auto editParameter = Parameter();
-		editParameter.in_ = Parameter.In.body_;
-		editParameter.schema = Schema(Json.emptyObject);
-		editParameter.name = T.stringof.toLower;
-		editParameter.required = true;
-		editParameter.schema.fields["$ref"] = "#/definitions/" ~ T.stringof ~ "Request";
-
-		editOperation.parameters = [itemId, editParameter];
-		editOperation.responses["200"] = swaggerize.definitions.Response();
-		editOperation.responses["200"].schema = Schema(Json.emptyObject);
-		editOperation.responses["200"].schema.fields["$ref"] = "#/definitions/"
-			~ T.stringof ~ "Response";
-		editOperation.responses["404"] = notFoundResponse;
-
-		path.operations["patch"] = editOperation;
-	}
-
-
-	if (router.config.deleteItem)
-	{
-		deleteOperation.parameters = [itemId];
-		deleteOperation.responses["201"] = swaggerize.definitions.Response();
-		deleteOperation.responses["404"] = notFoundResponse;
-
-		path.operations["delete"] = deleteOperation;
-	}
-
-	return path;
+private string toOpenApiPath(string path) {
+	return path.replace("/:id", "/{id}");
 }
 
 private Path actionPath()
@@ -187,6 +96,18 @@ private Parameter itemId()
 	parameter.other["type"] = "string";
 
 	return parameter;
+}
+
+private Parameter bodyParameter(string name)
+{
+	auto addParameter = Parameter();
+	addParameter.in_ = Parameter.In.body_;
+	addParameter.schema = Schema(Json.emptyObject);
+	addParameter.name = name;
+	addParameter.required = true;
+	addParameter.schema.fields["$ref"] = "#/definitions/" ~ name;
+
+	return addParameter;
 }
 
 private swaggerize.definitions.Response[string] standardResponses()
@@ -311,6 +232,10 @@ version (unittest)
 		{
 			item.name = fields.name.to!string;
 			return item;
+		}
+
+		void updateItem(TestModel item) {
+			
 		}
 
 		void deleteItem(string id)

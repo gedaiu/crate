@@ -9,7 +9,7 @@ import vibe.http.router;
 import vibe.data.json;
 import vibe.db.mongo.collection;
 
-import std.conv;
+import std.conv, std.stdio;
 
 class MongoCrate(T) : Crate!T
 {
@@ -37,13 +37,13 @@ class MongoCrate(T) : Crate!T
 	{
 		auto id = BsonObjectID.generate();
 
-		static if (is(item.id == BsonObjectID))
+		static if (is(typeof(item._id) == BsonObjectID))
 		{
 			item._id = id;
 		}
 		else
 		{
-			item._id = id.to!string();
+			item._id = id.to!string;
 		}
 
 		collection.insert(item);
@@ -53,31 +53,71 @@ class MongoCrate(T) : Crate!T
 
 	T getItem(string id)
 	{
-		if (collection.count(["_id" : id]) == 0)
+		if (collection.count(["_id" : toId(id)]) == 0)
 		{
 			throw new CrateNotFoundException("There is no `" ~ T.stringof ~ "` with id `" ~ id ~ "`");
 		}
 
-		return collection.findOne!T(["_id" : id]);
+		return collection.findOne!T(["_id" : toId(id)]);
 	}
 
 	T editItem(string id, Json fields)
 	{
-		auto data = collection.findOne!Json(["_id" : id]);
-
-		foreach (string field, value; fields)
+		if (collection.count(["_id" : toId(id)]) == 0)
 		{
-			data[field] = value;
+			throw new CrateNotFoundException("There is no `" ~ T.stringof ~ "` with id `" ~ id ~ "`");
 		}
 
-		collection.findAndModify(["_id" : id], data);
+		collection.update(["_id" : toId(id)], toBson(fields));
 
 		return getItem(id);
 	}
 
+	void updateItem(T item)
+	{
+		collection.update(["_id" : item._id], item);
+	}
+
+	private auto toId(string id) {
+		static if(is(typeof(T._id == BsonObjectID))) {
+			return BsonObjectID.fromString(id);
+		} else {
+			return id;
+		}
+	}
+
+	private Bson toBson(Json data) {
+		if(data.type == Json.Type.int_ || data.type == Json.Type.bigInt) {
+			return Bson(data.to!long.to!double);
+		} else if(data.type == Json.Type.object) {
+			Bson object = Bson.emptyObject;
+
+			foreach(string key, value; data) {
+				object[key] = toBson(value);
+			}
+
+			return object;
+		} else if(data.type == Json.Type.array) {
+			Bson[] list = [];
+
+			foreach(value; data) {
+				list ~= toBson(value);
+			}
+
+			return Bson(list);
+		} else {
+			return Bson.fromJson(data);
+		}
+	}
+
 	void deleteItem(string id)
 	{
-		collection.remove(["_id" : id]);
+		if (collection.count(["_id" : toId(id)]) == 0)
+		{
+			throw new CrateNotFoundException("There is no `" ~ T.stringof ~ "` with id `" ~ id ~ "`");
+		}
+
+		collection.remove(["_id" : toId(id)]);
 	}
 }
 
@@ -150,8 +190,8 @@ unittest
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
 	collection.drop;
-	collection.insert(TestModel("1"));
-	collection.insert(TestModel("2"));
+	collection.insert(TestModel("573cbc2fc3b7025427000000"));
+	collection.insert(TestModel("573cbc2fc3b7025427000001"));
 
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
@@ -160,8 +200,8 @@ unittest
 	request(router).get("/testmodels").expectHeader("Content-Type",
 			"application/vnd.api+json").expectStatusCode(200).end((Response response) => {
 		assert(response.bodyJson["data"].length == 2);
-		assert(response.bodyJson["data"][0]["id"].to!string == "1");
-		assert(response.bodyJson["data"][1]["id"].to!string == "2");
+		assert(response.bodyJson["data"][0]["id"].to!string == "573cbc2fc3b7025427000000");
+		assert(response.bodyJson["data"][1]["id"].to!string == "573cbc2fc3b7025427000001");
 	});
 }
 
@@ -172,16 +212,19 @@ unittest
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
 	collection.drop;
-	collection.insert(TestModel("1"));
+	collection.insert(TestModel("573cbc2fc3b7025427000000"));
 
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
-	auto crateRouter = new const CrateRouter!TestModel(router, crate);
+	auto crateRouter = new CrateRouter!TestModel(router, crate);
 
-	request(router).get("/testmodels/1").expectHeader("Content-Type",
-			"application/vnd.api+json").expectStatusCode(200).end((Response response) => {
-		assert(response.bodyJson["data"]["id"].to!string == "1");
-	});
+	request(router)
+		.get("/testmodels/573cbc2fc3b7025427000000")
+		.expectHeader("Content-Type", "application/vnd.api+json")
+		.expectStatusCode(200)
+		.end((Response response) => {
+			assert(response.bodyJson["data"]["id"].to!string == "573cbc2fc3b7025427000000");
+		});
 }
 
 unittest
@@ -191,7 +234,7 @@ unittest
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
 	collection.drop;
-	collection.insert(TestModel("1", "", "testName"));
+	collection.insert(TestModel("573cbc2fc3b7025427000000", "", "testName"));
 
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
@@ -200,13 +243,13 @@ unittest
 	auto data = Json.emptyObject;
 	data["data"] = Json.emptyObject;
 	data["data"]["type"] = "testmodels";
-	data["data"]["id"] = "1";
+	data["data"]["id"] = "573cbc2fc3b7025427000000";
 	data["data"]["attributes"] = Json.emptyObject;
 	data["data"]["attributes"]["other"] = "other value";
 
-	request(router).patch("/testmodels/1").send(data).expectStatusCode(200)
+	request(router).patch("/testmodels/573cbc2fc3b7025427000000").send(data).expectStatusCode(200)
 		.expectHeader("Content-Type", "application/vnd.api+json").end((Response response) => {
-			assert(response.bodyJson["data"]["id"].to!string == "1");
+			assert(response.bodyJson["data"]["id"].to!string == "573cbc2fc3b7025427000000");
 			assert(response.bodyJson["data"]["type"].to!string == "testmodels");
 			assert(response.bodyJson["data"]["attributes"]["name"].to!string == "testName");
 			assert(response.bodyJson["data"]["attributes"]["other"].to!string == "other value");
@@ -232,7 +275,7 @@ unittest
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 	crateRouter.addAction!"action"(&action);
 
-	request(router).get("/testmodels/1/action").expectStatusCode(200)
+	request(router).get("/testmodels/573cbc2fc3b7025427000000/action").expectStatusCode(200)
 		.expectHeader("Content-Type", "application/vnd.api+json").end((Response response) => {
 			assert(response.bodyString == "");
 			assert(actionCalled);
@@ -260,7 +303,7 @@ unittest
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 	crateRouter.addAction!"action"(&action);
 
-	request(router).get("/testmodels/1/action").expectStatusCode(200)
+	request(router).get("/testmodels/573cbc2fc3b7025427000000/action").expectStatusCode(200)
 		.expectHeader("Content-Type", "application/vnd.api+json").end((Response response) => {
 			assert(response.bodyString == "test");
 			assert(actionCalled);
@@ -299,7 +342,7 @@ unittest
 	data.x = 10;
 	data.y = 20;
 
-	request(router).post("/testmodels/1/action").send(data).expectStatusCode(200)
+	request(router).post("/testmodels/573cbc2fc3b7025427000000/action").send(data).expectStatusCode(200)
 		.expectHeader("Content-Type", "application/vnd.api+json").end((Response response) => {
 			assert(response.bodyString == "");
 			assert(actionCalled);
@@ -340,7 +383,7 @@ unittest
 	data.x = 10;
 	data.y = 20;
 
-	request(router).post("/testmodels/1/action").send(data).expectStatusCode(200)
+	request(router).post("/testmodels/573cbc2fc3b7025427000000/action").send(data).expectStatusCode(200)
 		.expectHeader("Content-Type", "application/vnd.api+json").end((Response response) => {
 			assert(response.bodyString == "test");
 			assert(actionCalled);

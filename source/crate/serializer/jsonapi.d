@@ -7,10 +7,10 @@ import vibe.data.bson;
 import vibe.http.common;
 
 import swaggerize.definitions;
+import crate.error;
 
-import std.meta, std.conv;
+import std.meta, std.conv, std.exception;
 import std.algorithm.searching, std.algorithm.iteration;
-
 import std.traits, std.stdio, std.string;
 
 class CrateJsonApiSerializer(T) : CrateSerializer!T
@@ -50,16 +50,21 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 		_config = config;
 	}
 
-	Json serializeToData(T item)
+	void serializeToData(T item, ref Json value)
 	{
 		enum fields = getFields!T;
 
 		Json original = item.serializeToJson;
-		auto value = Json.emptyObject;
 
 		value["type"] = config.plural.toLower;
-		value["attributes"] = Json.emptyObject;
-		value["relationships"] = Json.emptyObject;
+
+		if(value["attributes"].type != Json.Type.object) {
+			value["attributes"] = Json.emptyObject;
+		}
+
+		if(value["relationships"].type != Json.Type.object) {
+			value["relationships"] = Json.emptyObject;
+		}
 
 		void addAttributes(FieldDefinition[] fields)(ref Json serialized)
 		{
@@ -68,7 +73,9 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 				static if (!fields[0].isRelation && !fields[0].isId && fields[0].type != "void")
 				{
 					enum key = fields[0].originalName;
-					serialized["attributes"][key] = serializeToJson(__traits(getMember, item, key));
+					if(key !in serialized["attributes"]) {
+						serialized["attributes"][key] = serializeToJson(__traits(getMember, item, key));
+					}
 				}
 			}
 			else if (fields.length > 1)
@@ -113,17 +120,17 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 				value["id"] = original[field.name];
 			}
 		}
-
-		return value;
 	}
 
-	Json serialize(T item)
+	Json serialize(T item, Json replace = Json.emptyObject)
 	{
-		Json value = Json.emptyObject;
+		if(replace["data"].type != Json.Type.object) {
+			replace["data"] = Json.emptyObject;
+		}
 
-		value["data"] = serializeToData(item);
+		serializeToData(item, replace["data"]);
 
-		return value;
+		return replace;
 	}
 
 	Json serialize(T[] items)
@@ -133,7 +140,11 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 
 		foreach (item; items)
 		{
-			value["data"] ~= serializeToData(item);
+			Json serializedItem = Json.emptyObject;
+
+			serializeToData(item, serializedItem);
+
+			value["data"] ~= serializedItem;
 		}
 
 		return value;
@@ -146,7 +157,7 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 
 	Json normalise(Json data)
 	{
-		assert(data["data"]["type"].to!string == config.plural.toLower);
+		enforce!CrateValidationException(data["data"]["type"].to!string == config.plural.toLower, "data.type expected to be `" ~ config.plural.toLower ~ "`");
 
 		auto normalised = Json.emptyObject;
 
@@ -208,32 +219,32 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 
 	private
 	{
-		string[uint][HTTPMethod][string] paths() {
-			string[uint][HTTPMethod][string] selectedPaths;
+		PathDefinition[uint][HTTPMethod][string] paths() {
+			PathDefinition[uint][HTTPMethod][string] selectedPaths;
 
 			if (config.getList)
 			{
-				selectedPaths[basePath][HTTPMethod.GET][200] = T.stringof ~ "List";
+				selectedPaths[basePath][HTTPMethod.GET][200] = PathDefinition(T.stringof ~ "List", "", CrateOperation.getList);
 			}
 
 			if (config.addItem)
 			{
-				selectedPaths[basePath][HTTPMethod.POST][200] = T.stringof ~ "NewItem";
+				selectedPaths[basePath][HTTPMethod.POST][200] = PathDefinition(T.stringof ~ "Response", T.stringof ~ "Request", CrateOperation.addItem);
 			}
 
 			if (config.getItem)
 			{
-				selectedPaths[basePath ~ "/:id"][HTTPMethod.GET][200] = T.stringof ~ "Item";
+				selectedPaths[basePath ~ "/:id"][HTTPMethod.GET][200] = PathDefinition(T.stringof ~ "Response", "", CrateOperation.getItem);
 			}
 
 			if (config.updateItem)
 			{
-				selectedPaths[basePath ~ "/:id"][HTTPMethod.PATCH][200] = T.stringof ~ "Item";
+				selectedPaths[basePath ~ "/:id"][HTTPMethod.PATCH][200] = PathDefinition(T.stringof ~ "Response", T.stringof ~ "Request", CrateOperation.updateItem);
 			}
 
 			if (config.deleteItem)
 			{
-				selectedPaths[basePath ~ "/:id"][HTTPMethod.PATCH][200] = "";
+				selectedPaths[basePath ~ "/:id"][HTTPMethod.DELETE][201] = PathDefinition("", "", CrateOperation.deleteItem);
 			}
 
 			return selectedPaths;
@@ -250,10 +261,18 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 			schemaList[T.stringof ~ "Request"] = schemaRequest;
 			schemaList[T.stringof ~ "Attributes"] = schemaAttributes;
 			schemaList[T.stringof ~ "Relationships"] = schemaRelationships;
+			schemaList["StringResponse"] = schemaString;
 
 			addRelationshipDefinitions(schemaList);
 
 			return schemaList;
+		}
+
+		Json schemaString()
+		{
+			Json data = Json.emptyObject;
+			data["type"] = "string";
+			return data;
 		}
 
 		Json schemaGetList()

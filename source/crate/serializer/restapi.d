@@ -51,7 +51,7 @@ class CrateRestApiSerializer(T) : CrateSerializer!T
 		return item.serializeToJson;
 	}
 
-	Json serialize(T item)
+	Json serialize(T item, Json replace = Json.emptyObject)
 	{
 		Json value = Json.emptyObject;
 

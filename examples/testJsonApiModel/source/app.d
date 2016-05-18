@@ -5,25 +5,26 @@ import crate.router;
 import crate.openapi;
 import std.stdio;
 
-struct ChildModel {
+struct Comment {
+	BsonObjectID userId;
+	string message;
+}
 
+struct Book
+{
 	@optional {
-		string _id;
+		BsonObjectID _id;
 	}
 
 	string name;
-}
+	string author;
+	string category;
 
-struct TestModel
-{
+	double price;
+	bool inStock;
+
 	@optional
-	{
-		string _id;
-		string other = "";
-	}
-
-	string name = "";
-	ChildModel child;
+	Comment[] comments;
 
 	void action()
 	{
@@ -46,10 +47,10 @@ shared static this()
 
 	auto router = new URLRouter;
 
-	auto collection = client.getCollection("test.model");
+	auto collection = client.getCollection("test.books");
 
-	auto crate = new MongoCrate!TestModel(collection);
-	auto crateRouter = new CrateRouter!TestModel(router, crate);
+	auto crate = new MongoCrate!Book(collection);
+	auto crateRouter = new CrateRouter!Book(router, crate);
 	crateRouter.enableAction!"action";
 	crateRouter.enableAction!"actionResponse";
 
