@@ -1,6 +1,6 @@
 module crate.base;
 
-import vibe.data.json;
+import vibe.data.json, vibe.http.common;
 
 import std.string, std.traits, std.conv;
 
@@ -16,6 +16,11 @@ struct CrateConfig(T)
 	bool addItem = true;
 	bool deleteItem = true;
 	bool updateItem = true;
+}
+
+struct CrateRoutes {
+	Json[string] schemas;
+	string[uint][HTTPMethod][string] paths;
 }
 
 struct FieldDefinition
@@ -56,8 +61,8 @@ interface CrateSerializer(T)
 
 	string mime();
 	ModelDefinition definition();
-	Json[string] schemas();
 
 	CrateConfig!T config();
-	void config(CrateConfig!T);
+	string basePath();
+	CrateRoutes routes();
 }

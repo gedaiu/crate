@@ -38,24 +38,31 @@ struct TestModel
 
 shared static this()
 {
+	writeln("a1");
 	auto settings = new HTTPServerSettings;
 	settings.port = 9090;
 	settings.options = HTTPServerOption.parseQueryString
 		| HTTPServerOption.parseFormBody | HTTPServerOption.parseJsonBody;
 
+	writeln("a2");
 	auto client = connectMongoDB("127.0.0.1");
 
+	writeln("a3");
 	auto router = new URLRouter;
 
+	writeln("a4");
 	auto collection = client.getCollection("test.model");
+	writeln("a5");
 	auto crate = new MongoCrate!TestModel(collection);
-	auto serializer = new CrateRestApiSerializer!TestModel;
+	writeln("a6");
+	//auto serializer = new CrateRestApiSerializer!TestModel;
+	writeln("a7");
 
-	auto crateRouter = new CrateRouter!TestModel(router, crate, serializer);
+	auto crateRouter = new CrateRouter!TestModel(router, crate);
 	crateRouter.enableAction!"action";
 	crateRouter.enableAction!"actionResponse";
 
-	crateRouter.generateOpenApi;
+	//crateRouter.generateOpenApi;
 
 	listenHTTP(settings, router);
 }

@@ -16,27 +16,37 @@ Swagger toOpenApi(T)(CrateRouter!T router)
 	openApi.consumes = router.mime;
 	openApi.definitions = errorDefinitions;
 
-	auto schemas = router.schemas;
+	auto routes = router.routes;
 
-	foreach (string key, schema; schemas)
+	foreach (string key, schema; routes.schemas)
 	{
 		openApi.definitions[key] = Schema(schema);
 	}
 
-	openApi.paths["/" ~ router.config.plural.toLower] = itemListPath(router);
-	openApi.paths["/" ~ router.config.plural.toLower ~ "/{id}"] = itemPath(router);
-
-	foreach (string action, hasParam; router.actions)
+	foreach (string path, methods; routes.paths)
 	{
-		auto path = actionPath;
+		openApi.paths[path] = Path();
 
-		if (hasParam)
+		foreach (method, responses; methods)
 		{
-			path["get"].responses["200"].schema.fields = Json.emptyObject;
-			path["get"].responses["200"].schema.fields["type"] = "string";
-		}
+			string strMethod = method.to!string.toLower;
+			openApi.paths[path].operations[Path.strToType(strMethod)] = Operation();
 
-		openApi.paths["/" ~ router.config.plural.toLower ~ "/{id}/" ~ action] = path;
+			foreach (response, schemaName; responses)
+			{
+				string strResponse = response.to!string;
+				openApi.paths[path].operations[strMethod].responses[strResponse] = swaggerize.definitions.Response();
+
+				writeln("===>", path, " ",strMethod , " ", strResponse, " ", schemaName);
+				writeln(openApi.paths[path].operations[strMethod]);
+
+				openApi.paths[path][strMethod].responses[strResponse].schema = Schema(Json.emptyObject);
+
+				if(schemaName) {
+					openApi.paths[path][strMethod].responses[strResponse].schema.fields["$ref"] = "#/definitions/" ~ schemaName;
+				}
+			}
+		}
 	}
 
 	return openApi;
@@ -300,7 +310,6 @@ version (unittest)
 		TestModel editItem(string id, Json fields)
 		{
 			item.name = fields.name.to!string;
-
 			return item;
 		}
 
@@ -335,8 +344,6 @@ unittest
 
 	assert(Path.OperationsType.get in api.paths["/testmodels/{id}/actionResponse"].operations);
 }
-
-
 
 string asOpenApiType(string dType) {
 	switch(dType) {

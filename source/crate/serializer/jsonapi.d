@@ -4,6 +4,7 @@ import crate.base, crate.ctfe, crate.openapi;
 
 import vibe.data.json;
 import vibe.data.bson;
+import vibe.http.common;
 
 import swaggerize.definitions;
 
@@ -26,8 +27,28 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 		void config(CrateConfig!T config) {
 			this.config = config;
 		}
+
+		string basePath() {
+			return "/" ~ config.plural.toLower;
+		}
+
+		CrateRoutes routes() {
+			CrateRoutes definedRoutes;
+
+			definedRoutes.schemas = schemas;
+			definedRoutes.paths = paths;
+
+			return definedRoutes;
+		}
 	}
 
+	this() {
+		this(CrateConfig!T());
+	}
+
+	this(CrateConfig!T config) {
+		_config = config;
+	}
 
 	Json serializeToData(T item)
 	{
@@ -185,25 +206,56 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 		return model;
 	}
 
-	Json[string] schemas()
-	{
-		Json[string] schemaList;
-
-		schemaList[T.stringof ~ "Item"] = schemaItem;
-		schemaList[T.stringof ~ "NewItem"] = schemaNewItem;
-		schemaList[T.stringof ~ "List"] = schemaGetList;
-		schemaList[T.stringof ~ "Response"] = schemaResponse;
-		schemaList[T.stringof ~ "Request"] = schemaRequest;
-		schemaList[T.stringof ~ "Attributes"] = schemaAttributes;
-		schemaList[T.stringof ~ "Relationships"] = schemaRelationships;
-
-		addRelationshipDefinitions(schemaList);
-
-		return schemaList;
-	}
-
 	private
 	{
+		string[uint][HTTPMethod][string] paths() {
+			string[uint][HTTPMethod][string] selectedPaths;
+
+			if (config.getList)
+			{
+				selectedPaths[basePath][HTTPMethod.GET][200] = T.stringof ~ "List";
+			}
+
+			if (config.addItem)
+			{
+				selectedPaths[basePath][HTTPMethod.POST][200] = T.stringof ~ "NewItem";
+			}
+
+			if (config.getItem)
+			{
+				selectedPaths[basePath ~ "/:id"][HTTPMethod.GET][200] = T.stringof ~ "Item";
+			}
+
+			if (config.updateItem)
+			{
+				selectedPaths[basePath ~ "/:id"][HTTPMethod.PATCH][200] = T.stringof ~ "Item";
+			}
+
+			if (config.deleteItem)
+			{
+				selectedPaths[basePath ~ "/:id"][HTTPMethod.PATCH][200] = "";
+			}
+
+			return selectedPaths;
+		}
+
+		Json[string] schemas()
+		{
+			Json[string] schemaList;
+
+			schemaList[T.stringof ~ "Item"] = schemaItem;
+			schemaList[T.stringof ~ "NewItem"] = schemaNewItem;
+			schemaList[T.stringof ~ "List"] = schemaGetList;
+			schemaList[T.stringof ~ "Response"] = schemaResponse;
+			schemaList[T.stringof ~ "Request"] = schemaRequest;
+			schemaList[T.stringof ~ "Attributes"] = schemaAttributes;
+			schemaList[T.stringof ~ "Relationships"] = schemaRelationships;
+
+			addRelationshipDefinitions(schemaList);
+
+			return schemaList;
+		}
+
 		Json schemaGetList()
 		{
 			Json data = Json.emptyObject;

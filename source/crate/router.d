@@ -9,17 +9,14 @@ import crate.error;
 import crate.base;
 import crate.serializer.jsonapi;
 
-import std.traits, std.conv, std.string;
+import std.traits, std.conv, std.string, std.stdio;
 
 class CrateRouter(T)
 {
-	const CrateConfig!T config;
-
 	private {
 		CrateSerializer!T serializer;
+		CrateRoutes definedRoutes;
 	}
-
-	bool[string] actions;
 
 	private
 	{
@@ -27,51 +24,44 @@ class CrateRouter(T)
 		URLRouter router;
 	}
 
-	this(URLRouter router, Crate!T crate, CrateSerializer!T serializer)
-	{
-		this(router, crate, CrateConfig!T(), serializer);
-	}
-
-	this(URLRouter router, Crate!T crate, CrateConfig!T config = CrateConfig!T(), CrateSerializer!T serializer = new CrateJsonApiSerializer!T())
+	this(URLRouter router, Crate!T crate, CrateSerializer!T serializer = new CrateJsonApiSerializer!T())
 	{
 		this.serializer = serializer;
 		this.crate = crate;
 		this.router = router;
-		this.config = config;
+		definedRoutes = serializer.routes;
 
-		serializer.config = config;
-
-		if (config.getList)
+		if (serializer.config.getList)
 		{
-			router.get("/" ~ config.plural.toLower, &checkError!"getList");
+			router.get(serializer.basePath, &checkError!"getList");
 		}
 
-		if (config.addItem)
+		if (serializer.config.addItem)
 		{
-			router.post("/" ~ config.plural.toLower, &checkError!"postItem");
+			router.post(serializer.basePath, &checkError!"postItem");
 		}
 
-		if (config.getItem)
+		if (serializer.config.getItem)
 		{
-			router.get("/" ~ config.plural.toLower ~ "/:id", &checkError!"getItem");
+			router.get(serializer.basePath ~ "/:id", &checkError!"getItem");
 		}
 
-		if (config.updateItem)
+		if (serializer.config.updateItem)
 		{
-			router.patch("/" ~ config.plural.toLower ~ "/:id", &checkError!"updateItem");
+			router.patch(serializer.basePath ~ "/:id", &checkError!"updateItem");
 		}
 
-		if (config.deleteItem)
+		if (serializer.config.deleteItem)
 		{
-			router.delete_("/" ~ config.plural.toLower ~ "/:id", &checkError!"deleteItem");
+			router.delete_(serializer.basePath ~ "/:id", &checkError!"deleteItem");
 		}
 
-		if (config.getList || config.addItem) {
-			router.match(HTTPMethod.OPTIONS, "/" ~ config.plural.toLower, &checkError!"optionsList");
+		if (serializer.config.getList || serializer.config.addItem) {
+			router.match(HTTPMethod.OPTIONS, serializer.basePath, &checkError!"optionsList");
 		}
 
-		if (config.getItem || config.updateItem || config.deleteItem) {
-			router.match(HTTPMethod.OPTIONS, "/" ~ config.plural.toLower ~ "/:id", &checkError!"optionsItem");
+		if (serializer.config.getItem || serializer.config.updateItem || serializer.config.deleteItem) {
+			router.match(HTTPMethod.OPTIONS, serializer.basePath ~ "/:id", &checkError!"optionsItem");
 		}
 	}
 
@@ -178,7 +168,7 @@ class CrateRouter(T)
 			response.writeBody("", 200, serializer.mime);
 		}
 
-		router.get("/" ~ config.plural.toLower ~ "/:id/" ~ actionName, &preparedAction);
+		router.get(serializer.basePath ~ "/:id/" ~ actionName, &preparedAction);
 	}
 
 	void addAction(string actionName)(ActionQueryDelegate action)
@@ -190,7 +180,7 @@ class CrateRouter(T)
 			response.writeBody(action(item), 200, serializer.mime);
 		}
 
-		router.get("/" ~ config.plural.toLower ~ "/:id/" ~ actionName, &preparedAction);
+		router.get(serializer.basePath ~ "/:id/" ~ actionName, &preparedAction);
 	}
 
 	void addAction(string actionName, U)(void delegate(T item, U value) action)
@@ -205,7 +195,7 @@ class CrateRouter(T)
 			response.writeBody("", 200, serializer.mime);
 		}
 
-		router.post("/" ~ config.plural.toLower ~ "/:id/" ~ actionName, &preparedAction);
+		router.post(serializer.basePath ~ "/:id/" ~ actionName, &preparedAction);
 	}
 
 	void addAction(string actionName, U)(string delegate(T item, U value) action)
@@ -218,7 +208,7 @@ class CrateRouter(T)
 			response.writeBody(action(item, value), 200, serializer.mime);
 		}
 
-		router.post("/" ~ config.plural.toLower ~ "/:id/" ~ actionName, &preparedAction);
+		router.post(serializer.basePath ~ "/:id/" ~ actionName, &preparedAction);
 	}
 
 	void enableAction(string actionName)()
@@ -228,19 +218,20 @@ class CrateRouter(T)
 			alias Param = Parameters!(__traits(getMember, T, actionName));
 			alias RType = ReturnType!(__traits(getMember, T, actionName));
 
+			auto path = serializer.basePath ~ "/:id/" ~ actionName;
+
 			static if (is(RType == void))
 			{
-				actions[actionName] = false;
+				definedRoutes.paths[path][HTTPMethod.GET][200] = "";
 			}
 			else
 			{
-				actions[actionName] = true;
+				definedRoutes.paths[path][HTTPMethod.GET][200] = "StringResponse";
 			}
 
 			static if (Param.length == 0)
 			{
-				router.get("/" ~ config.plural.toLower ~ "/:id/" ~ actionName,
-						&checkError!("callCrateAction!\"" ~ actionName ~ "\""));
+				router.get(path, &checkError!("callCrateAction!\"" ~ actionName ~ "\""));
 			}
 			else
 			{
@@ -275,55 +266,57 @@ class CrateRouter(T)
 		response.writeBody(result, 200);
 	}
 
-	Json[string] schemas() {
-		return serializer.schemas;
+	CrateRoutes routes() {
+		return definedRoutes;
 	}
 
 	string[] mime() {
 		return [ serializer.mime ];
 	}
 
-	private void addListCORS(HTTPServerResponse response)
-	{
-		string methods = "OPTIONS";
-
-		if (config.getList)
+	private {
+		void addListCORS(HTTPServerResponse response)
 		{
-			methods ~= ", GET";
+			string methods = "OPTIONS";
+
+			if (serializer.config.getList)
+			{
+				methods ~= ", GET";
+			}
+
+			if (serializer.config.addItem)
+			{
+				methods ~= ", POST";
+			}
+
+			response.headers["Access-Control-Allow-Origin"] = "*";
+			response.headers["Access-Control-Allow-Methods"] = methods;
+			response.headers["Access-Control-Allow-Headers"] = "Content-Type";
 		}
 
-		if (config.addItem)
+		void addItemCORS(HTTPServerResponse response)
 		{
-			methods ~= ", POST";
+			string methods = "OPTIONS";
+
+			if (serializer.config.getList)
+			{
+				methods ~= ", GET";
+			}
+
+			if (serializer.config.updateItem)
+			{
+				methods ~= ", PATCH";
+			}
+
+			if (serializer.config.deleteItem)
+			{
+				methods ~= ", DELETE";
+			}
+
+			response.headers["Access-Control-Allow-Origin"] = "*";
+			response.headers["Access-Control-Allow-Methods"] = methods;
+			response.headers["Access-Control-Allow-Headers"] = "Content-Type";
 		}
-
-		response.headers["Access-Control-Allow-Origin"] = "*";
-		response.headers["Access-Control-Allow-Methods"] = methods;
-		response.headers["Access-Control-Allow-Headers"] = "Content-Type";
-	}
-
-	private void addItemCORS(HTTPServerResponse response)
-	{
-		string methods = "OPTIONS";
-
-		if (config.getList)
-		{
-			methods ~= ", GET";
-		}
-
-		if (config.updateItem)
-		{
-			methods ~= ", PATCH";
-		}
-
-		if (config.deleteItem)
-		{
-			methods ~= ", DELETE";
-		}
-
-		response.headers["Access-Control-Allow-Origin"] = "*";
-		response.headers["Access-Control-Allow-Methods"] = methods;
-		response.headers["Access-Control-Allow-Headers"] = "Content-Type";
 	}
 }
 

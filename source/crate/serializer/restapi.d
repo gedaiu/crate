@@ -7,7 +7,7 @@ import vibe.data.bson;
 
 import swaggerize.definitions;
 
-import std.meta;
+import std.meta, std.string;
 import std.algorithm.searching, std.algorithm.iteration;
 
 import std.traits, std.stdio, std.meta;
@@ -23,9 +23,25 @@ class CrateRestApiSerializer(T) : CrateSerializer!T
 			return _config;
 		}
 
-		void config(CrateConfig!T config) {
-			this.config = config;
+		string basePath() {
+			return "/" ~ config.plural.toLower;
 		}
+
+		CrateRoutes routes() {
+			CrateRoutes definedRoutes;
+
+			definedRoutes.schemas = schemas;
+
+			return definedRoutes;
+		}
+	}
+
+	this() {
+		this(CrateConfig!T());
+	}
+
+	this(CrateConfig!T config) {
+		_config = config;
 	}
 
 	Json serializeToData(T item)
@@ -86,20 +102,20 @@ class CrateRestApiSerializer(T) : CrateSerializer!T
 		return model;
 	}
 
-	Json[string] schemas()
-	{
-		Json[string] schemaList;
-
-		schemaList[T.stringof ~ "Response"] = schemaResponse;
-		schemaList[T.stringof ~ "List"] = schemaResponseList;
-		schemaList[T.stringof ~ "Request"] = schemaRequest;
-		schemaList[T.stringof] = schemaModel;
-
-		return schemaList;
-	}
-
 	private
 	{
+		Json[string] schemas()
+		{
+			Json[string] schemaList;
+
+			schemaList[T.stringof ~ "Response"] = schemaResponse;
+			schemaList[T.stringof ~ "List"] = schemaResponseList;
+			schemaList[T.stringof ~ "Request"] = schemaRequest;
+			schemaList[T.stringof] = schemaModel;
+
+			return schemaList;
+		}
+
 		Json schemaResponse()
 		{
 			auto data = Json.emptyObject;
