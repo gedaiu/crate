@@ -104,9 +104,6 @@
 			],
 			"type": "object",
 			"properties": {
-				"comments": {
-					"type": "object"
-				},
 				"price": {
 					"type": "number"
 				},
@@ -118,6 +115,9 @@
 				},
 				"author": {
 					"type": "string"
+				},
+				"something": {
+					"type": "integer"
 				},
 				"category": {
 					"type": "string"

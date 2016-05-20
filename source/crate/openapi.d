@@ -193,6 +193,7 @@ version (unittest)
 		{
 			string _id;
 			string other = "";
+			string[] tags;
 		}
 
 		string name = "";
@@ -235,7 +236,7 @@ version (unittest)
 		}
 
 		void updateItem(TestModel item) {
-			
+
 		}
 
 		void deleteItem(string id)
@@ -245,6 +246,7 @@ version (unittest)
 	}
 }
 
+@("Check if all the routes are defined")
 unittest
 {
 	auto router = new URLRouter();
@@ -268,6 +270,22 @@ unittest
 	assert("TestModelRequest" in api.definitions);
 
 	assert(Path.OperationsType.get in api.paths["/testmodels/{id}/actionResponse"].operations);
+}
+
+@("Check if the array property has the right definition")
+unittest
+{
+	auto router = new URLRouter();
+	auto crate = new TestCrate;
+
+	auto crateRouter = new CrateRouter!TestModel(router, crate);
+	crateRouter.enableAction!"action";
+	crateRouter.enableAction!"actionResponse";
+
+	auto api = crateRouter.toOpenApi;
+
+	assert(api.serializeToJson["definitions"]["TestModelAttributes"]["properties"]["tags"]["type"].to!string == "array");
+	assert(api.serializeToJson["definitions"]["TestModelAttributes"]["properties"]["tags"]["items"]["type"].to!string == "string");
 }
 
 string asOpenApiType(string dType) {

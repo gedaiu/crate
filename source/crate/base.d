@@ -52,6 +52,7 @@ struct FieldDefinition
 	bool isRelation;
 	bool isId;
 	bool isOptional;
+	bool isArray;
 }
 
 struct ModelDefinition

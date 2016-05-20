@@ -350,18 +350,23 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 
 			foreach (field; model.fields)
 			{
-				if (!field.isId && !field.isRelation)
+				if (!field.isId && !field.isRelation && !field.isArray)
 				{
 					attributes["properties"][field.name] = Json.emptyObject;
 					attributes["properties"][field.name]["type"] = field.type.asOpenApiType;
+				} else if(field.isArray) {
+					attributes["properties"][field.name] = Json.emptyObject;
+					attributes["properties"][field.name]["type"] = "array";
+					attributes["properties"][field.name]["items"] = Json.emptyObject;
+					attributes["properties"][field.name]["items"]["type"] = field.type.asOpenApiType;
+				}
 
-					if (!field.isOptional)
-					{
-						if(attributes["required"].type == Json.Type.undefined) {
-							attributes["required"] = Json.emptyArray;
-						}
-						attributes["required"] ~= field.name;
+				if (!field.isId && !field.isRelation && !field.isOptional)
+				{
+					if(attributes["required"].type == Json.Type.undefined) {
+						attributes["required"] = Json.emptyArray;
 					}
+					attributes["required"] ~= field.name;
 				}
 			}
 

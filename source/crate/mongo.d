@@ -68,7 +68,9 @@ class MongoCrate(T) : Crate!T
 			throw new CrateNotFoundException("There is no `" ~ T.stringof ~ "` with id `" ~ id ~ "`");
 		}
 
-		collection.update(["_id" : toId(id)], toBson(fields));
+		auto data = toBson(fields);
+
+		collection.update(["_id" : toId(id)], data);
 
 		return getItem(id);
 	}
@@ -79,7 +81,7 @@ class MongoCrate(T) : Crate!T
 	}
 
 	private auto toId(string id) {
-		static if(is(typeof(T._id == BsonObjectID))) {
+		static if(is(typeof(T._id) == BsonObjectID)) {
 			return BsonObjectID.fromString(id);
 		} else {
 			return id;

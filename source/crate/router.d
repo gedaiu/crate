@@ -107,7 +107,10 @@ class CrateRouter(T)
 		}
 		catch (Exception e)
 		{
-			e.writeln;
+			debug
+			{
+				e.writeln;
+			}
 
 			Json data = Json.emptyObject;
 			data.errors = Json.emptyArray;
@@ -286,7 +289,7 @@ class CrateRouter(T)
 			result = func().to!string;
 		}
 
-		crate.editItem(request.params["id"], item.serializeToJson);
+		crate.updateItem(item);
 		response.writeBody(result, 200);
 	}
 
@@ -385,7 +388,9 @@ version (unittest)
 			return item;
 		}
 
-		void updateItem(TestModel item) {}
+		void updateItem(TestModel item) {
+			this.item.name = item.name;
+		}
 
 		void deleteItem(string)
 		{

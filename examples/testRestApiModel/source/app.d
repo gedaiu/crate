@@ -6,33 +6,38 @@ import crate.openapi;
 import crate.serializer.restapi;
 import std.stdio;
 
-struct ChildModel {
+struct Comment {
+	BsonObjectID userId;
+	string message;
+}
 
+struct Book
+{
 	@optional {
-		string _id;
+		BsonObjectID _id;
 	}
 
 	string name;
-}
+	string author;
+	string category;
 
-struct TestModel
-{
 	@optional
-	{
-		string _id;
-		string other = "";
-	}
+	int something;
 
-	string name = "";
-	ChildModel child;
+	double price;
+	bool inStock;
+
+	//@optional
+	//Comment[] comments;
 
 	void action()
 	{
+		inStock = false;
 	}
 
 	string actionResponse()
 	{
-		return "ok.";
+		return inStock ? "ok." : "not ok.";
 	}
 }
 
@@ -53,12 +58,12 @@ shared static this()
 	writeln("a4");
 	auto collection = client.getCollection("test.model");
 	writeln("a5");
-	auto crate = new MongoCrate!TestModel(collection);
+	auto crate = new MongoCrate!Book(collection);
 	writeln("a6");
 	//auto serializer = new CrateRestApiSerializer!TestModel;
 	writeln("a7");
 
-	auto crateRouter = new CrateRouter!TestModel(router, crate);
+	auto crateRouter = new CrateRouter!Book(router, crate);
 	crateRouter.enableAction!"action";
 	crateRouter.enableAction!"actionResponse";
 

@@ -20,19 +20,23 @@ struct Book
 	string author;
 	string category;
 
+	@optional
+	int something;
+
 	double price;
 	bool inStock;
 
-	@optional
-	Comment[] comments;
+	//@optional
+	//Comment[] comments;
 
 	void action()
 	{
+		inStock = false;
 	}
 
 	string actionResponse()
 	{
-		return "ok.";
+		return inStock ? "ok." : "not ok.";
 	}
 }
 
