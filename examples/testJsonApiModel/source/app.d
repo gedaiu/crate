@@ -26,8 +26,8 @@ struct Book
 	double price;
 	bool inStock;
 
-	//@optional
-	//Comment[] comments;
+	@optional
+	Comment[] comments;
 
 	void action()
 	{

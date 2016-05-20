@@ -264,6 +264,7 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 			schemaList["StringResponse"] = schemaString;
 
 			addRelationshipDefinitions(schemaList);
+			addComposedDefinitions(schemaList);
 
 			return schemaList;
 		}
@@ -358,7 +359,12 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 					attributes["properties"][field.name] = Json.emptyObject;
 					attributes["properties"][field.name]["type"] = "array";
 					attributes["properties"][field.name]["items"] = Json.emptyObject;
-					attributes["properties"][field.name]["items"]["type"] = field.type.asOpenApiType;
+
+					if(field.isBasicType) {
+						attributes["properties"][field.name]["items"]["type"] = field.type.asOpenApiType;
+					} else {
+						attributes["properties"][field.name]["items"]["$ref"] = "#/definitions/" ~ field.type ~"Model";
+					}
 				}
 
 				if (!field.isId && !field.isRelation && !field.isOptional)
@@ -440,6 +446,63 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 			}
 
 			addRelationships!(getFields!T);
+		}
+
+		void addComposedDefinitions(ref Json[string] schemaList) {
+			void describe(FieldDefinition[] fields, U)(ref Json schema) {
+				static if (fields.length == 1)
+				{
+					if("properties" !in schema) {
+						schema["properties"] = Json.emptyObject;
+					}
+
+					enum key = fields[0].name;
+
+					static if(fields[0].isBasicType) {
+						schema["properties"][key] = Json.emptyObject;
+						schema["properties"][key]["type"] = asOpenApiType(fields[0].type);
+					} else static if (!fields[0].isRelation && !fields[0].isBasicType) {
+						alias Type = FieldType!(__traits(getMember, U, fields[0].originalName));
+						enum name = fields[0].type ~ "Model";
+
+						schemaList[name] = Json.emptyObject;
+						schemaList[name]["type"] = "object";
+
+						schema["properties"][key] = Json.emptyObject;
+						schema["properties"][key]["$ref"] = "#/definitions/" ~ fields[0].type ~ "Model";
+
+						describe!(getFields!Type, Type)(schemaList[name]);
+					}
+				}
+				else static if (fields.length > 1)
+				{
+					describe!([fields[0]], U)(schema);
+					describe!(fields[1 .. $], U)(schema);
+				}
+			}
+
+			void addComposed(FieldDefinition[] fields)() {
+				static if (fields.length == 1)
+				{
+					static if (!fields[0].isRelation && !fields[0].isBasicType)
+					{
+						alias Type = FieldType!(__traits(getMember, T, fields[0].originalName));
+						enum key = fields[0].type ~ "Model";
+
+						schemaList[key] = Json.emptyObject;
+						schemaList[key]["type"] = "object";
+
+						describe!(getFields!Type, Type)(schemaList[key]);
+					}
+				}
+				else static if (fields.length > 1)
+				{
+					addComposed!([fields[0]])();
+					addComposed!(fields[1 .. $])();
+				}
+			}
+
+			addComposed!(getFields!T);
 		}
 	}
 }

@@ -11,6 +11,9 @@
 				}
 			}
 		},
+		"CommentModel": {
+			"type": "object"
+		},
 		"ErrorList": {
 			"type": "object",
 			"properties": {
@@ -54,6 +57,9 @@
 					"type": "integer"
 				}
 			}
+		},
+		"BsonObjectIDModel": {
+			"type": "object"
 		},
 		"BookRequest": {
 			"type": "object",
@@ -104,22 +110,28 @@
 			],
 			"type": "object",
 			"properties": {
+				"comments": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/CommentModel"
+					}
+				},
+				"something": {
+					"type": "integer"
+				},
 				"price": {
 					"type": "number"
 				},
 				"name": {
 					"type": "string"
 				},
+				"category": {
+					"type": "string"
+				},
 				"inStock": {
 					"type": "boolean"
 				},
 				"author": {
-					"type": "string"
-				},
-				"something": {
-					"type": "integer"
-				},
-				"category": {
 					"type": "string"
 				}
 			}

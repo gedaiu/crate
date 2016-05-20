@@ -187,6 +187,16 @@ version (unittest)
 
 	bool isTestActionCalled;
 
+
+	struct OtherNested {
+		string otherName;
+	}
+
+	struct Nested {
+		string name;
+		OtherNested other;
+	}
+
 	struct TestModel
 	{
 		@optional
@@ -194,6 +204,7 @@ version (unittest)
 			string _id;
 			string other = "";
 			string[] tags;
+			Nested[] list;
 		}
 
 		string name = "";
@@ -279,14 +290,31 @@ unittest
 	auto crate = new TestCrate;
 
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
-	crateRouter.enableAction!"action";
-	crateRouter.enableAction!"actionResponse";
 
-	auto api = crateRouter.toOpenApi;
+	auto api = crateRouter.toOpenApi.serializeToJson;
 
-	assert(api.serializeToJson["definitions"]["TestModelAttributes"]["properties"]["tags"]["type"].to!string == "array");
-	assert(api.serializeToJson["definitions"]["TestModelAttributes"]["properties"]["tags"]["items"]["type"].to!string == "string");
+	assert(api["definitions"]["TestModelAttributes"]["properties"]["tags"]["type"].to!string == "array");
+	assert(api["definitions"]["TestModelAttributes"]["properties"]["tags"]["items"]["type"].to!string == "string");
+
+	assert(api["definitions"]["TestModelAttributes"]["properties"]["list"]["type"].to!string == "array");
+	assert(api["definitions"]["TestModelAttributes"]["properties"]["list"]["items"]["$ref"].to!string == "#/definitions/NestedModel");
 }
+
+
+@("Check if the nested property has the right definition")
+unittest
+{
+	auto router = new URLRouter();
+	auto crate = new TestCrate;
+
+	auto crateRouter = new CrateRouter!TestModel(router, crate);
+
+	auto api = crateRouter.toOpenApi.serializeToJson;
+
+	assert(api["definitions"]["NestedModel"]["properties"]["name"]["type"].to!string == "string");
+	assert(api["definitions"]["NestedModel"]["properties"]["other"]["$ref"].to!string == "#/definitions/OtherNestedModel");
+}
+
 
 string asOpenApiType(string dType) {
 	switch(dType) {
