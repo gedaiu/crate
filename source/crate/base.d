@@ -6,7 +6,8 @@ import std.string, std.traits, std.conv;
 
 import swaggerize.definitions;
 
-enum CrateOperation {
+enum CrateOperation
+{
 	getList,
 	getItem,
 	addItem,
@@ -19,8 +20,8 @@ enum CrateOperation {
 
 struct CrateConfig(T)
 {
-	enum string singular = T.stringof[0..1].toLower ~ T.stringof[1..$];
-	enum string plural = T.stringof[0..1].toLower ~ T.stringof[1..$] ~ "s";
+	enum string singular = T.stringof[0 .. 1].toLower ~ T.stringof[1 .. $];
+	enum string plural = T.stringof[0 .. 1].toLower ~ T.stringof[1 .. $] ~ "s";
 
 	bool getList = true;
 	bool getItem = true;
@@ -30,13 +31,15 @@ struct CrateConfig(T)
 	bool updateItem = true;
 }
 
-struct PathDefinition {
+struct PathDefinition
+{
 	string schemaName;
 	string schemaBody;
 	CrateOperation operation;
 }
 
-struct CrateRoutes {
+struct CrateRoutes
+{
 	Json[string] schemas;
 	PathDefinition[uint][HTTPMethod][string] paths;
 }
@@ -74,15 +77,29 @@ interface Crate(T)
 
 interface CrateSerializer(T)
 {
-	Json serialize(T item, Json replace = Json.emptyObject);
-	Json serialize(T[] items);
+	inout
+	{
+		Json serialize(T item, Json replace = Json.emptyObject);
+		Json serialize(T[] items);
 
-	T deserialize(Json data);
+		T deserialize(Json data);
+	}
+}
 
-	string mime();
-	ModelDefinition definition();
+interface CratePolicy(T)
+{
+	inout
+	{
+		pure
+		{
+			string mime() nothrow;
+			ModelDefinition definition();
+			inout(CrateSerializer!T) serializer();
 
-	CrateConfig!T config();
-	string basePath();
-	CrateRoutes routes();
+			inout(CrateConfig!T) config();
+			string basePath();
+		}
+
+		CrateRoutes routes();
+	}
 }

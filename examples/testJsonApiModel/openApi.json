@@ -12,7 +12,15 @@
 			}
 		},
 		"CommentModel": {
-			"type": "object"
+			"type": "object",
+			"properties": {
+				"message": {
+					"type": "string"
+				},
+				"userId": {
+					"$ref": "#/definitions/BsonObjectIDModel"
+				}
+			}
 		},
 		"ErrorList": {
 			"type": "object",

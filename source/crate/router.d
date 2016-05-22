@@ -7,29 +7,28 @@ import vibe.data.bson;
 
 import crate.error;
 import crate.base;
-import crate.serializer.jsonapi;
+import crate.policy.jsonapi;
 
 import std.traits, std.conv, std.string, std.stdio;
 
 class CrateRouter(T)
 {
-	private {
-		CrateSerializer!T serializer;
-		CrateRoutes definedRoutes;
-	}
-
 	private
 	{
+		CratePolicy!T policy;
+		CrateRoutes definedRoutes;
+
 		Crate!T crate;
 		URLRouter router;
 	}
 
-	this(URLRouter router, Crate!T crate, CrateSerializer!T serializer = new CrateJsonApiSerializer!T())
+	this(URLRouter router, Crate!T crate, CratePolicy!T policy = new CrateJsonApiPolicy!T())
 	{
-		this.serializer = serializer;
+		this.policy = policy;
 		this.crate = crate;
 		this.router = router;
-		definedRoutes = serializer.routes;
+
+		definedRoutes = policy.routes;
 
 		foreach (string path, methods; routes.paths)
 		{
@@ -42,43 +41,50 @@ class CrateRouter(T)
 			}
 		}
 
-		if (serializer.config.getList || serializer.config.addItem) {
-			router.match(HTTPMethod.OPTIONS, serializer.basePath, &checkError!"optionsList");
+		if (policy.config.getList || policy.config.addItem)
+		{
+			router.match(HTTPMethod.OPTIONS, policy.basePath, &checkError!"optionsList");
 		}
 
-		if (serializer.config.getItem || serializer.config.updateItem || serializer.config.deleteItem) {
-			router.match(HTTPMethod.OPTIONS, serializer.basePath ~ "/:id", &checkError!"optionsItem");
+		if (policy.config.getItem || policy.config.updateItem || policy.config.deleteItem)
+		{
+			router.match(HTTPMethod.OPTIONS, policy.basePath ~ "/:id", &checkError!"optionsItem");
 		}
 	}
 
-	void addRoute(string path, HTTPMethod method, PathDefinition definition) {
-		switch(definition.operation) {
-			case CrateOperation.getList:
-				router.get(path, &checkError!"getList");
-				break;
+	void addRoute(string path, HTTPMethod method, PathDefinition definition)
+	{
+		switch (definition.operation)
+		{
+		case CrateOperation.getList:
+			router.get(path, &checkError!"getList");
+			break;
 
-			case CrateOperation.getItem:
-				router.get(path, &checkError!"getItem");
-				break;
+		case CrateOperation.getItem:
+			router.get(path, &checkError!"getItem");
+			break;
 
-			case CrateOperation.addItem:
-				router.post(serializer.basePath, &checkError!"postItem");
-				break;
+		case CrateOperation.addItem:
+			router.post(policy.basePath, &checkError!"postItem");
+			break;
 
-			case CrateOperation.deleteItem:
-				router.delete_(serializer.basePath ~ "/:id", &checkError!"deleteItem");
-				break;
+		case CrateOperation.deleteItem:
+			router.delete_(policy.basePath ~ "/:id",
+					&checkError!"deleteItem");
+			break;
 
-			case CrateOperation.updateItem:
-				router.patch(serializer.basePath ~ "/:id", &checkError!"updateItem");
-				break;
+		case CrateOperation.updateItem:
+			router.patch(policy.basePath ~ "/:id",
+					&checkError!"updateItem");
+			break;
 
-			case CrateOperation.replaceItem:
-				router.patch(serializer.basePath ~ "/:id", &checkError!"updateItem");
-				break;
+		case CrateOperation.replaceItem:
+			router.patch(policy.basePath ~ "/:id",
+					&checkError!"updateItem");
+			break;
 
-			default:
-				throw new Exception("Operation not supported: " ~ definition.operation.to!string);
+		default:
+			throw new Exception("Operation not supported: " ~ definition.operation.to!string);
 		}
 	}
 
@@ -102,7 +108,7 @@ class CrateRouter(T)
 				data.errors[0].title = e.title;
 				data.errors[0].description = e.msg;
 
-				response.writeJsonBody(data, e.statusCode, serializer.mime);
+				response.writeJsonBody(data, e.statusCode, policy.mime);
 			}
 		}
 		catch (Exception e)
@@ -120,7 +126,7 @@ class CrateRouter(T)
 			data.errors[0].title = "Server error";
 			data.errors[0].description = e.msg;
 
-			response.writeJsonBody(data, 500, serializer.mime);
+			response.writeJsonBody(data, 500, policy.mime);
 		}
 	}
 
@@ -141,19 +147,19 @@ class CrateRouter(T)
 	{
 		addItemCORS(response);
 		auto data = crate.getItem(request.params["id"]);
-		response.writeJsonBody(serializer.serialize(data), 200, serializer.mime);
+		response.writeJsonBody(policy.serializer.serialize(data), 200, policy.mime);
 	}
 
 	void updateItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		addItemCORS(response);
 		auto item = crate.getItem(request.params["id"]);
-		auto data = serializer.serialize(item, request.json);
-		item = serializer.deserialize(data);
+		auto data = policy.serializer.serialize(item, request.json);
+		item = policy.serializer.deserialize(data);
 
 		crate.updateItem(item);
 
-		response.writeJsonBody(serializer.serialize(item), 200, serializer.mime);
+		response.writeJsonBody(policy.serializer.serialize(item), 200, policy.mime);
 	}
 
 	void deleteItem(HTTPServerRequest request, HTTPServerResponse response)
@@ -161,25 +167,25 @@ class CrateRouter(T)
 		addItemCORS(response);
 		crate.getItem(request.params["id"]);
 		crate.deleteItem(request.params["id"]);
-		response.writeBody("", 204, serializer.mime);
+		response.writeBody("", 204, policy.mime);
 	}
 
 	void getList(HTTPServerRequest, HTTPServerResponse response)
 	{
 		addListCORS(response);
 		auto data = crate.getList;
-		response.writeJsonBody(serializer.serialize(data), 200, serializer.mime);
+		response.writeJsonBody(policy.serializer.serialize(data), 200, policy.mime);
 	}
 
 	void postItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		addListCORS(response);
-		auto item = crate.addItem(serializer.deserialize(request.json));
-		auto data = serializer.serialize(item);
+		auto item = crate.addItem(policy.serializer.deserialize(request.json));
+		auto data = policy.serializer.serialize(item);
 
 		response.headers["Location"] = (request.fullURL ~ Path(data["data"]["id"].to!string))
 			.to!string;
-		response.writeJsonBody(data, 201, serializer.mime);
+		response.writeJsonBody(data, 201, policy.mime);
 	}
 
 	alias ActionDelegate = void delegate(T item);
@@ -192,10 +198,10 @@ class CrateRouter(T)
 			auto item = crate.getItem(request.params["id"]);
 			action(item);
 
-			response.writeBody("", 200, serializer.mime);
+			response.writeBody("", 200, policy.mime);
 		}
 
-		router.get(serializer.basePath ~ "/:id/" ~ actionName, &preparedAction);
+		router.get(policy.basePath ~ "/:id/" ~ actionName, &preparedAction);
 	}
 
 	void addAction(string actionName)(ActionQueryDelegate action)
@@ -204,10 +210,10 @@ class CrateRouter(T)
 		{
 			auto item = crate.getItem(request.params["id"]);
 
-			response.writeBody(action(item), 200, serializer.mime);
+			response.writeBody(action(item), 200, policy.mime);
 		}
 
-		router.get(serializer.basePath ~ "/:id/" ~ actionName, &preparedAction);
+		router.get(policy.basePath ~ "/:id/" ~ actionName, &preparedAction);
 	}
 
 	void addAction(string actionName, U)(void delegate(T item, U value) action)
@@ -219,10 +225,10 @@ class CrateRouter(T)
 
 			action(item, value);
 
-			response.writeBody("", 200, serializer.mime);
+			response.writeBody("", 200, policy.mime);
 		}
 
-		router.post(serializer.basePath ~ "/:id/" ~ actionName, &preparedAction);
+		router.post(policy.basePath ~ "/:id/" ~ actionName, &preparedAction);
 	}
 
 	void addAction(string actionName, U)(string delegate(T item, U value) action)
@@ -232,10 +238,10 @@ class CrateRouter(T)
 			auto item = crate.getItem(request.params["id"]);
 			auto value = request.json.deserializeJson!U;
 
-			response.writeBody(action(item, value), 200, serializer.mime);
+			response.writeBody(action(item, value), 200, policy.mime);
 		}
 
-		router.post(serializer.basePath ~ "/:id/" ~ actionName, &preparedAction);
+		router.post(policy.basePath ~ "/:id/" ~ actionName, &preparedAction);
 	}
 
 	void enableAction(string actionName)()
@@ -245,15 +251,17 @@ class CrateRouter(T)
 			alias Param = Parameters!(__traits(getMember, T, actionName));
 			alias RType = ReturnType!(__traits(getMember, T, actionName));
 
-			auto path = serializer.basePath ~ "/:id/" ~ actionName;
+			auto path = policy.basePath ~ "/:id/" ~ actionName;
 
 			static if (is(RType == void))
 			{
-				definedRoutes.paths[path][HTTPMethod.GET][200] = PathDefinition("", "", CrateOperation.otherItem);
+				definedRoutes.paths[path][HTTPMethod.GET][200] = PathDefinition("",
+						"", CrateOperation.otherItem);
 			}
 			else
 			{
-				definedRoutes.paths[path][HTTPMethod.GET][200] = PathDefinition("StringResponse", "", CrateOperation.otherItem);
+				definedRoutes.paths[path][HTTPMethod.GET][200] = PathDefinition("StringResponse",
+						"", CrateOperation.otherItem);
 			}
 
 			static if (Param.length == 0)
@@ -293,25 +301,28 @@ class CrateRouter(T)
 		response.writeBody(result, 200);
 	}
 
-	CrateRoutes routes() {
+	CrateRoutes routes()
+	{
 		return definedRoutes;
 	}
 
-	string[] mime() {
-		return [ serializer.mime ];
+	string[] mime()
+	{
+		return [policy.mime];
 	}
 
-	private {
+	private
+	{
 		void addListCORS(HTTPServerResponse response)
 		{
 			string methods = "OPTIONS";
 
-			if (serializer.config.getList)
+			if (policy.config.getList)
 			{
 				methods ~= ", GET";
 			}
 
-			if (serializer.config.addItem)
+			if (policy.config.addItem)
 			{
 				methods ~= ", POST";
 			}
@@ -325,17 +336,17 @@ class CrateRouter(T)
 		{
 			string methods = "OPTIONS";
 
-			if (serializer.config.getList)
+			if (policy.config.getList)
 			{
 				methods ~= ", GET";
 			}
 
-			if (serializer.config.updateItem)
+			if (policy.config.updateItem)
 			{
 				methods ~= ", PATCH";
 			}
 
-			if (serializer.config.deleteItem)
+			if (policy.config.deleteItem)
 			{
 				methods ~= ", DELETE";
 			}
@@ -388,7 +399,8 @@ version (unittest)
 			return item;
 		}
 
-		void updateItem(TestModel item) {
+		void updateItem(TestModel item)
+		{
 			this.item.name = item.name;
 		}
 

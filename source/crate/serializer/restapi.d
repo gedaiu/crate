@@ -1,6 +1,6 @@
 module crate.serializer.restapi;
 
-import crate.base, crate.ctfe, crate.openapi;
+import crate.base, crate.ctfe, crate.generator.openapi;
 
 import vibe.data.json;
 import vibe.data.bson;
@@ -14,20 +14,25 @@ import std.traits, std.stdio, std.meta;
 
 class CrateRestApiSerializer(T) : CrateSerializer!T
 {
-	protected {
+	protected
+	{
 		CrateConfig!T _config;
 	}
 
-	@property {
-		CrateConfig!T config() {
+	@property
+	{
+		CrateConfig!T config() inout
+		{
 			return _config;
 		}
 
-		string basePath() {
+		string basePath()
+		{
 			return "/" ~ config.plural.toLower;
 		}
 
-		CrateRoutes routes() {
+		CrateRoutes routes()
+		{
 			CrateRoutes definedRoutes;
 
 			definedRoutes.schemas = schemas;
@@ -36,22 +41,24 @@ class CrateRestApiSerializer(T) : CrateSerializer!T
 		}
 	}
 
-	this() {
+	this()
+	{
 		this(CrateConfig!T());
 	}
 
-	this(CrateConfig!T config) {
+	this(CrateConfig!T config)
+	{
 		_config = config;
 	}
 
-	Json serializeToData(T item)
+	Json serializeToData(T item) inout
 	{
 		enum fields = getFields!T;
 
 		return item.serializeToJson;
 	}
 
-	Json serialize(T item, Json replace = Json.emptyObject)
+	Json serialize(T item, Json replace = Json.emptyObject) inout
 	{
 		Json value = Json.emptyObject;
 
@@ -60,7 +67,7 @@ class CrateRestApiSerializer(T) : CrateSerializer!T
 		return value;
 	}
 
-	Json serialize(T[] items)
+	Json serialize(T[] items) inout
 	{
 		Json value = Json.emptyObject;
 		value[config.plural] = Json.emptyArray;
@@ -73,7 +80,7 @@ class CrateRestApiSerializer(T) : CrateSerializer!T
 		return value;
 	}
 
-	T deserialize(Json data)
+	T deserialize(Json data) inout
 	{
 		return deserializeJson!T(data[config.singular]);
 	}
@@ -140,25 +147,34 @@ class CrateRestApiSerializer(T) : CrateSerializer!T
 			return data;
 		}
 
-		void schemaObject(T, bool includeId = true)(ref Json data) {
+		void schemaObject(T, bool includeId = true)(ref Json data)
+		{
 			data["type"] = "object";
 			data["properties"] = Json.emptyObject;
 
-			void addFields(FieldDefinition[] fields)() {
+			void addFields(FieldDefinition[] fields)()
+			{
 				static if (fields.length == 1)
 				{
-					static if (fields[0].isId && !includeId) {
+					static if (fields[0].isId && !includeId)
+					{
 						return;
-					} else static if (fields[0].isRelation) {
+					}
+					else static if (fields[0].isRelation)
+					{
 						data["properties"][fields[0].name] = Json.emptyObject;
 						data["properties"][fields[0].name]["type"] = "string";
-						data["properties"][fields[0].name]["description"] = "The id of an existing `" ~ fields[0].type ~ "`";
-					} else {
+						data["properties"][fields[0].name]["description"] = "The id of an existing `"
+							~ fields[0].type ~ "`";
+					}
+					else
+					{
 						enum type = fields[0].type.asOpenApiType;
 						data["properties"][fields[0].name] = Json.emptyObject;
 						data["properties"][fields[0].name]["type"] = type;
 
-						static if(type == "object") {
+						static if (type == "object")
+						{
 							alias U = typeof(__traits(getMember, T, fields[0].originalName));
 							data["properties"][fields[0].name]["properties"] = Json.emptyObject;
 							schemaObject!U(data["properties"][fields[0].name]);
@@ -196,7 +212,6 @@ class CrateRestApiSerializer(T) : CrateSerializer!T
 
 			return data;
 		}
-
 
 		Json schemaModel()
 		{
@@ -287,17 +302,23 @@ unittest
 	auto schema = serializer.schemas;
 
 	assert(schema["TestModelResponse"]["type"] == "object");
-	assert(schema["TestModelResponse"]["properties"]["testModel"]["$ref"] == "#/definitions/TestModel");
+	assert(
+			schema["TestModelResponse"]["properties"]["testModel"]["$ref"] == "#/definitions/TestModel");
 
 	assert(schema["TestModelList"]["type"] == "object");
 	assert(schema["TestModelList"]["properties"]["testModels"]["type"] == "array");
-	assert(schema["TestModelList"]["properties"]["testModels"]["items"]["$ref"] == "#/definitions/TestModel");
+	assert(
+			schema["TestModelList"]["properties"]["testModels"]["items"]["$ref"] == "#/definitions/TestModel");
 
 	assert(schema["TestModelRequest"]["type"] == "object");
 	assert(schema["TestModelRequest"]["properties"]["testModel"]["type"] == "object");
-	assert(schema["TestModelRequest"]["properties"]["testModel"]["properties"]["id"].type == Json.Type.undefined);
-	assert(schema["TestModelRequest"]["properties"]["testModel"]["properties"]["field1"]["type"] == "string");
-	assert(schema["TestModelRequest"]["properties"]["testModel"]["properties"]["field2"]["type"] == "integer");
+	assert(
+			schema["TestModelRequest"]["properties"]["testModel"]["properties"]["id"].type
+			== Json.Type.undefined);
+	assert(
+			schema["TestModelRequest"]["properties"]["testModel"]["properties"]["field1"]["type"] == "string");
+	assert(
+			schema["TestModelRequest"]["properties"]["testModel"]["properties"]["field2"]["type"] == "integer");
 
 	assert(schema["TestModel"]["type"] == "object");
 	assert(schema["TestModel"]["properties"]["id"]["type"] == "string");
@@ -331,8 +352,6 @@ unittest
 	assert(schema["ComposedModel"]["properties"]["child"]["type"] == "object");
 	assert(schema["ComposedModel"]["properties"]["child"]["properties"]["name"]["type"] == "string");
 }
-
-
 
 @("Open api schema with relations")
 unittest

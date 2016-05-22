@@ -2,7 +2,7 @@ import vibe.d;
 
 import crate.mongo;
 import crate.router;
-import crate.openapi;
+import crate.generator.openapi;
 import std.stdio;
 
 struct Comment {
