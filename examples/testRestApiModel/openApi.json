@@ -3,6 +3,53 @@
 		"application/json"
 	],
 	"definitions": {
+		"BookResponse": {
+			"type": "object",
+			"properties": {
+				"book": {
+					"$ref": "#/definitions/Book"
+				}
+			}
+		},
+		"Book": {
+			"required": [
+				"name",
+				"author",
+				"category",
+				"price",
+				"inStock"
+			],
+			"type": "object",
+			"properties": {
+				"comments": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/Comment"
+					}
+				},
+				"something": {
+					"type": "integer"
+				},
+				"price": {
+					"type": "number"
+				},
+				"name": {
+					"type": "string"
+				},
+				"category": {
+					"type": "string"
+				},
+				"inStock": {
+					"type": "boolean"
+				},
+				"_id": {
+					"$ref": "#/definitions/BsonObjectID"
+				},
+				"author": {
+					"type": "string"
+				}
+			}
+		},
 		"ErrorList": {
 			"type": "object",
 			"properties": {
@@ -14,66 +61,17 @@
 				}
 			}
 		},
-		"TestModelRequest": {
-			"type": "object",
-			"properties": {
-				"testModel": {
-					"required": [
-						"name"
-					],
-					"type": "object",
-					"properties": {
-						"name": {
-							"type": "string"
-						},
-						"child": {
-							"type": "string",
-							"description": "The id of an existing `ChildModel`"
-						},
-						"other": {
-							"type": "string"
-						}
-					}
-				}
-			}
+		"StringResponse": {
+			"type": "string"
 		},
-		"TestModelResponse": {
+		"BookList": {
 			"type": "object",
 			"properties": {
-				"testModel": {
-					"$ref": "#/definitions/TestModel"
-				}
-			}
-		},
-		"TestModelList": {
-			"type": "object",
-			"properties": {
-				"testModels": {
+				"books": {
 					"type": "array",
 					"items": {
-						"$ref": "#/definitions/TestModel"
+						"$ref": "#/definitions/Book"
 					}
-				}
-			}
-		},
-		"TestModel": {
-			"required": [
-				"name"
-			],
-			"type": "object",
-			"properties": {
-				"_id": {
-					"type": "string"
-				},
-				"name": {
-					"type": "string"
-				},
-				"child": {
-					"type": "string",
-					"description": "The id of an existing `ChildModel`"
-				},
-				"other": {
-					"type": "string"
 				}
 			}
 		},
@@ -89,6 +87,65 @@
 				"status": {
 					"format": "int32",
 					"type": "integer"
+				}
+			}
+		},
+		"BsonObjectID": {
+			"type": "string"
+		},
+		"BookRequest": {
+			"type": "object",
+			"properties": {
+				"book": {
+					"required": [
+						"name",
+						"author",
+						"category",
+						"price",
+						"inStock"
+					],
+					"type": "object",
+					"properties": {
+						"comments": {
+							"type": "array",
+							"items": {
+								"$ref": "#/definitions/Comment"
+							}
+						},
+						"something": {
+							"type": "integer"
+						},
+						"price": {
+							"type": "number"
+						},
+						"name": {
+							"type": "string"
+						},
+						"category": {
+							"type": "string"
+						},
+						"inStock": {
+							"type": "boolean"
+						},
+						"author": {
+							"type": "string"
+						}
+					}
+				}
+			}
+		},
+		"Comment": {
+			"required": [
+				"userId",
+				"message"
+			],
+			"type": "object",
+			"properties": {
+				"message": {
+					"type": "string"
+				},
+				"userId": {
+					"$ref": "#/definitions/BsonObjectID"
 				}
 			}
 		}
@@ -112,47 +169,7 @@
 	"tags": [],
 	"basePath": "/",
 	"paths": {
-		"/testmodels": {
-			"get": {
-				"responses": {
-					"200": {
-						"description": "",
-						"schema": {
-							"$ref": "#/definitions/TestModelList"
-						}
-					}
-				}
-			},
-			"options": {
-				"responses": {
-					"200": {
-						"description": ""
-					}
-				}
-			},
-			"post": {
-				"parameters": [
-					{
-						"name": "testmodel",
-						"required": true,
-						"in": "body",
-						"description": "",
-						"schema": {
-							"$ref": "#/definitions/TestModelRequest"
-						}
-					}
-				],
-				"responses": {
-					"201": {
-						"description": "",
-						"schema": {
-							"$ref": "#/definitions/TestModelResponse"
-						}
-					}
-				}
-			}
-		},
-		"/testmodels/{id}/actionResponse": {
+		"/books/{id}/action": {
 			"get": {
 				"parameters": [
 					{
@@ -162,9 +179,6 @@
 						"in": "path",
 						"description": "The item id"
 					}
-				],
-				"tags": [
-					"action"
 				],
 				"responses": {
 					"500": {
@@ -180,15 +194,12 @@
 						}
 					},
 					"200": {
-						"description": "success",
-						"schema": {
-							"type": "string"
-						}
+						"description": ""
 					}
 				}
 			}
 		},
-		"/testmodels/{id}/action": {
+		"/books/{id}/actionResponse": {
 			"get": {
 				"parameters": [
 					{
@@ -198,9 +209,6 @@
 						"in": "path",
 						"description": "The item id"
 					}
-				],
-				"tags": [
-					"action"
 				],
 				"responses": {
 					"500": {
@@ -216,105 +224,9 @@
 						}
 					},
 					"200": {
-						"description": "success"
-					}
-				}
-			}
-		},
-		"/testmodels/{id}": {
-			"delete": {
-				"parameters": [
-					{
-						"name": "id",
-						"required": true,
-						"type": "string",
-						"in": "path",
-						"description": "The item id"
-					}
-				],
-				"responses": {
-					"201": {
-						"description": ""
-					},
-					"404": {
-						"description": "not found",
-						"schema": {
-							"$ref": "#/definitions/ErrorList"
-						}
-					}
-				}
-			},
-			"get": {
-				"parameters": [
-					{
-						"name": "id",
-						"required": true,
-						"type": "string",
-						"in": "path",
-						"description": "The item id"
-					}
-				],
-				"responses": {
-					"404": {
-						"description": "not found",
-						"schema": {
-							"$ref": "#/definitions/ErrorList"
-						}
-					},
-					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/TestModelResponse"
-						}
-					}
-				}
-			},
-			"options": {
-				"parameters": [
-					{
-						"name": "id",
-						"required": true,
-						"type": "string",
-						"in": "path",
-						"description": "The item id"
-					}
-				],
-				"responses": {
-					"200": {
-						"description": ""
-					}
-				}
-			},
-			"patch": {
-				"parameters": [
-					{
-						"name": "id",
-						"required": true,
-						"type": "string",
-						"in": "path",
-						"description": "The item id"
-					},
-					{
-						"name": "testmodel",
-						"required": true,
-						"in": "body",
-						"description": "",
-						"schema": {
-							"$ref": "#/definitions/TestModelRequest"
-						}
-					}
-				],
-				"responses": {
-					"404": {
-						"description": "not found",
-						"schema": {
-							"$ref": "#/definitions/ErrorList"
-						}
-					},
-					"200": {
-						"description": "",
-						"schema": {
-							"$ref": "#/definitions/TestModelResponse"
+							"$ref": "#/definitions/StringResponse"
 						}
 					}
 				}

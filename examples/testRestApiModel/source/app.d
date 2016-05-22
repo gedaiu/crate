@@ -2,8 +2,8 @@ import vibe.d;
 
 import crate.mongo;
 import crate.router;
-import crate.openapi;
-import crate.serializer.restapi;
+import crate.generator.openapi;
+import crate.policy.restapi;
 import std.stdio;
 
 struct Comment {
@@ -27,8 +27,8 @@ struct Book
 	double price;
 	bool inStock;
 
-	//@optional
-	//Comment[] comments;
+	@optional
+	Comment[] comments;
 
 	void action()
 	{
@@ -43,31 +43,24 @@ struct Book
 
 shared static this()
 {
-	writeln("a1");
 	auto settings = new HTTPServerSettings;
 	settings.port = 9090;
 	settings.options = HTTPServerOption.parseQueryString
 		| HTTPServerOption.parseFormBody | HTTPServerOption.parseJsonBody;
 
-	writeln("a2");
 	auto client = connectMongoDB("127.0.0.1");
 
-	writeln("a3");
 	auto router = new URLRouter;
 
-	writeln("a4");
 	auto collection = client.getCollection("test.model");
-	writeln("a5");
 	auto crate = new MongoCrate!Book(collection);
-	writeln("a6");
-	//auto serializer = new CrateRestApiSerializer!TestModel;
-	writeln("a7");
+	auto policy = new CrateRestApiPolicy!Book();
 
-	auto crateRouter = new CrateRouter!Book(router, crate);
+	auto crateRouter = new CrateRouter!Book(router, crate, policy);
 	crateRouter.enableAction!"action";
 	crateRouter.enableAction!"actionResponse";
 
-	//crateRouter.generateOpenApi;
+	crateRouter.generateOpenApi;
 
 	listenHTTP(settings, router);
 }
