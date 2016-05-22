@@ -98,7 +98,6 @@ class CrateRestApiPolicy(T) : CratePolicy!T
 
 		void addRelations(T)(ref Json[string] data)
 		{
-
 			void describeRelations(FieldDefinition[] fields)()
 			{
 				static if (fields.length == 1)

@@ -67,7 +67,7 @@
 			}
 		},
 		"BsonObjectIDModel": {
-			"type": "object"
+			"type": "string"
 		},
 		"BookRequest": {
 			"type": "object",

@@ -8,7 +8,7 @@ import crate.ctfe;
 import vibe.data.json;
 import vibe.http.common;
 
-import std.string;
+import std.string, std.stdio;
 
 class CrateJsonApiPolicy(T) : CratePolicy!T
 {
@@ -354,8 +354,10 @@ class CrateJsonApiPolicy(T) : CratePolicy!T
 						alias Type = FieldType!(__traits(getMember, U, fields[0].originalName));
 						enum name = fields[0].type ~ "Model";
 
-						schemaList[name] = Json.emptyObject;
-						schemaList[name]["type"] = "object";
+						if (name !in schemaList)
+						{
+							schemaList[name] = Json.emptyObject;
+						}
 
 						schema["properties"][key] = Json.emptyObject;
 						schema["properties"][key]["$ref"] = "#/definitions/"
@@ -381,9 +383,16 @@ class CrateJsonApiPolicy(T) : CratePolicy!T
 						enum key = fields[0].type ~ "Model";
 
 						schemaList[key] = Json.emptyObject;
-						schemaList[key]["type"] = "object";
 
-						describe!(getFields!Type, Type)(schemaList[key]);
+						static if (fields[0].type == "BsonObjectID")
+						{
+							schemaList[key]["type"] = "string";
+						}
+						else
+						{
+							schemaList[key]["type"] = "object";
+							describe!(getFields!Type, Type)(schemaList[key]);
+						}
 					}
 				}
 				else static if (fields.length > 1)
@@ -482,13 +491,18 @@ unittest
 @("Check for the id field")
 unittest
 {
+	import vibe.data.bson;
+
 	struct TestModel
 	{
-		string _id;
+		BsonObjectID _id;
 	}
 
 	auto policy = new CrateJsonApiPolicy!TestModel();
 
 	auto definition = policy.definition;
+	auto schema = policy.schemas.serializeToJson;
+
 	assert(definition.idField == "_id");
+	assert(schema["BsonObjectIDModel"]["type"] == "string");
 }
