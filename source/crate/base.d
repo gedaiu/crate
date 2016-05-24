@@ -20,8 +20,8 @@ enum CrateOperation
 
 struct CrateConfig(T)
 {
-	enum string singular = T.stringof[0 .. 1].toLower ~ T.stringof[1 .. $];
-	enum string plural = T.stringof[0 .. 1].toLower ~ T.stringof[1 .. $] ~ "s";
+	string singular = T.stringof[0 .. 1].toLower ~ T.stringof[1 .. $];
+	string plural = T.stringof[0 .. 1].toLower ~ T.stringof[1 .. $] ~ "s";
 
 	bool getList = true;
 	bool getItem = true;

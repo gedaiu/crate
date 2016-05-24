@@ -10,6 +10,13 @@ struct Comment {
 	string message;
 }
 
+struct Category {
+	BsonObjectID _id;
+
+	string name;
+	string color;
+}
+
 struct Book
 {
 	@optional {
@@ -18,7 +25,7 @@ struct Book
 
 	string name;
 	string author;
-	string category;
+	Category category;
 
 	@optional
 	int something;

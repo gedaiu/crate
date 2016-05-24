@@ -34,8 +34,15 @@
 			}
 		},
 		"BookRelationships": {
+			"required": [
+				"category"
+			],
 			"type": "object",
-			"properties": {}
+			"properties": {
+				"category": {
+					"$ref": "#/definitions/CategoryRelation"
+				}
+			}
 		},
 		"StringResponse": {
 			"type": "string"
@@ -77,6 +84,29 @@
 				}
 			}
 		},
+		"CategoryRelation": {
+			"required": [
+				"data"
+			],
+			"type": "object",
+			"properties": {
+				"data": {
+					"required": [
+						"type",
+						"id"
+					],
+					"type": "object",
+					"properties": {
+						"type": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
+						}
+					}
+				}
+			}
+		},
 		"BookNewItem": {
 			"type": "object",
 			"properties": {
@@ -112,7 +142,6 @@
 			"required": [
 				"price",
 				"name",
-				"category",
 				"inStock",
 				"author"
 			],
@@ -124,16 +153,10 @@
 						"$ref": "#/definitions/CommentModel"
 					}
 				},
-				"something": {
-					"type": "integer"
-				},
 				"price": {
 					"type": "number"
 				},
 				"name": {
-					"type": "string"
-				},
-				"category": {
 					"type": "string"
 				},
 				"inStock": {
@@ -141,6 +164,9 @@
 				},
 				"author": {
 					"type": "string"
+				},
+				"something": {
+					"type": "integer"
 				}
 			}
 		}

@@ -15,14 +15,14 @@ class CrateRouter(T)
 {
 	private
 	{
-		CratePolicy!T policy;
+		const CratePolicy!T policy;
 		CrateRoutes definedRoutes;
 
 		Crate!T crate;
 		URLRouter router;
 	}
 
-	this(URLRouter router, Crate!T crate, CratePolicy!T policy = new CrateJsonApiPolicy!T())
+	this(URLRouter router, Crate!T crate, const(CratePolicy!T) policy = new const CrateJsonApiPolicy!T())
 	{
 		this.policy = policy;
 		this.crate = crate;
