@@ -82,7 +82,11 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 					serialized["data"]["relationships"][key] = Json.emptyObject;
 					serialized["data"]["relationships"][key]["data"] = Json.emptyObject;
 					serialized["data"]["relationships"][key]["data"]["type"] = fields[0].type.toLower ~ "s";
-					serialized["data"]["relationships"][key]["data"]["id"] = data[fields[0].originalName][idField];
+					if(data[fields[0].originalName].type == Json.Type.object) {
+						serialized["data"]["relationships"][key]["data"]["id"] = data[fields[0].originalName][idField];
+					} else {
+						serialized["data"]["relationships"][key]["data"]["id"] = data[fields[0].originalName];
+					}
 				}
 			}
 			else static if (fields.length > 1)
@@ -123,19 +127,16 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 
 				static if (Field.isId)
 				{
-					normalised[Field.name] = data["data"]["id"];
+					normalised[Field.originalName] = data["data"]["id"];
 				}
 				else static if (Field.isRelation)
 				{
-					alias RelationType = typeof(__traits(getMember, T, Field.name));
-					auto relationDeserializer = new CrateJsonApiSerializer!RelationType;
-
-					normalised[Field.name] = relationDeserializer.normalise(
-							data["data"]["relationships"][Field.name]);
+					normalised[Field.originalName] =
+							data["data"]["relationships"][Field.name]["data"]["id"];
 				}
 				else
 				{
-					normalised[Field.name] = data["data"]["attributes"][Field.name];
+					normalised[Field.originalName] = data["data"]["attributes"][Field.name];
 				}
 			}
 
@@ -353,7 +354,7 @@ unittest
 
 	auto value = serializer.normalise(serializedValue);
 
-	assert(value.child.name == "test");
+	assert(value.child == "id2");
 }
 
 unittest

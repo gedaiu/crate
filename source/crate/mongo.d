@@ -35,18 +35,9 @@ class MongoCrate: Crate
 
 	Json addItem(Json item)
 	{
-		auto id = BsonObjectID.generate();
+		item["_id"] = BsonObjectID.generate().to!string;
 
-		static if (is(typeof(item._id) == BsonObjectID))
-		{
-			item._id = id;
-		}
-		else
-		{
-			item._id = id.to!string;
-		}
-
-		collection.insert(item);
+		collection.insert(toBson(item));
 
 		return item;
 	}
@@ -348,7 +339,6 @@ unittest
 		.expectHeader("Access-Control-Allow-Origin", "*").end((Response response) => { });
 }
 
-/*
 @("check post with relations")
 unittest
 {
@@ -365,29 +355,30 @@ unittest
 		RelatedModel relation;
 	}
 
-	class BaseCrate : Crate!BaseModel
+	class BaseCrate : Crate
 	{
-		BaseModel[] getList()
+		Json[] getList()
 		{
 			throw new Exception("getList not implemented");
 		}
 
-		BaseModel addItem(BaseModel item)
+		Json addItem(Json item)
 		{
-			throw new Exception("addItem not implemented");
+			item["_id"] = "1";
+			return item;
 		}
 
-		BaseModel getItem(string id)
+		Json getItem(string id)
 		{
 			throw new Exception("getItem not implemented");
 		}
 
-		BaseModel editItem(string id, Json fields)
+		Json editItem(string id, Json fields)
 		{
 			throw new Exception("editItem not implemented");
 		}
 
-		void updateItem(BaseModel item)
+		void updateItem(Json item)
 		{
 			throw new Exception("updateItem not implemented");
 		}
@@ -423,7 +414,7 @@ unittest
 		.post("/basemodels")
 		.send(data)
 		.end((Response response) => {
-			response.bodyJson.toPrettyString.writeln;
+			assert(response.bodyJson["data"]["id"] == "1");
+			assert(response.bodyJson["data"]["relationships"]["relation"]["data"]["id"] == "1");
 		});
 }
-*/

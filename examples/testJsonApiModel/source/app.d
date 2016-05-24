@@ -60,7 +60,7 @@ shared static this()
 
 	auto collection = client.getCollection("test.books");
 
-	auto crate = new MongoCrate!Book(collection);
+	auto crate = new MongoCrate(collection);
 	auto crateRouter = new CrateRouter!Book(router, crate);
 	crateRouter.enableAction!"action";
 	crateRouter.enableAction!"actionResponse";

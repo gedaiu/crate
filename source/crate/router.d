@@ -134,6 +134,7 @@ class CrateRouter(T)
 	void optionsItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		addItemCORS(response);
+		writeln("=>", request.params["id"]);
 		crate.getItem(request.params["id"]);
 		response.writeBody("", 200);
 	}
@@ -195,6 +196,7 @@ class CrateRouter(T)
 	void postItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		addListCORS(response);
+
 
 		auto data = policy.serializer.normalise(request.json);
 		auto item = policy.serializer.denormalise(crate.addItem(data));

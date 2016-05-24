@@ -53,8 +53,8 @@ shared static this()
 	auto router = new URLRouter;
 
 	auto collection = client.getCollection("test.model");
-	auto crate = new MongoCrate!Book(collection);
-	auto policy = new CrateRestApiPolicy!Book();
+	auto crate = new MongoCrate(collection);
+	auto policy = new const CrateRestApiPolicy!Book();
 
 	auto crateRouter = new CrateRouter!Book(router, crate, policy);
 	crateRouter.enableAction!"action";
