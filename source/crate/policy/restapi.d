@@ -309,7 +309,7 @@ unittest
 
 		TestModel child;
 	}
-/*
+
 	auto policy = new const CrateRestApiPolicy!ComposedModel;
 
 	auto schema = policy.schemas.serializeToJson;
@@ -318,7 +318,7 @@ unittest
 	assert(schema["ComposedModel"]["properties"]["child"]["$ref"] == "#/definitions/TestModel");
 
 	assert(schema["TestModel"]["type"] == "object");
-	assert(schema["TestModel"]["properties"]["name"]["type"] == "string");*/
+	assert(schema["TestModel"]["properties"]["name"]["type"] == "string");
 }
 
 @("Open api schema with relations")
@@ -339,11 +339,11 @@ unittest
 
 		TestModel child;
 	}
-/*
+
 	auto policy = new const CrateRestApiPolicy!ComposedModel;
 
 	auto schema = policy.schemas;
 
 	assert(schema["ComposedModel"]["type"] == "object");
-	assert(schema["ComposedModel"]["properties"]["child"]["type"] == "string");*/
+	assert(schema["ComposedModel"]["properties"]["child"]["type"] == "string");
 }

@@ -83,17 +83,17 @@ unittest
 				"field2": 5
 		}
 	}`.parseJsonString;
-/*
-	auto deserialized = serializer.normalise(serialized).deserializeJson;
-	assert(deserialized.id == "ID");
-	assert(deserialized.field1 == "Ember Hamster");
-	assert(deserialized.field2 == 5);
 
-	//test the serialize method
-	/*auto value = serializer.serialize(deserialized);
+	auto deserialized = serializer.normalise(serialized);
+	assert(deserialized["id"] == "ID");
+	assert(deserialized["field1"] == "Ember Hamster");
+	assert(deserialized["field2"] == 5);
+
+	//test the denormalise method
+	auto value = serializer.denormalise(deserialized);
 	assert(value["testModel"]["id"] == "ID");
 	assert(value["testModel"]["field1"] == "Ember Hamster");
-	assert(value["testModel"]["field2"] == 5);*/
+	assert(value["testModel"]["field2"] == 5);
 }
 
 @("Serialize an array of structs")

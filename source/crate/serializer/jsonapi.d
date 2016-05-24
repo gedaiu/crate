@@ -81,7 +81,7 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 
 					serialized["data"]["relationships"][key] = Json.emptyObject;
 					serialized["data"]["relationships"][key]["data"] = Json.emptyObject;
-					serialized["data"]["relationships"][key]["data"]["type"] = Json.emptyObject;
+					serialized["data"]["relationships"][key]["data"]["type"] = fields[0].type.toLower ~ "s";
 					serialized["data"]["relationships"][key]["data"]["id"] = data[fields[0].originalName][idField];
 				}
 			}
@@ -268,7 +268,7 @@ unittest
 		string _id;
 
 		TestModel child;
-	}/*
+	}
 
 	auto serializer = new CrateJsonApiSerializer!ComposedModel;
 
@@ -276,7 +276,7 @@ unittest
 	value.child.name = "test";
 
 	auto serializedValue = serializer.denormalise(value.serializeToJson);
-	assert(serializedValue.data.attributes.child.name == "test");*/
+	assert(serializedValue.data.attributes.child.name == "test");
 }
 
 unittest
@@ -296,7 +296,7 @@ unittest
 
 		TestModel child;
 	}
-/*
+
 	auto serializer = new CrateJsonApiSerializer!ComposedModel;
 
 	auto value = ComposedModel();
@@ -304,11 +304,11 @@ unittest
 	value.child.name = "test";
 	value.child.id = "id2";
 
-	auto serializedValue = serializer.serialize(value);
+	auto serializedValue = serializer.denormalise(value.serializeToJson);
 
-	assert(serializedValue.data.relationships.child.data.attributes.name == "test");
+	assert(serializedValue.data.relationships.child.data["type"] == "testmodels");
 	assert(serializedValue.data.relationships.child.data.id == "id2");
-	assert(serializedValue.data.id == "id1");*/
+	assert(serializedValue.data.id == "id1");
 }
 
 unittest
@@ -328,7 +328,7 @@ unittest
 
 		TestModel child;
 	}
-/*
+
 	auto serializer = new CrateJsonApiSerializer!ComposedModel;
 
 	auto serializedValue = q{{
@@ -351,9 +351,9 @@ unittest
 		}
 	}}.parseJsonString;
 
-	auto value = serializer.deserialize(serializedValue);
+	auto value = serializer.normalise(serializedValue);
 
-	assert(value.child.name == "test");*/
+	assert(value.child.name == "test");
 }
 
 unittest
@@ -372,7 +372,7 @@ unittest
 
 		TestModel child;
 	}
-/*
+
 	auto serializer = new CrateJsonApiSerializer!ComposedModel;
 
 	auto serializedValue = q{{
@@ -387,7 +387,7 @@ unittest
 		}
 	}}.parseJsonString;
 
-	auto value = serializer.deserialize(serializedValue);
+	auto value = serializer.normalise(serializedValue);
 
-	assert(value.child.name == "test");*/
+	assert(value.child.name == "test");
 }
