@@ -10,19 +10,20 @@ import crate.base;
 import crate.policy.jsonapi;
 
 import std.traits, std.conv, std.string, std.stdio;
+import std.algorithm, std.array;
 
 class CrateRouter(T)
 {
 	private
 	{
 		const CratePolicy!T policy;
-		CrateRoutes definedRoutes;
+		Crate crate;
 
-		Crate!T crate;
+		CrateRoutes definedRoutes;
 		URLRouter router;
 	}
 
-	this(URLRouter router, Crate!T crate, const(CratePolicy!T) policy = new const CrateJsonApiPolicy!T())
+	this(URLRouter router, Crate crate, const(CratePolicy!T) policy = new const CrateJsonApiPolicy!T())
 	{
 		this.policy = policy;
 		this.crate = crate;
@@ -146,18 +147,20 @@ class CrateRouter(T)
 	void getItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		addItemCORS(response);
-		auto data = crate.getItem(request.params["id"]);
+		auto data = crate.getItem(request.params["id"]).deserializeJson!T;
 		response.writeJsonBody(policy.serializer.serialize(data), 200, policy.mime);
 	}
 
 	void updateItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		addItemCORS(response);
-		auto item = crate.getItem(request.params["id"]);
+		auto item = crate.getItem(request.params["id"]).deserializeJson!T;
 		auto data = policy.serializer.serialize(item, request.json);
-		item = policy.serializer.deserialize(data);
 
-		crate.updateItem(item);
+		auto normalisedData = policy.serializer.normalise(data);
+		crate.updateItem(normalisedData);
+
+		item = crate.getItem(request.params["id"]).deserializeJson!T;
 
 		response.writeJsonBody(policy.serializer.serialize(item), 200, policy.mime);
 	}
@@ -173,14 +176,18 @@ class CrateRouter(T)
 	void getList(HTTPServerRequest, HTTPServerResponse response)
 	{
 		addListCORS(response);
-		auto data = crate.getList;
+		T[] data = crate.getList.map!(a => a.deserializeJson!T).array;
 		response.writeJsonBody(policy.serializer.serialize(data), 200, policy.mime);
 	}
 
 	void postItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		addListCORS(response);
-		auto item = crate.addItem(policy.serializer.deserialize(request.json));
+
+		auto normalisedData = policy.serializer.normalise(request.json);
+
+		auto item = crate.addItem(normalisedData).deserializeJson!T;
+
 		auto data = policy.serializer.serialize(item);
 
 		response.headers["Location"] = (request.fullURL ~ Path(data["data"]["id"].to!string))
@@ -195,7 +202,7 @@ class CrateRouter(T)
 	{
 		void preparedAction(HTTPServerRequest request, HTTPServerResponse response)
 		{
-			auto item = crate.getItem(request.params["id"]);
+			auto item = crate.getItem(request.params["id"]).deserializeJson!T;
 			action(item);
 
 			response.writeBody("", 200, policy.mime);
@@ -208,7 +215,7 @@ class CrateRouter(T)
 	{
 		void preparedAction(HTTPServerRequest request, HTTPServerResponse response)
 		{
-			auto item = crate.getItem(request.params["id"]);
+			auto item = crate.getItem(request.params["id"]).deserializeJson!T;
 
 			response.writeBody(action(item), 200, policy.mime);
 		}
@@ -220,7 +227,7 @@ class CrateRouter(T)
 	{
 		void preparedAction(HTTPServerRequest request, HTTPServerResponse response)
 		{
-			auto item = crate.getItem(request.params["id"]);
+			auto item = crate.getItem(request.params["id"]).deserializeJson!T;
 			auto value = request.json.deserializeJson!U;
 
 			action(item, value);
@@ -235,7 +242,7 @@ class CrateRouter(T)
 	{
 		void preparedAction(HTTPServerRequest request, HTTPServerResponse response)
 		{
-			auto item = crate.getItem(request.params["id"]);
+			auto item = crate.getItem(request.params["id"]).deserializeJson!T;
 			auto value = request.json.deserializeJson!U;
 
 			response.writeBody(action(item, value), 200, policy.mime);
@@ -282,7 +289,7 @@ class CrateRouter(T)
 	void callCrateAction(string actionName)(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		addItemCORS(response);
-		auto item = crate.getItem(request.params["id"]);
+		auto item = crate.getItem(request.params["id"]).deserializeJson!T;
 		auto func = &__traits(getMember, item, actionName);
 
 		alias RType = ReturnType!(__traits(getMember, T, actionName));
@@ -297,7 +304,7 @@ class CrateRouter(T)
 			result = func().to!string;
 		}
 
-		crate.updateItem(item);
+		crate.updateItem(item.serializeToJson);
 		response.writeBody(result, 200);
 	}
 
@@ -373,35 +380,35 @@ version (unittest)
 		}
 	}
 
-	class TestCrate : Crate!TestModel
+	class TestCrate : Crate
 	{
 		TestModel item;
 
-		TestModel[] getList()
+		Json[] getList()
 		{
-			return [item];
+			return [item.serializeToJson];
 		}
 
-		TestModel addItem(TestModel)
+		Json addItem(Json)
 		{
 			throw new Exception("addItem not implemented");
 		}
 
-		TestModel getItem(string)
+		Json getItem(string)
 		{
-			return item;
+			return item.serializeToJson;
 		}
 
-		TestModel editItem(string, Json fields)
+		Json editItem(string, Json fields)
 		{
 			item.name = fields.name.to!string;
 
-			return item;
+			return item.serializeToJson;
 		}
 
-		void updateItem(TestModel item)
+		void updateItem(Json item)
 		{
-			this.item.name = item.name;
+			this.item.name = item.name.to!string;
 		}
 
 		void deleteItem(string)

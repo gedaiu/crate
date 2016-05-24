@@ -263,7 +263,7 @@ unittest
 		int field2;
 	}
 
-	auto policy = new CrateRestApiPolicy!TestModel();
+	auto policy = new const CrateRestApiPolicy!TestModel();
 
 	auto schema = policy.schemas;
 
@@ -310,7 +310,7 @@ unittest
 		TestModel child;
 	}
 
-	auto policy = new CrateRestApiPolicy!ComposedModel;
+	auto policy = new const CrateRestApiPolicy!ComposedModel;
 
 	auto schema = policy.schemas.serializeToJson;
 
@@ -340,7 +340,7 @@ unittest
 		TestModel child;
 	}
 
-	auto policy = new CrateRestApiPolicy!ComposedModel;
+	auto policy = new const CrateRestApiPolicy!ComposedModel;
 
 	auto schema = policy.schemas;
 

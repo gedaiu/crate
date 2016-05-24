@@ -64,14 +64,14 @@ struct ModelDefinition
 	FieldDefinition[string] fields;
 }
 
-interface Crate(T)
+interface Crate
 {
-	T[] getList();
+	Json[] getList();
 
-	T addItem(T item);
-	T getItem(string id);
-	T editItem(string id, Json fields);
-	void updateItem(T item);
+	Json addItem(Json item);
+	Json getItem(string id);
+	Json editItem(string id, Json fields);
+	void updateItem(Json item);
 	void deleteItem(string id);
 }
 
@@ -82,7 +82,7 @@ interface CrateSerializer(T)
 		Json serialize(T item, Json replace = Json.emptyObject);
 		Json serialize(T[] items);
 
-		T deserialize(Json data);
+		Json normalise(Json data);
 	}
 }
 

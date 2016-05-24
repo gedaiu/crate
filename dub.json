@@ -9,5 +9,19 @@
     "dependencies": {
       "swaggerize": "*",
       "vibe-d": "*"
-    }
+    },
+
+    "_configurations": [
+        {
+            "name": "unittest",
+            "targetType": "executable",
+            "preBuildCommands": ["dub run unit-threaded -c gen_ut_main -- -f bin/ut.d"],
+            "buildOptions": ["debugMode", "debugInfo", "unittests"],
+            "mainSourceFile": "bin/ut.d",
+            "dflags-dmd": ["-unittest"],
+            "dependencies": {
+                "unit-threaded": "~>0.6.0"
+            }
+        }
+    ]
 }

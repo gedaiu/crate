@@ -61,11 +61,11 @@ class CrateRestApiSerializer(T) : CrateSerializer!T
 		return value;
 	}
 
-	T deserialize(Json data) inout
+	Json normalise(Json data) inout
 	{
 		enforce!CrateValidationException(singular in data,
 				"object type expected to be `" ~ singular ~ "`");
-		return deserializeJson!T(data[singular]);
+		return data[singular];
 	}
 }
 
@@ -91,7 +91,7 @@ unittest
 		}
 	}`.parseJsonString;
 
-	auto deserialized = serializer.deserialize(serialized);
+	auto deserialized = serializer.normalise(serialized).deserializeJson!TestModel;
 	assert(deserialized.id == "ID");
 	assert(deserialized.field1 == "Ember Hamster");
 	assert(deserialized.field2 == 5);

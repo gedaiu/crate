@@ -14,7 +14,7 @@ class CrateJsonApiPolicy(T) : CratePolicy!T
 {
 	private
 	{
-		CrateJsonApiSerializer!T _serializer;
+		CrateSerializer!T _serializer;
 		CrateConfig!T _config;
 	}
 
@@ -418,7 +418,7 @@ version (unittest)
 @("it should have the right mime")
 unittest
 {
-	auto policy = new CrateJsonApiPolicy!TestModel();
+	auto policy = new const CrateJsonApiPolicy!TestModel();
 	assert(policy.mime == "application/vnd.api+json");
 }
 
@@ -435,7 +435,7 @@ unittest
 		@ignore int field3;
 	}
 
-	auto policy = new CrateJsonApiPolicy!TestModel();
+	auto policy = new const CrateJsonApiPolicy!TestModel();
 
 	auto definition = policy.definition;
 
@@ -463,7 +463,7 @@ unittest
 		@optional string optionalField;
 	}
 
-	auto policy = new CrateJsonApiPolicy!TestModel();
+	auto policy = new const CrateJsonApiPolicy!TestModel();
 
 	auto definition = policy.definition;
 	assert(definition.fields["optionalField"].isOptional);
@@ -480,7 +480,7 @@ unittest
 		string optionalField;
 	}
 
-	auto policy = new CrateJsonApiPolicy!TestModel();
+	auto policy = new const CrateJsonApiPolicy!TestModel();
 
 	auto definition = policy.definition;
 
@@ -498,7 +498,7 @@ unittest
 		BsonObjectID _id;
 	}
 
-	auto policy = new CrateJsonApiPolicy!TestModel();
+	auto policy = new const CrateJsonApiPolicy!TestModel();
 
 	auto definition = policy.definition;
 	auto schema = policy.schemas.serializeToJson;

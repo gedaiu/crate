@@ -11,7 +11,7 @@ import vibe.db.mongo.collection;
 
 import std.conv, std.stdio;
 
-class MongoCrate(T) : Crate!T
+class MongoCrate: Crate
 {
 	private MongoCollection collection;
 
@@ -20,10 +20,10 @@ class MongoCrate(T) : Crate!T
 		this.collection = collection;
 	}
 
-	T[] getList()
+	Json[] getList()
 	{
-		T[] list;
-		auto cursor = collection.find!T();
+		Json[] list;
+		auto cursor = collection.find!Json();
 
 		foreach (item; cursor)
 		{
@@ -33,7 +33,7 @@ class MongoCrate(T) : Crate!T
 		return list;
 	}
 
-	T addItem(T item)
+	Json addItem(Json item)
 	{
 		auto id = BsonObjectID.generate();
 
@@ -51,21 +51,21 @@ class MongoCrate(T) : Crate!T
 		return item;
 	}
 
-	T getItem(string id)
+	Json getItem(string id)
 	{
 		if (collection.count(["_id" : toId(id)]) == 0)
 		{
-			throw new CrateNotFoundException("There is no `" ~ T.stringof ~ "` with id `" ~ id ~ "`");
+			throw new CrateNotFoundException("There is no item with id `" ~ id ~ "` inside `" ~ collection.name ~ "`");
 		}
 
-		return collection.findOne!T(["_id" : toId(id)]);
+		return collection.findOne!Json(["_id" : toId(id)]);
 	}
 
-	T editItem(string id, Json fields)
+	Json editItem(string id, Json fields)
 	{
 		if (collection.count(["_id" : toId(id)]) == 0)
 		{
-			throw new CrateNotFoundException("There is no `" ~ T.stringof ~ "` with id `" ~ id ~ "`");
+			throw new CrateNotFoundException("There is no item with id `" ~ id ~ "` inside `" ~ collection.name ~ "`");
 		}
 
 		auto data = toBson(fields);
@@ -75,16 +75,18 @@ class MongoCrate(T) : Crate!T
 		return getItem(id);
 	}
 
-	void updateItem(T item)
+	void updateItem(Json item)
 	{
-		collection.update(["_id" : item._id], item);
+		auto updateItem = toBson(item);
+
+		collection.update(["_id" : toId(item["_id"].to!string)], updateItem);
 	}
 
 	private auto toId(string id) {
-		static if(is(typeof(T._id) == BsonObjectID)) {
+		try {
 			return BsonObjectID.fromString(id);
-		} else {
-			return id;
+		} catch (ConvException e) {
+			throw new CrateNotFoundException("There is no item with id `" ~ id ~ "` inside `" ~ collection.name ~ "`");
 		}
 	}
 
@@ -95,7 +97,11 @@ class MongoCrate(T) : Crate!T
 			Bson object = Bson.emptyObject;
 
 			foreach(string key, value; data) {
-				object[key] = toBson(value);
+				if(key == "_id") {
+					object[key] = BsonObjectID.fromString(value.to!string);
+				} else {
+					object[key] = toBson(value);
+				}
 			}
 
 			return object;
@@ -116,7 +122,7 @@ class MongoCrate(T) : Crate!T
 	{
 		if (collection.count(["_id" : toId(id)]) == 0)
 		{
-			throw new CrateNotFoundException("There is no `" ~ T.stringof ~ "` with id `" ~ id ~ "`");
+			throw new CrateNotFoundException("There is no item with id `" ~ id ~ "` inside `" ~ collection.name ~ "`");
 		}
 
 		collection.remove(["_id" : toId(id)]);
@@ -134,7 +140,7 @@ version (unittest)
 	{
 		@optional
 		{
-			string _id;
+			BsonObjectID _id;
 			string other = "";
 		}
 
@@ -167,7 +173,7 @@ unittest
 	auto collection = client.getCollection("test.model");
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate!TestModel(collection);
+	auto crate = new MongoCrate(collection);
 
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 
@@ -192,11 +198,11 @@ unittest
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
 	collection.drop;
-	collection.insert(TestModel("573cbc2fc3b7025427000000"));
-	collection.insert(TestModel("573cbc2fc3b7025427000001"));
+	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
+	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000001")));
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate!TestModel(collection);
+	auto crate = new MongoCrate(collection);
 	auto crateRouter = new const CrateRouter!TestModel(router, crate);
 
 	request(router).get("/testmodels").expectHeader("Content-Type",
@@ -214,10 +220,10 @@ unittest
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
 	collection.drop;
-	collection.insert(TestModel("573cbc2fc3b7025427000000"));
+	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate!TestModel(collection);
+	auto crate = new MongoCrate(collection);
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 
 	request(router)
@@ -236,10 +242,10 @@ unittest
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
 	collection.drop;
-	collection.insert(TestModel("573cbc2fc3b7025427000000", "", "testName"));
+	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000"), "", "testName"));
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate!TestModel(collection);
+	auto crate = new MongoCrate(collection);
 	auto crateRouter = new const CrateRouter!TestModel(router, crate);
 
 	auto data = Json.emptyObject;
@@ -273,7 +279,7 @@ unittest
 	auto collection = client.getCollection("test.model");
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate!TestModel(collection);
+	auto crate = new MongoCrate(collection);
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 	crateRouter.addAction!"action"(&action);
 
@@ -301,7 +307,7 @@ unittest
 	auto collection = client.getCollection("test.model");
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate!TestModel(collection);
+	auto crate = new MongoCrate(collection);
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 	crateRouter.addAction!"action"(&action);
 
@@ -336,7 +342,7 @@ unittest
 	auto collection = client.getCollection("test.model");
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate!TestModel(collection);
+	auto crate = new MongoCrate(collection);
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 	crateRouter.addAction!("action")(&action);
 
@@ -377,7 +383,7 @@ unittest
 	auto collection = client.getCollection("test.model");
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate!TestModel(collection);
+	auto crate = new MongoCrate(collection);
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 	crateRouter.addAction!("action")(&action);
 
@@ -403,14 +409,13 @@ unittest
 	collection.drop;
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate!TestModel(collection);
+	auto crate = new MongoCrate(collection);
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 
 	request(router).get("/testmodels/1").expectStatusCode(404).end((Response response) => {
 		assert(response.bodyJson["errors"][0]["status"] == 404);
 		assert(response.bodyJson["errors"][0]["title"] == "Crate not found");
-		assert(
-			response.bodyJson["errors"][0]["description"] == "There is no `TestModel` with id `1`");
+		assert(response.bodyJson["errors"][0]["description"] == "There is no item with id `1` inside `model`");
 	});
 }
 
@@ -422,14 +427,14 @@ unittest
 
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
-	collection.insert(TestModel("1"));
+	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate!TestModel(collection);
+	auto crate = new MongoCrate(collection);
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 	crateRouter.enableAction!"action";
 
-	request(router).get("/testmodels/1/action").expectStatusCode(200).end((Response response) => {
+	request(router).get("/testmodels/573cbc2fc3b7025427000000/action").expectStatusCode(200).end((Response response) => {
 		assert(response.bodyString == "");
 		assert(isTestActionCalled);
 	});
@@ -444,14 +449,14 @@ unittest
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
 	collection.drop;
-	collection.insert(TestModel("1"));
+	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate!TestModel(collection);
+	auto crate = new MongoCrate(collection);
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 	crateRouter.enableAction!"actionResponse";
 
-	request(router).get("/testmodels/1/actionResponse").expectStatusCode(200)
+	request(router).get("/testmodels/573cbc2fc3b7025427000000/actionResponse").expectStatusCode(200)
 		.end((Response response) => {
 			assert(response.bodyString == "ok.");
 			assert(isTestActionCalled);
@@ -467,14 +472,92 @@ unittest
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
 	collection.drop;
-	collection.insert(TestModel("1"));
+	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate!TestModel(collection);
+	auto crate = new MongoCrate(collection);
 	auto crateRouter = new CrateRouter!TestModel(router, crate);
 
 	request(router).get("/testmodels")
-		.expectHeader("Access-Control-Allow-Origin", "*").end((Response response) => {
+		.expectHeader("Access-Control-Allow-Origin", "*").end((Response response) => { });
+}
 
+/*
+@("check post with relations")
+unittest
+{
+	struct RelatedModel {
+		string _id;
+
+		string name;
+	}
+
+	struct BaseModel {
+		string _id;
+
+		string name;
+		RelatedModel relation;
+	}
+
+	class BaseCrate : Crate!BaseModel
+	{
+		BaseModel[] getList()
+		{
+			throw new Exception("getList not implemented");
+		}
+
+		BaseModel addItem(BaseModel item)
+		{
+			throw new Exception("addItem not implemented");
+		}
+
+		BaseModel getItem(string id)
+		{
+			throw new Exception("getItem not implemented");
+		}
+
+		BaseModel editItem(string id, Json fields)
+		{
+			throw new Exception("editItem not implemented");
+		}
+
+		void updateItem(BaseModel item)
+		{
+			throw new Exception("updateItem not implemented");
+		}
+
+		void deleteItem(string id)
+		{
+			throw new Exception("deleteItem not implemented");
+		}
+	}
+
+	auto router = new URLRouter();
+	auto crate = new BaseCrate();
+	auto crateRouter = new CrateRouter!BaseModel(router, crate);
+
+	Json data = `{
+		"data": {
+			"attributes": {
+				"name": "hello"
+			},
+			"type": "basemodels",
+			"relationships": {
+				"relation": {
+					"data": {
+						"type": "relatedmodels",
+						"id": "1"
+					}
+				}
+			}
+		}
+	}`.parseJsonString;
+
+	request(router)
+		.post("/basemodels")
+		.send(data)
+		.end((Response response) => {
+			response.bodyJson.toPrettyString.writeln;
 		});
 }
+*/

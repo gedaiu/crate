@@ -228,32 +228,32 @@ version (unittest)
 		}
 	}
 
-	class TestCrate : Crate!TestModel
+	class TestCrate : Crate
 	{
 		TestModel item;
 
-		TestModel[] getList()
+		Json[] getList()
 		{
-			return [item];
+			return [item.serializeToJson];
 		}
 
-		TestModel addItem(TestModel item)
+		Json addItem(Json item)
 		{
 			throw new Exception("addItem not implemented");
 		}
 
-		TestModel getItem(string id)
+		Json getItem(string id)
 		{
-			return item;
+			return item.serializeToJson;
 		}
 
-		TestModel editItem(string id, Json fields)
+		Json editItem(string id, Json fields)
 		{
 			item.name = fields.name.to!string;
-			return item;
+			return item.serializeToJson;
 		}
 
-		void updateItem(TestModel item)
+		void updateItem(Json item)
 		{
 
 		}
