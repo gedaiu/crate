@@ -147,28 +147,39 @@ class CrateRouter(T)
 	void getItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		addItemCORS(response);
-		auto data = crate.getItem(request.params["id"]).deserializeJson!T;
-		response.writeJsonBody(policy.serializer.serialize(data), 200, policy.mime);
+		auto data = crate.getItem(request.params["id"]);
+
+		auto denormalised = policy.serializer.denormalise(data);
+
+		response.writeJsonBody(denormalised, 200, policy.mime);
 	}
 
 	void updateItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		addItemCORS(response);
-		auto item = crate.getItem(request.params["id"]).deserializeJson!T;
-		auto data = policy.serializer.serialize(item, request.json);
+		auto item = crate.getItem(request.params["id"]);
+		auto newData = policy.serializer.normalise(request.json);
+		auto mixedData = mix(item, newData);
 
-		auto normalisedData = policy.serializer.normalise(data);
-		crate.updateItem(normalisedData);
+		crate.updateItem(mixedData);
 
-		item = crate.getItem(request.params["id"]).deserializeJson!T;
+		response.writeJsonBody(policy.serializer.denormalise(mixedData), 200, policy.mime);
+	}
 
-		response.writeJsonBody(policy.serializer.serialize(item), 200, policy.mime);
+	deprecated("Write a better mixer")
+	Json mix(Json data, Json newData) {
+		Json mixedData = data;
+
+		foreach(string key, value; newData) {
+			mixedData[key] = value;
+		}
+
+		return mixedData;
 	}
 
 	void deleteItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		addItemCORS(response);
-		crate.getItem(request.params["id"]);
 		crate.deleteItem(request.params["id"]);
 		response.writeBody("", 204, policy.mime);
 	}
@@ -176,80 +187,25 @@ class CrateRouter(T)
 	void getList(HTTPServerRequest, HTTPServerResponse response)
 	{
 		addListCORS(response);
-		T[] data = crate.getList.map!(a => a.deserializeJson!T).array;
-		response.writeJsonBody(policy.serializer.serialize(data), 200, policy.mime);
+		auto data = policy.serializer.denormalise(crate.getList);
+
+		response.writeJsonBody(data, 200, policy.mime);
 	}
 
 	void postItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		addListCORS(response);
 
-		auto normalisedData = policy.serializer.normalise(request.json);
+		auto data = policy.serializer.normalise(request.json);
+		auto item = policy.serializer.denormalise(crate.addItem(data));
 
-		auto item = crate.addItem(normalisedData).deserializeJson!T;
-
-		auto data = policy.serializer.serialize(item);
-
-		response.headers["Location"] = (request.fullURL ~ Path(data["data"]["id"].to!string))
+		response.headers["Location"] = (request.fullURL ~ Path(item["data"]["id"].to!string))
 			.to!string;
-		response.writeJsonBody(data, 201, policy.mime);
+		response.writeJsonBody(item, 201, policy.mime);
 	}
 
 	alias ActionDelegate = void delegate(T item);
 	alias ActionQueryDelegate = string delegate(T item);
-
-	void addAction(string actionName)(ActionDelegate action)
-	{
-		void preparedAction(HTTPServerRequest request, HTTPServerResponse response)
-		{
-			auto item = crate.getItem(request.params["id"]).deserializeJson!T;
-			action(item);
-
-			response.writeBody("", 200, policy.mime);
-		}
-
-		router.get(policy.basePath ~ "/:id/" ~ actionName, &preparedAction);
-	}
-
-	void addAction(string actionName)(ActionQueryDelegate action)
-	{
-		void preparedAction(HTTPServerRequest request, HTTPServerResponse response)
-		{
-			auto item = crate.getItem(request.params["id"]).deserializeJson!T;
-
-			response.writeBody(action(item), 200, policy.mime);
-		}
-
-		router.get(policy.basePath ~ "/:id/" ~ actionName, &preparedAction);
-	}
-
-	void addAction(string actionName, U)(void delegate(T item, U value) action)
-	{
-		void preparedAction(HTTPServerRequest request, HTTPServerResponse response)
-		{
-			auto item = crate.getItem(request.params["id"]).deserializeJson!T;
-			auto value = request.json.deserializeJson!U;
-
-			action(item, value);
-
-			response.writeBody("", 200, policy.mime);
-		}
-
-		router.post(policy.basePath ~ "/:id/" ~ actionName, &preparedAction);
-	}
-
-	void addAction(string actionName, U)(string delegate(T item, U value) action)
-	{
-		void preparedAction(HTTPServerRequest request, HTTPServerResponse response)
-		{
-			auto item = crate.getItem(request.params["id"]).deserializeJson!T;
-			auto value = request.json.deserializeJson!U;
-
-			response.writeBody(action(item, value), 200, policy.mime);
-		}
-
-		router.post(policy.basePath ~ "/:id/" ~ actionName, &preparedAction);
-	}
 
 	void enableAction(string actionName)()
 	{

@@ -34,31 +34,24 @@ class CrateRestApiSerializer(T) : CrateSerializer!T
 		this.plural = plural;
 	}
 
-	Json serializeToData(T item) inout
-	{
-		return item.serializeToJson;
-	}
+	Json denormalise(Json[] data) inout {
+		Json result = Json.emptyObject;
 
-	Json serialize(T item, Json replace = Json.emptyObject) inout
-	{
-		Json value = Json.emptyObject;
+		result[plural] = Json.emptyArray;
 
-		value[singular] = serializeToData(item);
-
-		return value;
-	}
-
-	Json serialize(T[] items) inout
-	{
-		Json value = Json.emptyObject;
-		value[plural] = Json.emptyArray;
-
-		foreach (item; items)
-		{
-			value[plural] ~= serializeToData(item);
+		foreach(item; data) {
+			result[plural] ~= item;
 		}
 
-		return value;
+		return result;
+	}
+
+	Json denormalise(Json data) inout {
+		Json result = Json.emptyObject;
+
+		result[singular] = data;
+
+		return result;
 	}
 
 	Json normalise(Json data) inout
@@ -90,17 +83,17 @@ unittest
 				"field2": 5
 		}
 	}`.parseJsonString;
-
-	auto deserialized = serializer.normalise(serialized).deserializeJson!TestModel;
+/*
+	auto deserialized = serializer.normalise(serialized).deserializeJson;
 	assert(deserialized.id == "ID");
 	assert(deserialized.field1 == "Ember Hamster");
 	assert(deserialized.field2 == 5);
 
 	//test the serialize method
-	auto value = serializer.serialize(deserialized);
+	/*auto value = serializer.serialize(deserialized);
 	assert(value["testModel"]["id"] == "ID");
 	assert(value["testModel"]["field1"] == "Ember Hamster");
-	assert(value["testModel"]["field2"] == 5);
+	assert(value["testModel"]["field2"] == 5);*/
 }
 
 @("Serialize an array of structs")
@@ -116,12 +109,14 @@ unittest
 
 	auto serializer = new CrateRestApiSerializer!TestModel();
 
-	TestModel[] deserialized = [
-		TestModel("ID1", "Ember Hamster", 5), TestModel("ID2", "Ember Hamster2", 6)
+	Json[] data = [
+		TestModel("ID1", "Ember Hamster", 5).serializeToJson,
+		TestModel("ID2", "Ember Hamster2", 6).serializeToJson
 	];
 
 	//test the serialize method
-	auto value = serializer.serialize(deserialized);
+	auto value = serializer.denormalise(data);
+
 	assert(value["testModels"][0]["id"] == "ID1");
 	assert(value["testModels"][0]["field1"] == "Ember Hamster");
 	assert(value["testModels"][0]["field2"] == 5);

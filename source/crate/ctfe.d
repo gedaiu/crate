@@ -285,9 +285,15 @@ template getFields(Prototype)
 					enum isId = IsId!(FIELDS[0]);
 					enum isOptional = IsOptional!(FIELDS[0], Prototype);
 
+					static if(IsBasicType!Type) {
+						enum fields = [];
+					} else {
+						enum fields = getFields!Type;
+					}
+
 					alias ItemFields = AliasSeq!([FieldDefinition(fieldName, FIELDS[0], attributes,
 							Type.stringof, IsBasicType!Type, IsRelation!Type, isId,
-							isOptional, isArray!OriginalType && !is(OriginalType == string))]);
+							isOptional, isArray!OriginalType && !is(OriginalType == string), fields)]);
 				}
 			}
 			else

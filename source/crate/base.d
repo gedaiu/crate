@@ -56,6 +56,8 @@ struct FieldDefinition
 	bool isId;
 	bool isOptional;
 	bool isArray;
+
+	FieldDefinition[] fields;
 }
 
 struct ModelDefinition
@@ -79,8 +81,8 @@ interface CrateSerializer(T)
 {
 	inout
 	{
-		Json serialize(T item, Json replace = Json.emptyObject);
-		Json serialize(T[] items);
+		Json denormalise(Json[] data);
+		Json denormalise(Json data);
 
 		Json normalise(Json data);
 	}
