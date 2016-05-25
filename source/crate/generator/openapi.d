@@ -7,7 +7,7 @@ import swaggerize.definitions;
 import std.stdio, std.string, std.conv;
 import vibe.data.json;
 
-Swagger toOpenApi(T)(CrateRouter!T router)
+Swagger toOpenApi(CrateRouter router)
 {
 	Swagger openApi;
 	openApi.host = "localhost";
@@ -228,7 +228,7 @@ version (unittest)
 		}
 	}
 
-	class TestCrate : Crate
+	class TestCrate(T) : Crate!T
 	{
 		TestModel item;
 
@@ -273,11 +273,11 @@ version (unittest)
 unittest
 {
 	auto router = new URLRouter();
-	auto crate = new TestCrate;
+	auto crate = new TestCrate!TestModel;
 
-	auto crateRouter = new CrateRouter!TestModel(router, crate);
-	crateRouter.enableAction!"action";
-	crateRouter.enableAction!"actionResponse";
+	auto crateRouter = new CrateRouter(router, crate);
+	crateRouter.enableAction!(TestModel, "action");
+	crateRouter.enableAction!(TestModel, "actionResponse");
 
 	auto api = crateRouter.toOpenApi;
 
@@ -299,9 +299,9 @@ unittest
 unittest
 {
 	auto router = new URLRouter();
-	auto crate = new TestCrate;
+	auto crate = new TestCrate!TestModel;
 
-	auto crateRouter = new CrateRouter!TestModel(router, crate);
+	auto crateRouter = new CrateRouter(router, crate);
 
 	auto api = crateRouter.toOpenApi.serializeToJson;
 
@@ -323,9 +323,9 @@ unittest
 unittest
 {
 	auto router = new URLRouter();
-	auto crate = new TestCrate;
+	auto crate = new TestCrate!TestModel;
 
-	auto crateRouter = new CrateRouter!TestModel(router, crate);
+	auto crateRouter = new CrateRouter(router, crate);
 
 	auto api = crateRouter.toOpenApi.serializeToJson;
 

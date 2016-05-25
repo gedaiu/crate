@@ -8,25 +8,13 @@ import vibe.data.bson;
 import crate.error;
 import crate.base;
 import crate.ctfe;
+import crate.collection;
 
 static import crate.policy.jsonapi;
 static import crate.policy.restapi;
 
 import std.traits, std.conv, std.string, std.stdio;
 import std.algorithm, std.array;
-
-CrateRoutes routes(T)(string name, const CrateConfig config) {
-
-	if(name == "Json API") {
-		return crate.policy.jsonapi.routes!T(config);
-	}
-
-	if(name == "Rest API") {
-		return crate.policy.restapi.routes!T(config);
-	}
-
-	assert(false, "Unknown " ~ name);
-}
 
 string basePath(T)(string name) {
 
@@ -44,24 +32,24 @@ string basePath(T)(string name) {
 alias DefaultPolicy = crate.policy.jsonapi.CrateJsonApiPolicy;
 
 
-class CrateRouter(T)
+class CrateRouter
 {
 	private
 	{
 		const CratePolicy policy;
-		Crate crate;
 
+		CrateCollection collection;
 		CrateRoutes definedRoutes;
 		URLRouter router;
 	}
 
-	this(URLRouter router, Crate crate, const(CratePolicy) policy = new const DefaultPolicy)
+	this(T)(URLRouter router, Crate!T crate, const(CratePolicy) policy = new const DefaultPolicy)
 	{
 		this.policy = policy;
-		this.crate = crate;
 		this.router = router;
+		this.collection = CrateCollection();
 
-		definedRoutes = routes!T(policy.name, crate.config);
+		definedRoutes = routes(policy.name, crate);
 
 		foreach (string path, methods; definedRoutes.paths)
 		{
@@ -76,13 +64,30 @@ class CrateRouter(T)
 
 		if (crate.config.getList || crate.config.addItem)
 		{
-			router.match(HTTPMethod.OPTIONS, basePath!T(policy.name), &checkError!"optionsList");
+			router.match(HTTPMethod.OPTIONS, basePath!T(policy.name), checkError(&this.optionsList));
 		}
 
 		if (crate.config.getItem || crate.config.updateItem || crate.config.deleteItem)
 		{
-			router.match(HTTPMethod.OPTIONS, basePath!T(policy.name) ~ "/:id", &checkError!"optionsItem");
+			router.match(HTTPMethod.OPTIONS, basePath!T(policy.name) ~ "/:id", checkError(&this.optionsItem));
 		}
+	}
+
+	CrateRoutes routes(T)(string name, Crate!T localCrate) {
+
+		if(name == "Json API") {
+			collection.addByPath(basePath!T(policy.name), localCrate);
+
+			return crate.policy.jsonapi.routes!T(localCrate.config);
+		}
+
+		if(name == "Rest API") {
+			collection.addByPath(basePath!T(policy.name), localCrate);
+
+			return crate.policy.restapi.routes!T(localCrate.config);
+		}
+
+		assert(false, "Unknown " ~ name);
 	}
 
 	void addRoute(string path, HTTPMethod method, PathDefinition definition)
@@ -90,30 +95,27 @@ class CrateRouter(T)
 		switch (definition.operation)
 		{
 		case CrateOperation.getList:
-			router.get(path, &checkError!"getList");
+			router.get(path, checkError(&this.getList));
 			break;
 
 		case CrateOperation.getItem:
-			router.get(path, &checkError!"getItem");
+			router.get(path, checkError(&this.getItem));
 			break;
 
 		case CrateOperation.addItem:
-			router.post(basePath!T(policy.name), &checkError!"postItem");
+			router.post(path, checkError(&this.postItem));
 			break;
 
 		case CrateOperation.deleteItem:
-			router.delete_(basePath!T(policy.name) ~ "/:id",
-					&checkError!"deleteItem");
+			router.delete_(path, checkError(&this.deleteItem));
 			break;
 
 		case CrateOperation.updateItem:
-			router.patch(basePath!T(policy.name) ~ "/:id",
-					&checkError!"updateItem");
+			router.patch(path, checkError(&this.updateItem));
 			break;
 
 		case CrateOperation.replaceItem:
-			router.patch(basePath!T(policy.name) ~ "/:id",
-					&checkError!"updateItem");
+			router.patch(path, checkError(&this.updateItem));
 			break;
 
 		default:
@@ -121,86 +123,93 @@ class CrateRouter(T)
 		}
 	}
 
-	void checkError(string methodName)(HTTPServerRequest request, HTTPServerResponse response)
+	auto checkError(T)(T func)
 	{
-		mixin("auto func = &this." ~ methodName ~ ";");
-
-		try
+		void check(HTTPServerRequest request, HTTPServerResponse response)
 		{
 			try
 			{
-				func(request, response);
+				try
+				{
+					func(request, response);
+				}
+				catch (CrateException e)
+				{
+					Json data = Json.emptyObject;
+					data.errors = Json.emptyArray;
+					data.errors ~= Json.emptyObject;
+
+					data.errors[0].status = e.statusCode;
+					data.errors[0].title = e.title;
+					data.errors[0].description = e.msg;
+
+					response.writeJsonBody(data, e.statusCode, policy.mime);
+				}
 			}
-			catch (CrateException e)
+			catch (Exception e)
 			{
+				debug
+				{
+					e.writeln;
+				}
+
 				Json data = Json.emptyObject;
 				data.errors = Json.emptyArray;
 				data.errors ~= Json.emptyObject;
 
-				data.errors[0].status = e.statusCode;
-				data.errors[0].title = e.title;
+				data.errors[0].status = 500;
+				data.errors[0].title = "Server error";
 				data.errors[0].description = e.msg;
 
-				response.writeJsonBody(data, e.statusCode, policy.mime);
+				response.writeJsonBody(data, 500, policy.mime);
 			}
 		}
-		catch (Exception e)
-		{
-			debug
-			{
-				e.writeln;
-			}
 
-			Json data = Json.emptyObject;
-			data.errors = Json.emptyArray;
-			data.errors ~= Json.emptyObject;
-
-			data.errors[0].status = 500;
-			data.errors[0].title = "Server error";
-			data.errors[0].description = e.msg;
-
-			response.writeJsonBody(data, 500, policy.mime);
-		}
+		return &check;
 	}
 
 	void optionsItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
-		addItemCORS(response);
-		writeln("=>", request.params["id"]);
+		auto crate = collection.getByPath(request.path);
+		addItemCORS(crate.config, response);
+
 		crate.getItem(request.params["id"]);
 		response.writeBody("", 200);
 	}
 
-	void optionsList(HTTPServerRequest, HTTPServerResponse response)
+	void optionsList(HTTPServerRequest request, HTTPServerResponse response)
 	{
-		addListCORS(response);
+		auto crate = collection.getByPath(request.path);
+		addListCORS(crate.config, response);
 		response.writeBody("", 200);
 	}
 
 	void getItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
-		addItemCORS(response);
+		auto crate = collection.getByPath(request.path);
+		addItemCORS(crate.config, response);
 		auto data = crate.getItem(request.params["id"]);
 
-		FieldDefinition fields = getFields!T;
-		auto denormalised = policy.serializer.denormalise(data, fields);
+		FieldDefinition definition = crate.definition;
+		auto denormalised = policy.serializer.denormalise(data, definition);
 
 		response.writeJsonBody(denormalised, 200, policy.mime);
 	}
 
 	void updateItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
-		addItemCORS(response);
+		auto crate = collection.getByPath(request.path);
+		addItemCORS(crate.config, response);
 
-		FieldDefinition fields = getFields!T;
+		FieldDefinition definition = crate.definition;
 		auto item = crate.getItem(request.params["id"]);
 
-		auto newData = policy.serializer.normalise(request.json, fields);
+		auto newData = policy.serializer.normalise(request.json, definition);
 		auto mixedData = mix(item, newData);
 
 		crate.updateItem(mixedData);
 
-		response.writeJsonBody(policy.serializer.denormalise(mixedData, fields), 200, policy.mime);
+		response.writeJsonBody(policy.serializer.denormalise(mixedData, definition), 200, policy.mime);
 	}
 
 	deprecated("Write a better mixer")
@@ -216,39 +225,46 @@ class CrateRouter(T)
 
 	void deleteItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
-		addItemCORS(response);
+		auto crate = collection.getByPath(request.path);
+		addItemCORS(crate.config, response);
+
 		crate.deleteItem(request.params["id"]);
 		response.writeBody("", 204, policy.mime);
 	}
 
-	void getList(HTTPServerRequest, HTTPServerResponse response)
+	void getList(HTTPServerRequest request, HTTPServerResponse response)
 	{
-		addListCORS(response);
-		FieldDefinition fields = getFields!T;
+		auto crate = collection.getByPath(request.path);
 
-		auto data = policy.serializer.denormalise(crate.getList, fields);
+		addListCORS(crate.config, response);
+		FieldDefinition definition = crate.definition;
+
+		auto data = policy.serializer.denormalise(crate.getList, definition);
 
 		response.writeJsonBody(data, 200, policy.mime);
 	}
 
 	void postItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
-		addListCORS(response);
+		auto crate = collection.getByPath(request.path);
+		addListCORS(crate.config, response);
 
-		FieldDefinition fields = getFields!T;
+		FieldDefinition definition = crate.definition;
 
-		auto data = policy.serializer.normalise(request.json, fields);
-		auto item = policy.serializer.denormalise(crate.addItem(data), fields);
+		auto data = policy.serializer.normalise(request.json, definition);
+		auto item = policy.serializer.denormalise(crate.addItem(data), definition);
+
 
 		response.headers["Location"] = (request.fullURL ~ Path(item["data"]["id"].to!string))
 			.to!string;
 		response.writeJsonBody(item, 201, policy.mime);
 	}
 
+/*
 	alias ActionDelegate = void delegate(T item);
-	alias ActionQueryDelegate = string delegate(T item);
+	alias ActionQueryDelegate = string delegate(T item);*/
 
-	void enableAction(string actionName)()
+	void enableAction(T, string actionName)()
 	{
 		static if (__traits(hasMember, T, actionName))
 		{
@@ -270,7 +286,9 @@ class CrateRouter(T)
 
 			static if (Param.length == 0)
 			{
-				router.get(path, &checkError!("callCrateAction!\"" ~ actionName ~ "\""));
+				auto func = &this.callCrateAction!(T, actionName);
+
+				router.get(path, checkError(func));
 			}
 			else
 			{
@@ -283,9 +301,11 @@ class CrateRouter(T)
 		}
 	}
 
-	void callCrateAction(string actionName)(HTTPServerRequest request, HTTPServerResponse response)
+	void callCrateAction(T, string actionName)(HTTPServerRequest request, HTTPServerResponse response)
 	{
-		addItemCORS(response);
+		auto crate = collection.getByPath(request.path);
+
+		addItemCORS(crate.config, response);
 		auto item = crate.getItem(request.params["id"]).deserializeJson!T;
 		auto func = &__traits(getMember, item, actionName);
 
@@ -317,16 +337,16 @@ class CrateRouter(T)
 
 	private
 	{
-		void addListCORS(HTTPServerResponse response)
+		void addListCORS(CrateConfig config, HTTPServerResponse response)
 		{
 			string methods = "OPTIONS";
 
-			if (crate.config.getList)
+			if (config.getList)
 			{
 				methods ~= ", GET";
 			}
 
-			if (crate.config.addItem)
+			if (config.addItem)
 			{
 				methods ~= ", POST";
 			}
@@ -336,21 +356,21 @@ class CrateRouter(T)
 			response.headers["Access-Control-Allow-Headers"] = "Content-Type";
 		}
 
-		void addItemCORS(HTTPServerResponse response)
+		void addItemCORS(CrateConfig config, HTTPServerResponse response)
 		{
 			string methods = "OPTIONS";
 
-			if (crate.config.getList)
+			if (config.getList)
 			{
 				methods ~= ", GET";
 			}
 
-			if (crate.config.updateItem)
+			if (config.updateItem)
 			{
 				methods ~= ", PATCH";
 			}
 
-			if (crate.config.deleteItem)
+			if (config.deleteItem)
 			{
 				methods ~= ", DELETE";
 			}
@@ -377,7 +397,7 @@ version (unittest)
 		}
 	}
 
-	class TestCrate : Crate
+	class TestCrate(T) : Crate!T
 	{
 		TestModel item;
 
@@ -424,10 +444,10 @@ version (unittest)
 unittest
 {
 	auto router = new URLRouter();
-	auto crate = new TestCrate();
-	auto crateRouter = new CrateRouter!TestModel(router, crate);
+	auto crate = new TestCrate!TestModel;
+	auto crateRouter = new CrateRouter(router, crate);
 
-	crateRouter.enableAction!"actionChange";
+	crateRouter.enableAction!(TestModel, "actionChange");
 
 	request(router).get("/testmodels/1/actionChange").expectStatusCode(200)
 		.end((Response response) => {
@@ -452,7 +472,7 @@ unittest
 		RelatedModel relation;
 	}
 
-	class BaseCrate : Crate
+	class BaseCrate(T) : Crate!T
 	{
 		CrateConfig config()
 		{
@@ -492,8 +512,8 @@ unittest
 	}
 
 	auto router = new URLRouter();
-	auto crate = new BaseCrate();
-	auto crateRouter = new CrateRouter!BaseModel(router, crate);
+	auto crate = new BaseCrate!BaseModel;
+	auto crateRouter = new CrateRouter(router, crate);
 
 	Json data = `{
 		"data": {

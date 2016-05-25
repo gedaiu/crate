@@ -65,8 +65,10 @@ struct ModelDefinition
 	FieldDefinition[string] fields;
 }
 
-interface Crate
+interface Crate(T)
 {
+	alias Type = T;
+
 	CrateConfig config();
 
 	Json[] getList();

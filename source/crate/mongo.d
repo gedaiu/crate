@@ -11,7 +11,7 @@ import vibe.db.mongo.collection;
 
 import std.conv, std.stdio;
 
-class MongoCrate: Crate
+class MongoCrate(T): Crate!T
 {
 	private {
 		MongoCollection collection;
@@ -172,9 +172,9 @@ unittest
 	auto collection = client.getCollection("test.model");
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate(collection);
+	auto crate = new MongoCrate!TestModel(collection);
 
-	auto crateRouter = new CrateRouter!TestModel(router, crate);
+	auto crateRouter = new CrateRouter(router, crate);
 
 	Json data = Json.emptyObject;
 	data["data"] = Json.emptyObject;
@@ -201,8 +201,8 @@ unittest
 	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000001")));
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate(collection);
-	auto crateRouter = new const CrateRouter!TestModel(router, crate);
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new const CrateRouter(router, crate);
 
 	request(router).get("/testmodels").expectHeader("Content-Type",
 			"application/vnd.api+json").expectStatusCode(200).end((Response response) => {
@@ -222,8 +222,8 @@ unittest
 	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate(collection);
-	auto crateRouter = new CrateRouter!TestModel(router, crate);
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new CrateRouter(router, crate);
 
 	request(router)
 		.get("/testmodels/573cbc2fc3b7025427000000")
@@ -244,8 +244,8 @@ unittest
 	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000"), "", "testName"));
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate(collection);
-	auto crateRouter = new const CrateRouter!TestModel(router, crate);
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new const CrateRouter(router, crate);
 
 	auto data = Json.emptyObject;
 	data["data"] = Json.emptyObject;
@@ -274,8 +274,8 @@ unittest
 	collection.drop;
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate(collection);
-	auto crateRouter = new CrateRouter!TestModel(router, crate);
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new CrateRouter(router, crate);
 
 	request(router).get("/testmodels/1").expectStatusCode(404).end((Response response) => {
 		assert(response.bodyJson["errors"][0]["status"] == 404);
@@ -295,9 +295,9 @@ unittest
 	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate(collection);
-	auto crateRouter = new CrateRouter!TestModel(router, crate);
-	crateRouter.enableAction!"action";
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new CrateRouter(router, crate);
+	crateRouter.enableAction!(TestModel, "action");
 
 	request(router).get("/testmodels/573cbc2fc3b7025427000000/action").expectStatusCode(200).end((Response response) => {
 		assert(response.bodyString == "");
@@ -317,9 +317,9 @@ unittest
 	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate(collection);
-	auto crateRouter = new CrateRouter!TestModel(router, crate);
-	crateRouter.enableAction!"actionResponse";
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new CrateRouter(router, crate);
+	crateRouter.enableAction!(TestModel, "actionResponse");
 
 	request(router).get("/testmodels/573cbc2fc3b7025427000000/actionResponse").expectStatusCode(200)
 		.end((Response response) => {
@@ -340,8 +340,8 @@ unittest
 	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
 
 	auto router = new URLRouter();
-	auto crate = new MongoCrate(collection);
-	auto crateRouter = new CrateRouter!TestModel(router, crate);
+	auto crate = new MongoCrate!TestModel(collection);
+	auto crateRouter = new CrateRouter(router, crate);
 
 	request(router).get("/testmodels")
 		.expectHeader("Access-Control-Allow-Origin", "*").end((Response response) => { });
