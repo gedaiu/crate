@@ -10,6 +10,7 @@ struct Comment {
 	string message;
 }
 
+@("plural:Categories")
 struct Category {
 	BsonObjectID _id;
 

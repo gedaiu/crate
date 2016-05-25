@@ -188,6 +188,7 @@ class CrateRouter(T)
 	void getList(HTTPServerRequest, HTTPServerResponse response)
 	{
 		addListCORS(response);
+
 		auto data = policy.serializer.denormalise(crate.getList);
 
 		response.writeJsonBody(data, 200, policy.mime);
@@ -196,7 +197,6 @@ class CrateRouter(T)
 	void postItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		addListCORS(response);
-
 
 		auto data = policy.serializer.normalise(request.json);
 		auto item = policy.serializer.denormalise(crate.addItem(data));

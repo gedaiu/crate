@@ -16,17 +16,16 @@ import std.traits, std.stdio, std.meta, std.conv;
 class CrateRestApiSerializer(T) : CrateSerializer!T
 {
 
-	private {
+	private immutable {
 		string singular;
 		string plural;
 	}
 
 	this() inout {
-		this(T.stringof[0].toLower.to!string ~ T.stringof[1..$]);
-	}
+		enum singular = Singular!T[0..1].toLower ~ Singular!T[1..$];
+		enum plural = Plural!T[0..1].toLower ~ Plural!T[1..$];
 
-	this(string singular) inout {
-		this(singular, singular ~ "s");
+		this(singular, plural);
 	}
 
 	this(string singular, string plural) inout {
@@ -124,4 +123,24 @@ unittest
 	assert(value["testModels"][1]["id"] == "ID2");
 	assert(value["testModels"][1]["field1"] == "Ember Hamster2");
 	assert(value["testModels"][1]["field2"] == 6);
+}
+
+@("Check denormalised type")
+unittest
+{
+	@("singular: SingularModel", "plural: PluralModel")
+	struct TestModel
+	{
+		@optional
+		{
+			string _id;
+		}
+	}
+
+	auto serializer = new CrateRestApiSerializer!TestModel;
+	auto valueSingular = const serializer.denormalise(TestModel().serializeToJson);
+	auto valuePlural = const serializer.denormalise([ TestModel().serializeToJson ]);
+
+	assert("singularModel" in valueSingular);
+	assert("pluralModel" in valuePlural);
 }

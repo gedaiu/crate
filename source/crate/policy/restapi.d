@@ -16,12 +16,20 @@ class CrateRestApiPolicy(T) : CratePolicy!T
 	{
 		CrateRestApiSerializer!T _serializer;
 		CrateConfig!T _config;
+
+		immutable {
+			string singular;
+			string plural;
+		}
 	}
 
 	this(CrateConfig!T config = CrateConfig!T()) inout
 	{
 		this._config = config;
-		this._serializer = new inout CrateRestApiSerializer!T(config.singular, config.plural);
+		this._serializer = new inout CrateRestApiSerializer!T();
+
+		singular = Singular!T[0..1].toLower ~ Singular!T[1..$];
+		plural = Plural!T[0..1].toLower ~ Plural!T[1..$];
 	}
 
 	inout(CrateConfig!T) config() inout pure
@@ -36,7 +44,7 @@ class CrateRestApiPolicy(T) : CratePolicy!T
 
 	string basePath() inout pure
 	{
-		return "/" ~ config.plural.toLower;
+		return "/" ~ plural.toLower;
 	}
 
 	CrateRoutes routes() inout
@@ -130,8 +138,8 @@ class CrateRestApiPolicy(T) : CratePolicy!T
 			auto data = Json.emptyObject;
 			data["type"] = "object";
 			data["properties"] = Json.emptyObject;
-			data["properties"][config.singular] = Json.emptyObject;
-			data["properties"][config.singular]["$ref"] = "#/definitions/" ~ T.stringof;
+			data["properties"][singular] = Json.emptyObject;
+			data["properties"][singular]["$ref"] = "#/definitions/" ~ T.stringof;
 
 			return data;
 		}
@@ -141,10 +149,10 @@ class CrateRestApiPolicy(T) : CratePolicy!T
 			auto data = Json.emptyObject;
 			data["type"] = "object";
 			data["properties"] = Json.emptyObject;
-			data["properties"][config.plural] = Json.emptyObject;
-			data["properties"][config.plural]["type"] = "array";
-			data["properties"][config.plural]["items"] = Json.emptyObject;
-			data["properties"][config.plural]["items"]["$ref"] = "#/definitions/" ~ T.stringof;
+			data["properties"][plural] = Json.emptyObject;
+			data["properties"][plural]["type"] = "array";
+			data["properties"][plural]["items"] = Json.emptyObject;
+			data["properties"][plural]["items"]["$ref"] = "#/definitions/" ~ T.stringof;
 
 			return data;
 		}
@@ -234,9 +242,9 @@ class CrateRestApiPolicy(T) : CratePolicy!T
 			auto data = Json.emptyObject;
 			data["type"] = "object";
 			data["properties"] = Json.emptyObject;
-			data["properties"][config.singular] = Json.emptyObject;
+			data["properties"][singular] = Json.emptyObject;
 
-			describe!(T, false)(data["properties"][config.singular]);
+			describe!(T, false)(data["properties"][singular]);
 
 			return data;
 		}

@@ -21,7 +21,7 @@ class CrateJsonApiPolicy(T) : CratePolicy!T
 	this(CrateConfig!T config = CrateConfig!T()) inout
 	{
 		this._config = config;
-		this._serializer = new inout CrateJsonApiSerializer!T(config.plural.toLower.dup);
+		this._serializer = new inout CrateJsonApiSerializer!T(Plural!T.toLower);
 	}
 
 	string mime() inout pure nothrow
@@ -63,7 +63,7 @@ class CrateJsonApiPolicy(T) : CratePolicy!T
 
 	string basePath() inout pure
 	{
-		return "/" ~ config.plural.toLower;
+		return "/" ~ Plural!T.toLower;
 	}
 
 	CrateRoutes routes() inout

@@ -287,13 +287,17 @@ template getFields(Prototype)
 
 					static if(IsBasicType!Type) {
 						enum fields = [];
+						enum singular = "";
+						enum plural = "";
 					} else {
 						enum fields = getFields!Type;
+						enum singular = Singular!Type;
+						enum plural = Plural!Type;
 					}
 
 					alias ItemFields = AliasSeq!([FieldDefinition(fieldName, FIELDS[0], attributes,
 							Type.stringof, IsBasicType!Type, IsRelation!Type, isId,
-							isOptional, isArray!OriginalType && !is(OriginalType == string), fields)]);
+							isOptional, isArray!OriginalType && !is(OriginalType == string), fields, singular, plural)]);
 				}
 			}
 			else
@@ -308,6 +312,44 @@ template getFields(Prototype)
 	mixin("enum list = [ " ~ Join!(ItemFields!(__traits(allMembers, Prototype))) ~ " ];");
 
 	alias getFields = list;
+}
+
+private string prefixedAttribute(string prefix, string defaultValue, attributes...)() {
+	static if(attributes.length == 0) {
+		return defaultValue;
+	} else {
+		import std.string : strip;
+
+		auto len = prefix.length;
+
+		foreach(value; attributes) {
+			if(value.length > len && value[0..len] == prefix ) {
+				return value[len..$].strip;
+			}
+		}
+
+		return defaultValue;
+	}
+}
+
+template Plural(Type) {
+	import std.uni : toLower;
+
+	enum ATTR = __traits(getAttributes, Type);
+	enum defaultPlural = Type.stringof ~ "s";
+	enum plural = prefixedAttribute!("plural:", defaultPlural, ATTR)();
+
+	alias Plural = plural;
+}
+
+template Singular(Type) {
+	import std.uni : toLower;
+
+	enum ATTR = __traits(getAttributes, Type);
+	enum defaultSingular = Type.stringof;
+	enum singular = prefixedAttribute!("singular:", defaultSingular, ATTR)();
+
+	alias Singular = singular;
 }
 
 version (unittest)

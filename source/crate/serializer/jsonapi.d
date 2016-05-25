@@ -21,7 +21,7 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 
 	this() inout
 	{
-		this.type = T.stringof.toLower ~ "s";
+		this.type = Plural!T.toLower;
 	}
 
 	this(string type) inout
@@ -81,7 +81,7 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 
 					serialized["data"]["relationships"][key] = Json.emptyObject;
 					serialized["data"]["relationships"][key]["data"] = Json.emptyObject;
-					serialized["data"]["relationships"][key]["data"]["type"] = fields[0].type.toLower ~ "s";
+					serialized["data"]["relationships"][key]["data"]["type"] = fields[0].plural.toLower;
 					if(data[fields[0].originalName].type == Json.Type.object) {
 						serialized["data"]["relationships"][key]["data"]["id"] = data[fields[0].originalName][idField];
 					} else {
@@ -115,7 +115,7 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 	Json normalise(Json data) inout
 	{
 		enforce!CrateValidationException(data["data"]["type"].to!string == type,
-				"data.type expected to be `" ~ type ~ "`");
+				"data.type expected to be `" ~ type ~ "` instead of `" ~ data["data"]["type"].to!string ~ "`");
 
 		auto normalised = Json.emptyObject;
 
@@ -391,4 +391,32 @@ unittest
 	auto value = serializer.normalise(serializedValue);
 
 	assert(value.child.name == "test");
+}
+
+@("Check denormalised type")
+unittest
+{
+	@("plural: Plural2")
+	struct TestModel
+	{
+		string _id;
+		string name;
+	}
+
+	@("plural: Plural1")
+	struct ComposedModel
+	{
+		@optional
+		{
+			string _id;
+		}
+
+		TestModel child;
+	}
+
+	auto serializer = new CrateJsonApiSerializer!ComposedModel;
+	auto value = serializer.denormalise(ComposedModel().serializeToJson);
+
+	assert(value["data"]["type"] == "plural1");
+	assert(value["data"]["relationships"]["child"]["data"]["type"] == "plural2");
 }

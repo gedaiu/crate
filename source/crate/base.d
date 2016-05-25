@@ -20,9 +20,6 @@ enum CrateOperation
 
 struct CrateConfig(T)
 {
-	string singular = T.stringof[0 .. 1].toLower ~ T.stringof[1 .. $];
-	string plural = T.stringof[0 .. 1].toLower ~ T.stringof[1 .. $] ~ "s";
-
 	bool getList = true;
 	bool getItem = true;
 	bool addItem = true;
@@ -58,6 +55,8 @@ struct FieldDefinition
 	bool isArray;
 
 	FieldDefinition[] fields;
+	string singular;
+	string plural;
 }
 
 struct ModelDefinition
