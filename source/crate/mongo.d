@@ -13,11 +13,19 @@ import std.conv, std.stdio;
 
 class MongoCrate: Crate
 {
-	private MongoCollection collection;
+	private {
+		MongoCollection collection;
+		CrateConfig _config;
+	}
 
-	this(MongoCollection collection)
+	this(MongoCollection collection, CrateConfig config = CrateConfig())
 	{
 		this.collection = collection;
+		this._config = config;
+	}
+
+	CrateConfig config() {
+		return _config;
 	}
 
 	Json[] getList()

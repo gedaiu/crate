@@ -16,7 +16,7 @@ Swagger toOpenApi(T)(CrateRouter!T router)
 	openApi.consumes = router.mime;
 	openApi.definitions = errorDefinitions;
 
-	auto routes = router.routes;
+	auto routes = router.allRoutes;
 
 	foreach (string key, schema; routes.schemas)
 	{
@@ -231,6 +231,10 @@ version (unittest)
 	class TestCrate : Crate
 	{
 		TestModel item;
+
+		CrateConfig config() {
+			return CrateConfig();
+		}
 
 		Json[] getList()
 		{

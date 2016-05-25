@@ -67,6 +67,8 @@ struct ModelDefinition
 
 interface Crate
 {
+	CrateConfig config();
+
 	Json[] getList();
 
 	Json addItem(Json item);
@@ -87,21 +89,12 @@ interface CrateSerializer
 	}
 }
 
-interface CratePolicy(T)
+interface CratePolicy
 {
-	inout
+	inout pure nothrow
 	{
-		pure
-		{
-			string mime() nothrow;
-			ModelDefinition definition();
-
-			inout(CrateSerializer) serializer();
-			inout(CrateConfig) config();
-
-			string basePath();
-		}
-
-		CrateRoutes routes();
+		string name();
+		string mime();
+		inout(CrateSerializer) serializer();
 	}
 }

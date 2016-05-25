@@ -8,31 +8,62 @@ import vibe.data.bson;
 import crate.error;
 import crate.base;
 import crate.ctfe;
-import crate.policy.jsonapi;
+
+static import crate.policy.jsonapi;
+static import crate.policy.restapi;
 
 import std.traits, std.conv, std.string, std.stdio;
 import std.algorithm, std.array;
+
+CrateRoutes routes(T)(string name, const CrateConfig config) {
+
+	if(name == "Json API") {
+		return crate.policy.jsonapi.routes!T(config);
+	}
+
+	if(name == "Rest API") {
+		return crate.policy.restapi.routes!T(config);
+	}
+
+	assert(false, "Unknown " ~ name);
+}
+
+string basePath(T)(string name) {
+
+	if(name == "Json API") {
+		return crate.policy.jsonapi.basePath!T();
+	}
+
+	if(name == "Rest API") {
+		return crate.policy.restapi.basePath!T();
+	}
+
+	assert(false, "Unknown " ~ name);
+}
+
+alias DefaultPolicy = crate.policy.jsonapi.CrateJsonApiPolicy;
+
 
 class CrateRouter(T)
 {
 	private
 	{
-		const CratePolicy!T policy;
+		const CratePolicy policy;
 		Crate crate;
 
 		CrateRoutes definedRoutes;
 		URLRouter router;
 	}
 
-	this(URLRouter router, Crate crate, const(CratePolicy!T) policy = new const CrateJsonApiPolicy!T())
+	this(URLRouter router, Crate crate, const(CratePolicy) policy = new const DefaultPolicy)
 	{
 		this.policy = policy;
 		this.crate = crate;
 		this.router = router;
 
-		definedRoutes = policy.routes;
+		definedRoutes = routes!T(policy.name, crate.config);
 
-		foreach (string path, methods; routes.paths)
+		foreach (string path, methods; definedRoutes.paths)
 		{
 			foreach (method, responses; methods)
 			{
@@ -43,14 +74,14 @@ class CrateRouter(T)
 			}
 		}
 
-		if (policy.config.getList || policy.config.addItem)
+		if (crate.config.getList || crate.config.addItem)
 		{
-			router.match(HTTPMethod.OPTIONS, policy.basePath, &checkError!"optionsList");
+			router.match(HTTPMethod.OPTIONS, basePath!T(policy.name), &checkError!"optionsList");
 		}
 
-		if (policy.config.getItem || policy.config.updateItem || policy.config.deleteItem)
+		if (crate.config.getItem || crate.config.updateItem || crate.config.deleteItem)
 		{
-			router.match(HTTPMethod.OPTIONS, policy.basePath ~ "/:id", &checkError!"optionsItem");
+			router.match(HTTPMethod.OPTIONS, basePath!T(policy.name) ~ "/:id", &checkError!"optionsItem");
 		}
 	}
 
@@ -67,21 +98,21 @@ class CrateRouter(T)
 			break;
 
 		case CrateOperation.addItem:
-			router.post(policy.basePath, &checkError!"postItem");
+			router.post(basePath!T(policy.name), &checkError!"postItem");
 			break;
 
 		case CrateOperation.deleteItem:
-			router.delete_(policy.basePath ~ "/:id",
+			router.delete_(basePath!T(policy.name) ~ "/:id",
 					&checkError!"deleteItem");
 			break;
 
 		case CrateOperation.updateItem:
-			router.patch(policy.basePath ~ "/:id",
+			router.patch(basePath!T(policy.name) ~ "/:id",
 					&checkError!"updateItem");
 			break;
 
 		case CrateOperation.replaceItem:
-			router.patch(policy.basePath ~ "/:id",
+			router.patch(basePath!T(policy.name) ~ "/:id",
 					&checkError!"updateItem");
 			break;
 
@@ -224,7 +255,7 @@ class CrateRouter(T)
 			alias Param = Parameters!(__traits(getMember, T, actionName));
 			alias RType = ReturnType!(__traits(getMember, T, actionName));
 
-			auto path = policy.basePath ~ "/:id/" ~ actionName;
+			auto path = basePath!T(policy.name) ~ "/:id/" ~ actionName;
 
 			static if (is(RType == void))
 			{
@@ -274,7 +305,7 @@ class CrateRouter(T)
 		response.writeBody(result, 200);
 	}
 
-	CrateRoutes routes()
+	CrateRoutes allRoutes()
 	{
 		return definedRoutes;
 	}
@@ -290,12 +321,12 @@ class CrateRouter(T)
 		{
 			string methods = "OPTIONS";
 
-			if (policy.config.getList)
+			if (crate.config.getList)
 			{
 				methods ~= ", GET";
 			}
 
-			if (policy.config.addItem)
+			if (crate.config.addItem)
 			{
 				methods ~= ", POST";
 			}
@@ -309,17 +340,17 @@ class CrateRouter(T)
 		{
 			string methods = "OPTIONS";
 
-			if (policy.config.getList)
+			if (crate.config.getList)
 			{
 				methods ~= ", GET";
 			}
 
-			if (policy.config.updateItem)
+			if (crate.config.updateItem)
 			{
 				methods ~= ", PATCH";
 			}
 
-			if (policy.config.deleteItem)
+			if (crate.config.deleteItem)
 			{
 				methods ~= ", DELETE";
 			}
@@ -349,6 +380,11 @@ version (unittest)
 	class TestCrate : Crate
 	{
 		TestModel item;
+
+		CrateConfig config()
+		{
+			return CrateConfig();
+		}
 
 		Json[] getList()
 		{
@@ -418,6 +454,11 @@ unittest
 
 	class BaseCrate : Crate
 	{
+		CrateConfig config()
+		{
+			return CrateConfig();
+		}
+
 		Json[] getList()
 		{
 			throw new Exception("getList not implemented");
