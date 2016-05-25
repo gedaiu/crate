@@ -143,4 +143,6 @@ unittest
 
 	assert("singularModel" in valueSingular);
 	assert("pluralModel" in valuePlural);
+
+	assert("_id" in serializer.normalise(valueSingular));
 }

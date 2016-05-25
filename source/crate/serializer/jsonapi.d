@@ -419,4 +419,6 @@ unittest
 
 	assert(value["data"]["type"] == "plural1");
 	assert(value["data"]["relationships"]["child"]["data"]["type"] == "plural2");
+
+	assert("child" in serializer.normalise(value));
 }
