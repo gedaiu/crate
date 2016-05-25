@@ -35,6 +35,25 @@ class CrateNotFoundException : CrateException
 	}
 }
 
+class CrateRelationNotFoundException : CrateException
+{
+	this(string msg = null, Throwable next = null)
+	{
+		super(msg, next);
+
+		statusCode = 400;
+		title = "Crate relation id missing";
+	}
+
+	this(string msg, string file, size_t line, Throwable next = null)
+	{
+		super(msg, file, line, next);
+
+		statusCode = 400;
+		title = "Crate relation id missing";
+	}
+}
+
 class CrateValidationException : CrateException
 {
 	this(string msg = null, Throwable next = null)

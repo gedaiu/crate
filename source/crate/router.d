@@ -43,21 +43,51 @@ class CrateRouter
 		URLRouter router;
 	}
 
-	this(T)(URLRouter router, Crate!T crate, const(CratePolicy) policy = new const DefaultPolicy)
+	this(T...)(URLRouter router, const(CratePolicy) policy, T crates)
 	{
 		this.policy = policy;
 		this.router = router;
 		this.collection = CrateCollection();
 
-		definedRoutes = routes(policy.name, crate);
+		foreach(crate; crates) {
+			addCrate(crate);
+		}
 
-		foreach (string path, methods; definedRoutes.paths)
+		bindRoutes();
+	}
+
+	this(T...)(URLRouter router, T crates)
+	{
+		this.policy = new const DefaultPolicy;
+		this.router = router;
+		this.collection = CrateCollection();
+
+		foreach(crate; crates) {
+			addCrate(crate);
+		}
+
+		bindRoutes();
+	}
+
+	this(T)(URLRouter router, Crate!T crate, const(CratePolicy) policy = new const DefaultPolicy)
+	{
+		this(router, policy, crate);
+	}
+
+	void addCrate(T)(Crate!T crate) {
+		auto tmpRoutes = routes(policy.name, crate);
+
+		foreach(string name, schema; tmpRoutes.schemas) {
+			definedRoutes.schemas[name] = schema;
+		}
+
+		foreach (string path, methods; tmpRoutes.paths)
 		{
 			foreach (method, responses; methods)
 			{
 				foreach (response, pathDefinition; responses)
 				{
-					addRoute(path, method, pathDefinition);
+					definedRoutes.paths[path][method][response] = pathDefinition;
 				}
 			}
 		}
@@ -70,6 +100,19 @@ class CrateRouter
 		if (crate.config.getItem || crate.config.updateItem || crate.config.deleteItem)
 		{
 			router.match(HTTPMethod.OPTIONS, basePath!T(policy.name) ~ "/:id", checkError(&this.optionsItem));
+		}
+	}
+
+	void bindRoutes() {
+		foreach (string path, methods; definedRoutes.paths)
+		{
+			foreach (method, responses; methods)
+			{
+				foreach (response, pathDefinition; responses)
+				{
+					addRoute(path, method, pathDefinition);
+				}
+			}
 		}
 	}
 
@@ -207,6 +250,8 @@ class CrateRouter
 		auto newData = policy.serializer.normalise(request.json, definition);
 		auto mixedData = mix(item, newData);
 
+		checkRelationships(mixedData, definition);
+
 		crate.updateItem(mixedData);
 
 		response.writeJsonBody(policy.serializer.denormalise(mixedData, definition), 200, policy.mime);
@@ -252,17 +297,29 @@ class CrateRouter
 		FieldDefinition definition = crate.definition;
 
 		auto data = policy.serializer.normalise(request.json, definition);
-		auto item = policy.serializer.denormalise(crate.addItem(data), definition);
+		checkRelationships(data, definition);
 
+		auto item = policy.serializer.denormalise(crate.addItem(data), definition);
 
 		response.headers["Location"] = (request.fullURL ~ Path(item["data"]["id"].to!string))
 			.to!string;
 		response.writeJsonBody(item, 201, policy.mime);
 	}
 
-/*
-	alias ActionDelegate = void delegate(T item);
-	alias ActionQueryDelegate = string delegate(T item);*/
+	void checkRelationships(Json data, FieldDefinition definition) {
+		foreach(field; definition.fields) {
+			if(field.isRelation) {
+				auto crate = collection.getByType(field.type);
+				string id = data[field.name].to!string;
+
+				try {
+					crate.getItem(id);
+				} catch(CrateNotFoundException e) {
+					throw new CrateRelationNotFoundException("Item with id `" ~ id ~ "` not found");
+				}
+			}
+		}
+	}
 
 	void enableAction(T, string actionName)()
 	{
@@ -411,9 +468,10 @@ version (unittest)
 			return [item.serializeToJson];
 		}
 
-		Json addItem(Json)
+		Json addItem(Json item)
 		{
-			throw new Exception("addItem not implemented");
+			item["_id"] = "1";
+			return item;
 		}
 
 		Json getItem(string)
@@ -456,7 +514,7 @@ unittest
 		});
 }
 
-@("check post with relations")
+@("check post with existing relations")
 unittest
 {
 	struct RelatedModel {
@@ -472,48 +530,11 @@ unittest
 		RelatedModel relation;
 	}
 
-	class BaseCrate(T) : Crate!T
-	{
-		CrateConfig config()
-		{
-			return CrateConfig();
-		}
-
-		Json[] getList()
-		{
-			throw new Exception("getList not implemented");
-		}
-
-		Json addItem(Json item)
-		{
-			item["_id"] = "1";
-			return item;
-		}
-
-		Json getItem(string id)
-		{
-			throw new Exception("getItem not implemented");
-		}
-
-		Json editItem(string id, Json fields)
-		{
-			throw new Exception("editItem not implemented");
-		}
-
-		void updateItem(Json item)
-		{
-			throw new Exception("updateItem not implemented");
-		}
-
-		void deleteItem(string id)
-		{
-			throw new Exception("deleteItem not implemented");
-		}
-	}
-
 	auto router = new URLRouter();
-	auto crate = new BaseCrate!BaseModel;
-	auto crateRouter = new CrateRouter(router, crate);
+	auto baseCrate = new TestCrate!BaseModel;
+	auto relatedCrate = new TestCrate!RelatedModel;
+
+	auto crateRouter = new CrateRouter(router, baseCrate, relatedCrate);
 
 	Json data = `{
 		"data": {
@@ -538,5 +559,98 @@ unittest
 		.end((Response response) => {
 			assert(response.bodyJson["data"]["id"] == "1");
 			assert(response.bodyJson["data"]["relationships"]["relation"]["data"]["id"] == "1");
+		});
+}
+
+@("check post with missing relations")
+unittest
+{
+	struct RelatedModel {
+		string _id;
+
+		string name;
+	}
+
+	struct BaseModel {
+		string _id;
+
+		string name;
+		RelatedModel relation;
+	}
+
+	class MissingCrate(T) : Crate!T
+	{
+		CrateConfig config()
+		{
+			return CrateConfig();
+		}
+
+		Json[] getList()
+		{
+			throw new Exception("getList not implemented");
+		}
+
+		Json addItem(Json item)
+		{
+			item["_id"] = "1";
+			return item;
+		}
+
+		Json getItem(string id)
+		{
+			throw new CrateNotFoundException("getItem not implemented");
+		}
+
+		Json editItem(string id, Json fields)
+		{
+			throw new CrateNotFoundException("getItem not implemented");
+		}
+
+		void updateItem(Json item)
+		{
+			throw new CrateNotFoundException("getItem not implemented");
+		}
+
+		void deleteItem(string id)
+		{
+			throw new CrateNotFoundException("getItem not implemented");
+		}
+	}
+
+	auto router = new URLRouter();
+	auto baseCrate = new TestCrate!BaseModel;
+	auto relatedCrate = new MissingCrate!RelatedModel;
+
+	auto crateRouter = new CrateRouter(router, baseCrate, relatedCrate);
+
+	Json data = `{
+		"data": {
+			"attributes": {
+				"name": "hello"
+			},
+			"type": "basemodels",
+			"relationships": {
+				"relation": {
+					"data": {
+						"type": "relatedmodels",
+						"id": "1"
+					}
+				}
+			}
+		}
+	}`.parseJsonString;
+
+	request(router)
+		.post("/basemodels")
+		.send(data)
+		.expectStatusCode(400)
+		.end((Response response) => {
+		});
+
+	request(router)
+		.patch("/basemodels/1")
+		.send(data)
+		.expectStatusCode(400)
+		.end((Response response) => {
 		});
 }

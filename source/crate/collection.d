@@ -69,10 +69,12 @@ struct CrateCollection {
 
   private {
     CrateProxy[string] crates;
+    string[string] types;
   }
 
   void addByPath(T)(string basePath, ref Crate!T crate) {
     crates[basePath] = new CrateProxy(crate);
+    types[T.stringof] = basePath;
   }
 
   CrateProxy getByPath(string path) {
@@ -80,6 +82,14 @@ struct CrateCollection {
       if(path.indexOf(basePath) == 0) {
         return crate;
       }
+    }
+
+    assert(false, "Crate not found");
+  }
+
+  CrateProxy getByType(string type) {
+    if(type in types) {
+      return crates[types[type]];
     }
 
     assert(false, "Crate not found");
