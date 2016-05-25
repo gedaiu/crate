@@ -58,7 +58,6 @@ class CrateRouter
 
 	this(U, T...)(URLRouter router, Crate!U firstCrate, T crates)
 	{
-		pragma(msg, "===>", );
 		this.policy = new const DefaultPolicy;
 		this.router = router;
 		this.collection = CrateCollection();
