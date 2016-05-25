@@ -11,6 +11,14 @@ struct Comment {
 	string message;
 }
 
+@("plural:Categories")
+struct Category {
+	BsonObjectID _id;
+
+	string name;
+	string color;
+}
+
 struct Book
 {
 	@optional {
@@ -19,7 +27,7 @@ struct Book
 
 	string name;
 	string author;
-	string category;
+	Category category;
 
 	@optional
 	int something;
@@ -52,13 +60,17 @@ shared static this()
 
 	auto router = new URLRouter;
 
-	auto collection = client.getCollection("test.model");
-	auto crate = new MongoCrate(collection);
-	auto policy = new const CrateRestApiPolicy!Book();
+	auto bookCollection = client.getCollection("test.books");
+	auto categoryCollection = client.getCollection("test.bookCategories");
 
-	auto crateRouter = new CrateRouter!Book(router, crate, policy);
-	crateRouter.enableAction!"action";
-	crateRouter.enableAction!"actionResponse";
+	auto bookCrate = new MongoCrate!Book(bookCollection);
+	auto categoryCrate = new MongoCrate!Category(categoryCollection);
+
+	auto policy = new const CrateRestApiPolicy();
+
+	auto crateRouter = new CrateRouter(router, policy, bookCrate, categoryCrate);
+	crateRouter.enableAction!(Book, "action");
+	crateRouter.enableAction!(Book, "actionResponse");
 
 	crateRouter.generateOpenApi;
 

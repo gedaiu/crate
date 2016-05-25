@@ -14,7 +14,7 @@ static import crate.policy.jsonapi;
 static import crate.policy.restapi;
 
 import std.traits, std.conv, std.string, std.stdio;
-import std.algorithm, std.array;
+import std.algorithm, std.array, std.traits;
 
 string basePath(T)(string name) {
 
@@ -56,11 +56,14 @@ class CrateRouter
 		bindRoutes();
 	}
 
-	this(T...)(URLRouter router, T crates)
+	this(U, T...)(URLRouter router, Crate!U firstCrate, T crates)
 	{
+		pragma(msg, "===>", );
 		this.policy = new const DefaultPolicy;
 		this.router = router;
 		this.collection = CrateCollection();
+
+		addCrate(firstCrate);
 
 		foreach(crate; crates) {
 			addCrate(crate);
