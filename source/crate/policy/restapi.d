@@ -14,7 +14,7 @@ class CrateRestApiPolicy : CratePolicy
 {
 	private
 	{
-		CrateRestApiSerializer _serializer;
+		CrateRestApiSerializer _serializer  = new inout CrateRestApiSerializer;
 	}
 
 	string name() inout pure nothrow
@@ -38,6 +38,7 @@ CrateRoutes routes(T)(const CrateConfig config)
 	CrateRoutes definedRoutes;
 
 	definedRoutes.schemas = schemas!T;
+	definedRoutes.paths = config.paths!T;
 
 	return definedRoutes;
 }
@@ -70,6 +71,43 @@ ModelDefinition definition(T)() pure
 
 private
 {
+	PathDefinition[uint][HTTPMethod][string] paths(T)(const CrateConfig config)
+	{
+		PathDefinition[uint][HTTPMethod][string] selectedPaths;
+
+		if (config.getList)
+		{
+			selectedPaths[basePath!T][HTTPMethod.GET][200] = PathDefinition(T.stringof ~ "List",
+					"", CrateOperation.getList);
+		}
+
+		if (config.addItem)
+		{
+			selectedPaths[basePath!T][HTTPMethod.POST][200] = PathDefinition(T.stringof ~ "Response",
+					T.stringof ~ "Request", CrateOperation.addItem);
+		}
+
+		if (config.getItem)
+		{
+			selectedPaths[basePath!T ~ "/:id"][HTTPMethod.GET][200] = PathDefinition(T.stringof ~ "Response",
+					"", CrateOperation.getItem);
+		}
+
+		if (config.updateItem)
+		{
+			selectedPaths[basePath!T ~ "/:id"][HTTPMethod.PATCH][200] = PathDefinition(T.stringof ~ "Response",
+					T.stringof ~ "Request", CrateOperation.updateItem);
+		}
+
+		if (config.deleteItem)
+		{
+			selectedPaths[basePath!T ~ "/:id"][HTTPMethod.DELETE][201] = PathDefinition("",
+					"", CrateOperation.deleteItem);
+		}
+
+		return selectedPaths;
+	}
+
 	Json[string] schemas(T)()
 	{
 		Json[string] schemaList;

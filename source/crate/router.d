@@ -281,14 +281,22 @@ class CrateRouter
 
 	void getList(HTTPServerRequest request, HTTPServerResponse response)
 	{
+		writeln(1);
 		auto crate = collection.getByPath(request.path);
 
+		writeln(2);
 		addListCORS(crate.config, response);
+
+		writeln(3);
 		FieldDefinition definition = crate.definition;
 
+		writeln(4);
 		auto data = policy.serializer.denormalise(crate.getList, definition);
 
+		writeln(5);
 		response.writeJsonBody(data, 200, policy.mime);
+
+		writeln(6);
 	}
 
 	void postItem(HTTPServerRequest request, HTTPServerResponse response)

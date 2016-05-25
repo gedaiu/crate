@@ -229,6 +229,140 @@
 	"tags": [],
 	"basePath": "/",
 	"paths": {
+		"/books": {
+			"get": {
+				"responses": {
+					"200": {
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/BookList"
+						}
+					}
+				}
+			},
+			"post": {
+				"parameters": [
+					{
+						"name": "BookRequest",
+						"required": true,
+						"in": "body",
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/BookRequest"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/BookResponse"
+						}
+					}
+				}
+			}
+		},
+		"/books/{id}": {
+			"delete": {
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"type": "string",
+						"in": "path",
+						"description": "The item id"
+					}
+				],
+				"responses": {
+					"500": {
+						"description": "server error",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"201": {
+						"description": ""
+					},
+					"404": {
+						"description": "not found",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					}
+				}
+			},
+			"get": {
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"type": "string",
+						"in": "path",
+						"description": "The item id"
+					}
+				],
+				"responses": {
+					"500": {
+						"description": "server error",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"404": {
+						"description": "not found",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"200": {
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/BookResponse"
+						}
+					}
+				}
+			},
+			"patch": {
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"type": "string",
+						"in": "path",
+						"description": "The item id"
+					},
+					{
+						"name": "BookRequest",
+						"required": true,
+						"in": "body",
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/BookRequest"
+						}
+					}
+				],
+				"responses": {
+					"500": {
+						"description": "server error",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"404": {
+						"description": "not found",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"200": {
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/BookResponse"
+						}
+					}
+				}
+			}
+		},
 		"/books/{id}/action": {
 			"get": {
 				"parameters": [
@@ -255,6 +389,39 @@
 					},
 					"200": {
 						"description": ""
+					}
+				}
+			}
+		},
+		"/categories": {
+			"get": {
+				"responses": {
+					"200": {
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/CategoryList"
+						}
+					}
+				}
+			},
+			"post": {
+				"parameters": [
+					{
+						"name": "CategoryRequest",
+						"required": true,
+						"in": "body",
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/CategoryRequest"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/CategoryResponse"
+						}
 					}
 				}
 			}
@@ -287,6 +454,107 @@
 						"description": "",
 						"schema": {
 							"$ref": "#/definitions/StringResponse"
+						}
+					}
+				}
+			}
+		},
+		"/categories/{id}": {
+			"delete": {
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"type": "string",
+						"in": "path",
+						"description": "The item id"
+					}
+				],
+				"responses": {
+					"500": {
+						"description": "server error",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"201": {
+						"description": ""
+					},
+					"404": {
+						"description": "not found",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					}
+				}
+			},
+			"get": {
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"type": "string",
+						"in": "path",
+						"description": "The item id"
+					}
+				],
+				"responses": {
+					"500": {
+						"description": "server error",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"404": {
+						"description": "not found",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"200": {
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/CategoryResponse"
+						}
+					}
+				}
+			},
+			"patch": {
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"type": "string",
+						"in": "path",
+						"description": "The item id"
+					},
+					{
+						"name": "CategoryRequest",
+						"required": true,
+						"in": "body",
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/CategoryRequest"
+						}
+					}
+				],
+				"responses": {
+					"500": {
+						"description": "server error",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"404": {
+						"description": "not found",
+						"schema": {
+							"$ref": "#/definitions/ErrorList"
+						}
+					},
+					"200": {
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/CategoryResponse"
 						}
 					}
 				}
