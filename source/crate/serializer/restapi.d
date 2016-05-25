@@ -13,51 +13,44 @@ import std.algorithm.searching, std.algorithm.iteration;
 
 import std.traits, std.stdio, std.meta, std.conv;
 
-class CrateRestApiSerializer(T) : CrateSerializer!T
+class CrateRestApiSerializer : CrateSerializer
 {
 
-	private immutable {
-		string singular;
-		string plural;
-	}
-
-	this() inout {
-		enum singular = Singular!T[0..1].toLower ~ Singular!T[1..$];
-		enum plural = Plural!T[0..1].toLower ~ Plural!T[1..$];
-
-		this(singular, plural);
-	}
-
-	this(string singular, string plural) inout {
-		this.singular = singular;
-		this.plural = plural;
-	}
-
-	Json denormalise(Json[] data) inout {
+	Json denormalise(Json[] data, ref const FieldDefinition definition) inout {
 		Json result = Json.emptyObject;
 
-		result[plural] = Json.emptyArray;
+		result[plural(definition)] = Json.emptyArray;
 
 		foreach(item; data) {
-			result[plural] ~= item;
+			result[plural(definition)] ~= item;
 		}
 
 		return result;
 	}
 
-	Json denormalise(Json data) inout {
+	Json denormalise(Json data, ref const FieldDefinition definition) inout {
 		Json result = Json.emptyObject;
 
-		result[singular] = data;
+		result[singular(definition)] = data;
 
 		return result;
 	}
 
-	Json normalise(Json data) inout
+	Json normalise(Json data, ref const FieldDefinition definition) inout
 	{
-		enforce!CrateValidationException(singular in data,
-				"object type expected to be `" ~ singular ~ "`");
-		return data[singular];
+		enforce!CrateValidationException(singular(definition) in data,
+				"object type expected to be `" ~ singular(definition) ~ "`");
+		return data[singular(definition)];
+	}
+
+	private inout pure {
+		string singular(const FieldDefinition definition) {
+			return definition.singular[0..1].toLower ~ definition.singular[1..$];
+		}
+
+		string plural(const FieldDefinition definition) {
+			return definition.plural[0..1].toLower ~ definition.plural[1..$];
+		}
 	}
 }
 
@@ -72,7 +65,8 @@ unittest
 		int field2;
 	}
 
-	auto serializer = new CrateRestApiSerializer!TestModel();
+	auto fields = getFields!TestModel;
+	auto serializer = new const CrateRestApiSerializer;
 
 	//test the deserialize method
 	auto serialized = `{
@@ -83,13 +77,13 @@ unittest
 		}
 	}`.parseJsonString;
 
-	auto deserialized = serializer.normalise(serialized);
+	auto deserialized = serializer.normalise(serialized, fields);
 	assert(deserialized["id"] == "ID");
 	assert(deserialized["field1"] == "Ember Hamster");
 	assert(deserialized["field2"] == 5);
 
 	//test the denormalise method
-	auto value = serializer.denormalise(deserialized);
+	auto value = serializer.denormalise(deserialized, fields);
 	assert(value["testModel"]["id"] == "ID");
 	assert(value["testModel"]["field1"] == "Ember Hamster");
 	assert(value["testModel"]["field2"] == 5);
@@ -106,7 +100,8 @@ unittest
 		int field2;
 	}
 
-	auto serializer = new CrateRestApiSerializer!TestModel();
+	auto fields = getFields!TestModel;
+	auto serializer = new const CrateRestApiSerializer;
 
 	Json[] data = [
 		TestModel("ID1", "Ember Hamster", 5).serializeToJson,
@@ -114,7 +109,7 @@ unittest
 	];
 
 	//test the serialize method
-	auto value = serializer.denormalise(data);
+	auto value = serializer.denormalise(data, fields);
 
 	assert(value["testModels"][0]["id"] == "ID1");
 	assert(value["testModels"][0]["field1"] == "Ember Hamster");
@@ -137,12 +132,13 @@ unittest
 		}
 	}
 
-	auto serializer = new CrateRestApiSerializer!TestModel;
-	auto valueSingular = const serializer.denormalise(TestModel().serializeToJson);
-	auto valuePlural = const serializer.denormalise([ TestModel().serializeToJson ]);
+	auto fields = getFields!TestModel;
+	auto serializer = new const CrateRestApiSerializer;
+	auto valueSingular = const serializer.denormalise(TestModel().serializeToJson, fields);
+	auto valuePlural = const serializer.denormalise([ TestModel().serializeToJson ], fields);
 
 	assert("singularModel" in valueSingular);
 	assert("pluralModel" in valuePlural);
 
-	assert("_id" in serializer.normalise(valueSingular));
+	assert("_id" in serializer.normalise(valueSingular, fields));
 }

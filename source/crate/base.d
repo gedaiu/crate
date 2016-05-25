@@ -18,7 +18,7 @@ enum CrateOperation
 	other
 }
 
-struct CrateConfig(T)
+struct CrateConfig
 {
 	bool getList = true;
 	bool getItem = true;
@@ -76,14 +76,14 @@ interface Crate
 	void deleteItem(string id);
 }
 
-interface CrateSerializer(T)
+interface CrateSerializer
 {
 	inout
 	{
-		Json denormalise(Json[] data);
-		Json denormalise(Json data);
+		Json denormalise(Json[] data, ref const FieldDefinition definition);
+		Json denormalise(Json data, ref const FieldDefinition definition);
 
-		Json normalise(Json data);
+		Json normalise(Json data, ref const FieldDefinition definition);
 	}
 }
 
@@ -95,9 +95,10 @@ interface CratePolicy(T)
 		{
 			string mime() nothrow;
 			ModelDefinition definition();
-			inout(CrateSerializer!T) serializer();
 
-			inout(CrateConfig!T) config();
+			inout(CrateSerializer) serializer();
+			inout(CrateConfig) config();
+
 			string basePath();
 		}
 

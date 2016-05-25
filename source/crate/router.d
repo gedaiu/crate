@@ -7,6 +7,7 @@ import vibe.data.bson;
 
 import crate.error;
 import crate.base;
+import crate.ctfe;
 import crate.policy.jsonapi;
 
 import std.traits, std.conv, std.string, std.stdio;
@@ -150,7 +151,8 @@ class CrateRouter(T)
 		addItemCORS(response);
 		auto data = crate.getItem(request.params["id"]);
 
-		auto denormalised = policy.serializer.denormalise(data);
+		FieldDefinition fields = getFields!T;
+		auto denormalised = policy.serializer.denormalise(data, fields);
 
 		response.writeJsonBody(denormalised, 200, policy.mime);
 	}
@@ -158,13 +160,16 @@ class CrateRouter(T)
 	void updateItem(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		addItemCORS(response);
+
+		FieldDefinition fields = getFields!T;
 		auto item = crate.getItem(request.params["id"]);
-		auto newData = policy.serializer.normalise(request.json);
+
+		auto newData = policy.serializer.normalise(request.json, fields);
 		auto mixedData = mix(item, newData);
 
 		crate.updateItem(mixedData);
 
-		response.writeJsonBody(policy.serializer.denormalise(mixedData), 200, policy.mime);
+		response.writeJsonBody(policy.serializer.denormalise(mixedData, fields), 200, policy.mime);
 	}
 
 	deprecated("Write a better mixer")
@@ -188,8 +193,9 @@ class CrateRouter(T)
 	void getList(HTTPServerRequest, HTTPServerResponse response)
 	{
 		addListCORS(response);
+		FieldDefinition fields = getFields!T;
 
-		auto data = policy.serializer.denormalise(crate.getList);
+		auto data = policy.serializer.denormalise(crate.getList, fields);
 
 		response.writeJsonBody(data, 200, policy.mime);
 	}
@@ -198,8 +204,10 @@ class CrateRouter(T)
 	{
 		addListCORS(response);
 
-		auto data = policy.serializer.normalise(request.json);
-		auto item = policy.serializer.denormalise(crate.addItem(data));
+		FieldDefinition fields = getFields!T;
+
+		auto data = policy.serializer.normalise(request.json, fields);
+		auto item = policy.serializer.denormalise(crate.addItem(data), fields);
 
 		response.headers["Location"] = (request.fullURL ~ Path(item["data"]["id"].to!string))
 			.to!string;
@@ -376,6 +384,7 @@ version (unittest)
 	}
 }
 
+@("Check and action with a string response")
 unittest
 {
 	auto router = new URLRouter();
@@ -388,5 +397,85 @@ unittest
 		.end((Response response) => {
 			auto value = crate.getItem("1");
 			assert(value.name == "changed");
+		});
+}
+
+@("check post with relations")
+unittest
+{
+	struct RelatedModel {
+		string _id;
+
+		string name;
+	}
+
+	struct BaseModel {
+		string _id;
+
+		string name;
+		RelatedModel relation;
+	}
+
+	class BaseCrate : Crate
+	{
+		Json[] getList()
+		{
+			throw new Exception("getList not implemented");
+		}
+
+		Json addItem(Json item)
+		{
+			item["_id"] = "1";
+			return item;
+		}
+
+		Json getItem(string id)
+		{
+			throw new Exception("getItem not implemented");
+		}
+
+		Json editItem(string id, Json fields)
+		{
+			throw new Exception("editItem not implemented");
+		}
+
+		void updateItem(Json item)
+		{
+			throw new Exception("updateItem not implemented");
+		}
+
+		void deleteItem(string id)
+		{
+			throw new Exception("deleteItem not implemented");
+		}
+	}
+
+	auto router = new URLRouter();
+	auto crate = new BaseCrate();
+	auto crateRouter = new CrateRouter!BaseModel(router, crate);
+
+	Json data = `{
+		"data": {
+			"attributes": {
+				"name": "hello"
+			},
+			"type": "basemodels",
+			"relationships": {
+				"relation": {
+					"data": {
+						"type": "relatedmodels",
+						"id": "1"
+					}
+				}
+			}
+		}
+	}`.parseJsonString;
+
+	request(router)
+		.post("/basemodels")
+		.send(data)
+		.end((Response response) => {
+			assert(response.bodyJson["data"]["id"] == "1");
+			assert(response.bodyJson["data"]["relationships"]["relation"]["data"]["id"] == "1");
 		});
 }

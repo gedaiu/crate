@@ -14,14 +14,14 @@ class CrateJsonApiPolicy(T) : CratePolicy!T
 {
 	private
 	{
-		CrateSerializer!T _serializer;
-		CrateConfig!T _config;
+		CrateSerializer _serializer;
+		CrateConfig _config;
 	}
 
-	this(CrateConfig!T config = CrateConfig!T()) inout
+	this(CrateConfig config = CrateConfig()) inout
 	{
 		this._config = config;
-		this._serializer = new inout CrateJsonApiSerializer!T(Plural!T.toLower);
+		this._serializer = new inout CrateJsonApiSerializer;
 	}
 
 	string mime() inout pure nothrow
@@ -29,7 +29,7 @@ class CrateJsonApiPolicy(T) : CratePolicy!T
 		return "application/vnd.api+json";
 	}
 
-	inout(CrateSerializer!T) serializer() inout pure
+	inout(CrateSerializer) serializer() inout pure
 	{
 		return _serializer;
 	}
@@ -38,7 +38,7 @@ class CrateJsonApiPolicy(T) : CratePolicy!T
 	{
 		ModelDefinition model;
 
-		enum fields = getFields!T;
+		enum fields = getFields!T.fields;
 
 		static if (!is(typeof(fields) == void[]))
 		{
@@ -56,7 +56,7 @@ class CrateJsonApiPolicy(T) : CratePolicy!T
 		return model;
 	}
 
-	inout(CrateConfig!T) config() inout pure
+	inout(CrateConfig) config() inout pure
 	{
 		return _config;
 	}
@@ -288,7 +288,8 @@ class CrateJsonApiPolicy(T) : CratePolicy!T
 				}
 			}
 
-			addRelationships!(getFields!T);
+			enum FieldDefinition[] fields = getFields!T.fields;
+			addRelationships!(fields);
 
 			return attributes;
 		}
@@ -328,7 +329,8 @@ class CrateJsonApiPolicy(T) : CratePolicy!T
 				}
 			}
 
-			addRelationships!(getFields!T);
+			enum FieldDefinition[] fields = getFields!T.fields;
+			addRelationships!(fields);
 		}
 
 		void addComposedDefinitions(ref Json[string] schemaList)
@@ -363,7 +365,8 @@ class CrateJsonApiPolicy(T) : CratePolicy!T
 						schema["properties"][key]["$ref"] = "#/definitions/"
 							~ fields[0].type ~ "Model";
 
-						describe!(getFields!Type, Type)(schemaList[name]);
+						enum FieldDefinition[] fields = getFields!Type.fields;
+						describe!(fields, Type)(schemaList[name]);
 					}
 				}
 				else static if (fields.length > 1)
@@ -391,7 +394,8 @@ class CrateJsonApiPolicy(T) : CratePolicy!T
 						else
 						{
 							schemaList[key]["type"] = "object";
-							describe!(getFields!Type, Type)(schemaList[key]);
+							enum fields = getFields!Type.fields;
+							describe!(fields, Type)(schemaList[key]);
 						}
 					}
 				}
@@ -402,7 +406,8 @@ class CrateJsonApiPolicy(T) : CratePolicy!T
 				}
 			}
 
-			addComposed!(getFields!T);
+			enum FieldDefinition[] fields = getFields!T.fields;
+			addComposed!(fields);
 		}
 	}
 }
@@ -415,7 +420,7 @@ version (unittest)
 	}
 }
 
-@("it should have the right mime")
+@("It should have the right mime")
 unittest
 {
 	auto policy = new const CrateJsonApiPolicy!TestModel();

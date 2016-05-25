@@ -12,38 +12,24 @@ import std.meta, std.conv, std.exception;
 import std.algorithm.searching, std.algorithm.iteration;
 import std.traits, std.stdio, std.string;
 
-class CrateJsonApiSerializer(T) : CrateSerializer!T
+class CrateJsonApiSerializer : CrateSerializer
 {
-	private
-	{
-		string type;
-	}
 
-	this() inout
-	{
-		this.type = Plural!T.toLower;
-	}
-
-	this(string type) inout
-	{
-		this.type = type;
-	}
-
-	Json denormalise(Json[] data) inout {
+	Json denormalise(Json[] data, ref const FieldDefinition definition) inout {
 		Json value = Json.emptyObject;
 
 		value["data"] = Json.emptyArray;
 
 		foreach(item; data) {
-			value["data"] ~= denormalise(item)["data"];
+			value["data"] ~= denormalise(item, definition)["data"];
 		}
 
 		return value;
 	}
 
-	Json denormalise(Json data) inout {
+	Json denormalise(Json data, ref const FieldDefinition definition) inout {
 
-		auto id(FieldDefinition[] relationFields)
+		auto id(const FieldDefinition[] relationFields)
 		{
 			foreach(field; relationFields) {
 				if(field.isId) {
@@ -54,101 +40,88 @@ class CrateJsonApiSerializer(T) : CrateSerializer!T
 			assert(false, "no id defined");
 		}
 
-		void addAttributes(FieldDefinition[] fields)(ref Json serialized)
+		void addAttributes(ref Json serialized, const FieldDefinition[] fields)
 		{
-			static if (fields.length == 1)
-			{
-				static if (!fields[0].isRelation && !fields[0].isId && fields[0].type != "void")
+			foreach(field; fields) {
+				if (!field.isRelation && !field.isId && field.type != "void")
 				{
-					serialized["data"]["attributes"][fields[0].name] = data[fields[0].originalName];
+					serialized["data"]["attributes"][field.name] = data[field.originalName];
 				}
-			}
-			else static if (fields.length > 1)
-			{
-				addAttributes!([fields[0]])(serialized);
-				addAttributes!(fields[1 .. $])(serialized);
 			}
 		}
 
-		void addRelationships(FieldDefinition[] fields)(ref Json serialized) inout
+		void addRelationships(ref Json serialized, const FieldDefinition[] fields)
 		{
-			static if (fields.length == 1)
+			foreach(field; fields)
 			{
-				static if (fields[0].isRelation && !fields[0].isId && fields[0].type != "void")
+				if (field.isRelation && !field.isId && field.type != "void")
 				{
-					enum key = fields[0].name;
-					enum idField = id(fields[0].fields);
+					auto key = field.name;
+					auto idField = id(field.fields);
 
 					serialized["data"]["relationships"][key] = Json.emptyObject;
 					serialized["data"]["relationships"][key]["data"] = Json.emptyObject;
-					serialized["data"]["relationships"][key]["data"]["type"] = fields[0].plural.toLower;
-					if(data[fields[0].originalName].type == Json.Type.object) {
-						serialized["data"]["relationships"][key]["data"]["id"] = data[fields[0].originalName][idField];
+					serialized["data"]["relationships"][key]["data"]["type"] = field.plural.toLower;
+					if(data[field.originalName].type == Json.Type.object) {
+						serialized["data"]["relationships"][key]["data"]["id"] = data[field.originalName][idField];
 					} else {
-						serialized["data"]["relationships"][key]["data"]["id"] = data[fields[0].originalName];
+						serialized["data"]["relationships"][key]["data"]["id"] = data[field.originalName];
 					}
 				}
-			}
-			else static if (fields.length > 1)
-			{
-				addRelationships!([fields[0]])(serialized);
-				addRelationships!(fields[1 .. $])(serialized);
 			}
 		}
 
 		Json value = Json.emptyObject;
-		enum fields = getFields!T;
-		enum idField = id(fields);
+		auto idField = id(definition.fields);
 
 		value["data"] = Json.emptyObject;
-		value["data"]["type"] = type;
+		value["data"]["type"] = type(definition);
 		value["data"]["id"] = data[idField];
 		value["data"]["attributes"] = Json.emptyObject;
 		value["data"]["relationships"] = Json.emptyObject;
-
-		addAttributes!fields(value);
-		addRelationships!fields(value);
+		addAttributes(value, definition.fields);
+		addRelationships(value, definition.fields);
 
 		return value;
 	}
 
-	Json normalise(Json data) inout
+	Json normalise(Json data, ref const FieldDefinition definition) inout
 	{
-		enforce!CrateValidationException(data["data"]["type"].to!string == type,
-				"data.type expected to be `" ~ type ~ "` instead of `" ~ data["data"]["type"].to!string ~ "`");
+		enforce!CrateValidationException(data["data"]["type"].to!string == type(definition),
+				"data.type expected to be `" ~ type(definition) ~ "` instead of `" ~ data["data"]["type"].to!string ~ "`");
 
 		auto normalised = Json.emptyObject;
 
-		void setValues(alias Fields)()
+		void setValues(const FieldDefinition[] fields)
 		{
-			static if (Fields.length >= 1)
+			foreach(field; fields)
 			{
-				enum Field = Fields[0];
-
-				static if (Field.isId)
+				if (field.isId)
 				{
-					normalised[Field.originalName] = data["data"]["id"];
+					normalised[field.originalName] = data["data"]["id"];
 				}
-				else static if (Field.isRelation)
+				else if (field.isRelation)
 				{
-					normalised[Field.originalName] =
-							data["data"]["relationships"][Field.name]["data"]["id"];
+					normalised[field.originalName] =
+							data["data"]["relationships"][field.name]["data"]["id"];
 				}
 				else
 				{
-					normalised[Field.originalName] = data["data"]["attributes"][Field.name];
+					normalised[field.originalName] = data["data"]["attributes"][field.name];
 				}
-			}
-
-			static if (Fields.length > 1)
-			{
-				setValues!(Fields[1 .. $]);
 			}
 		}
 
-		setValues!(getFields!T);
+		setValues(definition.fields);
 
 		return normalised;
+	}
+
+
+	private inout pure {
+		string type(const FieldDefinition definition)  {
+			return definition.plural.toLower;
+		}
 	}
 }
 
@@ -162,7 +135,7 @@ unittest
 		int field2;
 	}
 
-	auto serializer = new CrateJsonApiSerializer!TestModel();
+	auto serializer = new const CrateJsonApiSerializer;
 
 	//test the deserialize method
 	auto serialized = `{
@@ -176,13 +149,15 @@ unittest
 		}
 	}`.parseJsonString;
 
-	auto deserialized = serializer.normalise(serialized);
+	auto fields = getFields!TestModel;
+
+	auto deserialized = serializer.normalise(serialized, fields);
 	assert(deserialized["id"] == "ID");
 	assert(deserialized["field1"] == "Ember Hamster");
 	assert(deserialized["field2"] == 5);
 
 	//test the serialize method
-	auto value = serializer.denormalise(deserialized);
+	auto value = serializer.denormalise(deserialized, fields);
 	assert(value["data"]["type"] == "testmodels");
 	assert(value["data"]["id"] == "ID");
 	assert(value["data"]["attributes"]["field1"] == "Ember Hamster");
@@ -199,7 +174,7 @@ unittest
 		int field2;
 	}
 
-	auto serializer = new CrateJsonApiSerializer!TestModel();
+	auto serializer = new const CrateJsonApiSerializer;
 
 	//test the deserialize method
 	auto serialized = `{
@@ -213,11 +188,13 @@ unittest
 		}
 	}`.parseJsonString;
 
-	auto deserialized = serializer.normalise(serialized);
+	auto fields = getFields!TestModel;
+
+	auto deserialized = serializer.normalise(serialized, fields);
 	assert(deserialized["_id"].to!string == "570d5afa999f19d459000000");
 
 	//test the serialize method
-	auto value = serializer.denormalise(deserialized);
+	auto value = serializer.denormalise(deserialized, fields);
 	assert(value["data"]["id"] == "570d5afa999f19d459000000");
 }
 
@@ -231,7 +208,8 @@ unittest
 		int field2;
 	}
 
-	auto serializer = new CrateJsonApiSerializer!TestModel();
+	auto serializer = new const CrateJsonApiSerializer;
+	auto fields = getFields!TestModel;
 
 	//test the deserialize method
 	bool raised;
@@ -247,7 +225,7 @@ unittest
 					"field2": 5
 				}
 			}
-		}`.parseJsonString);
+		}`.parseJsonString, fields);
 	}
 	catch (Throwable)
 	{
@@ -271,12 +249,13 @@ unittest
 		TestModel child;
 	}
 
-	auto serializer = new CrateJsonApiSerializer!ComposedModel;
+	auto fields = getFields!ComposedModel;
+	auto serializer = new const CrateJsonApiSerializer;
 
 	auto value = ComposedModel();
 	value.child.name = "test";
 
-	auto serializedValue = serializer.denormalise(value.serializeToJson);
+	auto serializedValue = serializer.denormalise(value.serializeToJson, fields);
 	assert(serializedValue.data.attributes.child.name == "test");
 }
 
@@ -298,14 +277,15 @@ unittest
 		TestModel child;
 	}
 
-	auto serializer = new CrateJsonApiSerializer!ComposedModel;
+	auto fields = getFields!ComposedModel;
+	auto serializer = new const CrateJsonApiSerializer;
 
 	auto value = ComposedModel();
 	value._id = "id1";
 	value.child.name = "test";
 	value.child.id = "id2";
 
-	auto serializedValue = serializer.denormalise(value.serializeToJson);
+	auto serializedValue = serializer.denormalise(value.serializeToJson, fields);
 
 	assert(serializedValue.data.relationships.child.data["type"] == "testmodels");
 	assert(serializedValue.data.relationships.child.data.id == "id2");
@@ -330,7 +310,8 @@ unittest
 		TestModel child;
 	}
 
-	auto serializer = new CrateJsonApiSerializer!ComposedModel;
+	auto fields = getFields!ComposedModel;
+	auto serializer = new const CrateJsonApiSerializer;
 
 	auto serializedValue = q{{
 		"data": {
@@ -352,7 +333,7 @@ unittest
 		}
 	}}.parseJsonString;
 
-	auto value = serializer.normalise(serializedValue);
+	auto value = serializer.normalise(serializedValue, fields);
 
 	assert(value.child == "id2");
 }
@@ -374,7 +355,8 @@ unittest
 		TestModel child;
 	}
 
-	auto serializer = new CrateJsonApiSerializer!ComposedModel;
+	auto fields = getFields!ComposedModel;
+	auto serializer = new const CrateJsonApiSerializer;
 
 	auto serializedValue = q{{
 		"data": {
@@ -388,7 +370,7 @@ unittest
 		}
 	}}.parseJsonString;
 
-	auto value = serializer.normalise(serializedValue);
+	auto value = serializer.normalise(serializedValue, fields);
 
 	assert(value.child.name == "test");
 }
@@ -414,11 +396,12 @@ unittest
 		TestModel child;
 	}
 
-	auto serializer = new CrateJsonApiSerializer!ComposedModel;
-	auto value = serializer.denormalise(ComposedModel().serializeToJson);
+	auto fields = getFields!ComposedModel;
+	auto serializer = new const CrateJsonApiSerializer;
+	auto value = serializer.denormalise(ComposedModel().serializeToJson, fields);
 
 	assert(value["data"]["type"] == "plural1");
 	assert(value["data"]["relationships"]["child"]["data"]["type"] == "plural2");
 
-	assert("child" in serializer.normalise(value));
+	assert("child" in serializer.normalise(value, fields));
 }

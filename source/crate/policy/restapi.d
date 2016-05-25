@@ -14,8 +14,8 @@ class CrateRestApiPolicy(T) : CratePolicy!T
 {
 	private
 	{
-		CrateRestApiSerializer!T _serializer;
-		CrateConfig!T _config;
+		CrateRestApiSerializer _serializer;
+		CrateConfig _config;
 
 		immutable {
 			string singular;
@@ -23,21 +23,22 @@ class CrateRestApiPolicy(T) : CratePolicy!T
 		}
 	}
 
-	this(CrateConfig!T config = CrateConfig!T()) inout
+	this(CrateConfig config = CrateConfig()) inout
 	{
 		this._config = config;
-		this._serializer = new inout CrateRestApiSerializer!T();
 
 		singular = Singular!T[0..1].toLower ~ Singular!T[1..$];
 		plural = Plural!T[0..1].toLower ~ Plural!T[1..$];
+
+		this._serializer = new inout CrateRestApiSerializer;
 	}
 
-	inout(CrateConfig!T) config() inout pure
+	inout(CrateConfig) config() inout pure
 	{
 		return _config;
 	}
 
-	inout(CrateSerializer!T) serializer() inout pure
+	inout(CrateSerializer) serializer() inout pure
 	{
 		return _serializer;
 	}
@@ -65,7 +66,7 @@ class CrateRestApiPolicy(T) : CratePolicy!T
 	{
 		ModelDefinition model;
 
-		enum fields = getFields!T;
+		enum FieldDefinition[] fields = getFields!T.fields;
 
 		foreach (index, field; fields)
 		{
@@ -130,7 +131,8 @@ class CrateRestApiPolicy(T) : CratePolicy!T
 				}
 			}
 
-			describeRelations!(getFields!T);
+			enum FieldDefinition[] fields = getFields!T.fields;
+			describeRelations!(fields);
 		}
 
 		Json schemaResponse()
@@ -234,7 +236,8 @@ class CrateRestApiPolicy(T) : CratePolicy!T
 				}
 			}
 
-			describeFields!(getFields!T);
+			enum FieldDefinition[] fields = getFields!T.fields;
+			describeFields!(fields);
 		}
 
 		Json schemaRequest()
