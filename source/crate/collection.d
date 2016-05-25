@@ -1,0 +1,87 @@
+module crate.collection;
+
+import crate.base;
+import crate.ctfe;
+import vibe.data.json;
+
+import std.stdio, std.string;
+
+class CrateProxy : Crate!void {
+
+  private {
+    CrateConfig delegate() configRef;
+  	Json[] delegate() getListRef;
+  	Json delegate(Json item) addItemRef;
+  	Json delegate(string id) getItemRef;
+  	Json delegate(string id, Json fields) editItemRef;
+  	void delegate(Json item) updateItemRef;
+  	void delegate(string id) deleteItemRef;
+
+    FieldDefinition _definition;
+  }
+
+  this(T)(ref Crate!T crate) {
+    configRef = &crate.config;
+    getListRef = &crate.getList;
+    addItemRef = &crate.addItem;
+    getItemRef = &crate.getItem;
+    editItemRef = &crate.editItem;
+    updateItemRef = &crate.updateItem;
+    deleteItemRef = &crate.deleteItem;
+
+    _definition = getFields!T;
+  }
+
+  FieldDefinition definition() {
+    return _definition;
+  }
+
+  CrateConfig config() {
+    return configRef();
+  }
+
+	Json[] getList() {
+    return getListRef();
+  }
+
+	Json addItem(Json item) {
+    return addItemRef(item);
+  }
+
+	Json getItem(string id) {
+    return getItemRef(id);
+  }
+
+	Json editItem(string id, Json fields) {
+    return editItemRef(id, fields);
+  }
+
+	void updateItem(Json item) {
+    updateItemRef(item);
+  }
+
+	void deleteItem(string id) {
+    deleteItemRef(id);
+  }
+}
+
+struct CrateCollection {
+
+  private {
+    CrateProxy[string] crates;
+  }
+
+  void addByPath(T)(string basePath, ref Crate!T crate) {
+    crates[basePath] = new CrateProxy(crate);
+  }
+
+  CrateProxy getByPath(string path) {
+    foreach(basePath, crate; crates) {
+      if(path.indexOf(basePath) == 0) {
+        return crate;
+      }
+    }
+
+    assert(false, "Crate not found");
+  }
+}
