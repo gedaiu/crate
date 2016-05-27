@@ -281,22 +281,15 @@ class CrateRouter
 
 	void getList(HTTPServerRequest request, HTTPServerResponse response)
 	{
-		writeln(1);
 		auto crate = collection.getByPath(request.path);
 
-		writeln(2);
 		addListCORS(crate.config, response);
 
-		writeln(3);
 		FieldDefinition definition = crate.definition;
 
-		writeln(4);
 		auto data = policy.serializer.denormalise(crate.getList, definition);
 
-		writeln(5);
 		response.writeJsonBody(data, 200, policy.mime);
-
-		writeln(6);
 	}
 
 	void postItem(HTTPServerRequest request, HTTPServerResponse response)
@@ -357,6 +350,12 @@ class CrateRouter
 
 				router.get(path, checkError(func));
 			}
+			else static if (Param.length == 1)
+			{
+				auto func = &this.callCrateAction!(T, actionName);
+
+				router.post(path, checkError(func));
+			}
 			else
 			{
 				pragma(msg, "There is no action named `" ~ actionName ~ "`");
@@ -376,20 +375,47 @@ class CrateRouter
 		auto item = crate.getItem(request.params["id"]).deserializeJson!T;
 		auto func = &__traits(getMember, item, actionName);
 
+		alias Param = Parameters!(__traits(getMember, T, actionName));
 		alias RType = ReturnType!(__traits(getMember, T, actionName));
 		string result;
+		int responseCode;
 
-		static if (is(RType == void))
-		{
-			func();
-		}
-		else
-		{
-			result = func().to!string;
+		static if(Param.length == 0) {
+			static if (is(RType == void))
+			{
+				func();
+			}
+			else
+			{
+				result = func().to!string;
+			}
+
+			responseCode = 200;
+		} else static if(Param.length == 1) {
+			string data;
+
+			while(!request.bodyReader.empty) {
+				ubyte[] dst;
+				dst.length = request.bodyReader.leastSize;
+
+				request.bodyReader.read(dst);
+				data ~= dst.assumeUTF;
+			}
+
+			static if (is(RType == void))
+			{
+				func(data);
+			}
+			else
+			{
+				result = func(data).to!string;
+			}
+
+			responseCode = 201;
 		}
 
 		crate.updateItem(item.serializeToJson);
-		response.writeBody(result, 200);
+		response.writeBody(result, responseCode);
 	}
 
 	CrateRoutes allRoutes()
@@ -462,6 +488,10 @@ version (unittest)
 		{
 			name = "changed";
 		}
+
+		void actionParam(string data) {
+			name = data;
+		}
 	}
 
 	class TestCrate(T) : Crate!T
@@ -521,6 +551,26 @@ unittest
 		.end((Response response) => {
 			auto value = crate.getItem("1");
 			assert(value.name == "changed");
+		});
+}
+
+
+@("Check and action with a string parameter")
+unittest
+{
+	auto router = new URLRouter();
+	auto crate = new TestCrate!TestModel;
+	auto crateRouter = new CrateRouter(router, crate);
+
+	crateRouter.enableAction!(TestModel, "actionParam");
+
+	request(router)
+		.post("/testmodels/1/actionParam")
+		.send("data123")
+		.expectStatusCode(201)
+		.end((Response response) => {
+			auto value = crate.getItem("1");
+			assert(value.name == "data123");
 		});
 }
 
