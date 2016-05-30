@@ -14,7 +14,7 @@ static import crate.policy.jsonapi;
 static import crate.policy.restapi;
 
 import std.traits, std.conv, std.string, std.stdio;
-import std.algorithm, std.array, std.traits;
+import std.algorithm, std.array, std.traits, std.meta;
 
 string basePath(T)(string name) {
 
@@ -75,6 +75,8 @@ class CrateRouter
 	{
 		this(router, policy, crate);
 	}
+
+	alias Types = AliasSeq!();
 
 	void addCrate(T)(Crate!T crate) {
 		auto tmpRoutes = routes(policy.name, crate);
