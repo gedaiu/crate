@@ -335,16 +335,24 @@ class CrateRouter
 
 			auto path = basePath!T(policy.name) ~ "/:id/" ~ actionName;
 
+
 			static if (is(RType == void))
 			{
-				definedRoutes.paths[path][HTTPMethod.GET][200] = PathDefinition("",
-						"", CrateOperation.otherItem);
+				string returnType = "";
 			}
 			else
 			{
-				definedRoutes.paths[path][HTTPMethod.GET][200] = PathDefinition("StringResponse",
-						"", CrateOperation.otherItem);
+				string returnType = "StringResponse";
 			}
+
+			static if (Param.length == 0) {
+				HTTPMethod method = HTTPMethod.GET;
+			} else {
+				HTTPMethod method = HTTPMethod.POST;
+			}
+
+			definedRoutes.paths[path][method][200] = PathDefinition(returnType,
+					"", CrateOperation.otherItem);
 
 			static if (Param.length == 0)
 			{
@@ -398,7 +406,7 @@ class CrateRouter
 
 			while(!request.bodyReader.empty) {
 				ubyte[] dst;
-				dst.length = request.bodyReader.leastSize;
+				dst.length = request.bodyReader.leastSize.to!int;
 
 				request.bodyReader.read(dst);
 				data ~= dst.assumeUTF;
