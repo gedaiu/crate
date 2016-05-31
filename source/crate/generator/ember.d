@@ -8,26 +8,41 @@ import crate.router;
 
 void toEmber(T)(CrateRouter router, string path)
 {
+	enum FieldDefinition definition = getFields!T;
+	enum FieldDefinition[] fields = definition.fields;
 
-	alias fields = getFields!T;
+	void exportRelations(FieldDefinition[] fields)() {
+		static if(fields.length > 0 && fields[0].isRelation) {
+			createModel!(fields[0])(path);
+		}
 
-	writeln(fields);
+		static if(fields.length > 1) {
+			exportRelations!(fields[1..$])();
+		}
+	}
 
-	createModel!fields(path);
+	createModel!definition(path);
+
+	exportRelations!(fields);
 }
 
 void createModel(FieldDefinition definition)(string path)
 {
 	mkdirRecurse(path ~ "/app/models/");
-	string document = "import DS from 'ember-data';\n\n";
+	string document = "import DS from 'ember-data';\n";
+	document ~= "import Ember from 'ember'; \n\n";
+	document ~= "var inflector = Ember.Inflector.inflector; \n\n";
+	document ~= "inflector.irregular('" ~ definition.singular.toFirstLower
+		~ "', '" ~ definition.plural.toFirstLower ~ "'); \n\n";
 
 	document ~= "export default DS.Model.extend({\n";
 
 	foreach (field; definition.fields)
 	{
-    if (!field.isId) {
-		  document ~= "  " ~ modelField(field);
-    }
+		if (!field.isId)
+		{
+			document ~= "  " ~ modelField(field);
+		}
 	}
 
 	document ~= "});\n";
@@ -63,7 +78,16 @@ private
 	{
 		switch (dType)
 		{
+		case "byte":
+		case "ubyte":
+		case "short":
+		case "ushort":
 		case "int":
+		case "uint":
+		case "long":
+		case "ulong":
+		case "float":
+		case "double":
 			return "number";
 
 		case "string":
@@ -98,5 +122,9 @@ private
 		}
 
 		return result;
+	}
+
+	string toFirstLower(string name) {
+		return name[0..1].toLower ~ name[1..$];
 	}
 }
