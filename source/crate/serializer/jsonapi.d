@@ -14,7 +14,6 @@ import std.traits, std.stdio, std.string;
 
 class CrateJsonApiSerializer : CrateSerializer
 {
-
 	Json denormalise(Json[] data, ref const FieldDefinition definition) inout {
 		Json value = Json.emptyObject;
 
@@ -28,7 +27,6 @@ class CrateJsonApiSerializer : CrateSerializer
 	}
 
 	Json denormalise(Json data, ref const FieldDefinition definition) inout {
-
 		auto id(const FieldDefinition[] relationFields)
 		{
 			foreach(field; relationFields) {
@@ -54,18 +52,39 @@ class CrateJsonApiSerializer : CrateSerializer
 		{
 			foreach(field; fields)
 			{
-				if (field.isRelation && !field.isId && field.type != "void")
-				{
+				if(field.isRelation && !field.isId && field.type != "void") {
 					auto key = field.name;
 					auto idField = id(field.fields);
 
 					serialized["data"]["relationships"][key] = Json.emptyObject;
-					serialized["data"]["relationships"][key]["data"] = Json.emptyObject;
-					serialized["data"]["relationships"][key]["data"]["type"] = field.plural.toLower;
-					if(data[field.originalName].type == Json.Type.object) {
-						serialized["data"]["relationships"][key]["data"]["id"] = data[field.originalName][idField];
-					} else {
-						serialized["data"]["relationships"][key]["data"]["id"] = data[field.originalName];
+
+					if (field.isArray)
+					{
+						serialized["data"]["relationships"][key]["data"] = Json.emptyArray;
+
+						foreach(item; data[field.originalName]) {
+							auto obj = Json.emptyObject;
+
+							obj["type"] = field.plural.toLower;
+
+							if(item.type == Json.Type.object) {
+								obj["id"] = item[idField];
+							} else {
+								obj["id"] = item;
+							}
+
+							serialized["data"]["relationships"][key]["data"] ~= obj;
+						}
+					}
+					else
+					{
+						serialized["data"]["relationships"][key]["data"] = Json.emptyObject;
+						serialized["data"]["relationships"][key]["data"]["type"] = field.plural.toLower;
+						if(data[field.originalName].type == Json.Type.object) {
+							serialized["data"]["relationships"][key]["data"]["id"] = data[field.originalName][idField];
+						} else {
+							serialized["data"]["relationships"][key]["data"]["id"] = data[field.originalName];
+						}
 					}
 				}
 			}
@@ -99,6 +118,18 @@ class CrateJsonApiSerializer : CrateSerializer
 				if (field.isId)
 				{
 					normalised[field.originalName] = data["data"]["id"];
+				}
+				else if (field.isArray && field.isRelation)
+				{
+					normalised[field.originalName] = Json.emptyArray;
+
+					foreach(value; data["data"]["relationships"][field.name]["data"]) {
+						normalised[field.originalName] ~= value["id"];
+					}
+				}
+				else if (field.isArray)
+				{
+					normalised[field.originalName] = data["data"]["attributes"][field.name];
 				}
 				else if (field.isRelation)
 				{
@@ -404,4 +435,45 @@ unittest
 	assert(value["data"]["relationships"]["child"]["data"]["type"] == "plural2");
 
 	assert("child" in serializer.normalise(value, fields));
+}
+
+@("Relation list")
+unittest
+{
+	struct TestModel
+	{
+		string _id;
+		string name;
+	}
+
+	struct ComposedModel
+	{
+		@optional
+		{
+			string _id;
+		}
+
+		TestModel[] child;
+	}
+
+	auto serializer = new const CrateJsonApiSerializer;
+	auto value = ComposedModel();
+	value.child ~= TestModel("1");
+	value.child ~= TestModel("2");
+
+	auto fields = getFields!ComposedModel;
+	auto apiValue = serializer.denormalise(value.serializeToJson, fields);
+
+	assert(apiValue["data"]["relationships"]["child"]["data"].type == Json.Type.array);
+	assert(apiValue["data"]["relationships"]["child"]["data"].length == 2);
+	assert(apiValue["data"]["relationships"]["child"]["data"][0]["id"] == "1");
+	assert(apiValue["data"]["relationships"]["child"]["data"][0]["type"] == "testmodels");
+	assert(apiValue["data"]["relationships"]["child"]["data"][1]["id"] == "2");
+
+	auto normalisedValue = serializer.normalise(apiValue, fields);
+
+	assert(normalisedValue["child"].type == Json.Type.array);
+	assert(normalisedValue["child"].length == 2);
+	assert(normalisedValue["child"][0] == "1");
+	assert(normalisedValue["child"][1] == "2");
 }

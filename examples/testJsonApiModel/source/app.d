@@ -27,7 +27,7 @@ struct Book
 
 	string name;
 	string author;
-	Category category;
+	Category[] category;
 
 	@optional
 	int something;

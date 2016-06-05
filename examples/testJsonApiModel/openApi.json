@@ -230,20 +230,26 @@
 						"$ref": "#/definitions/CommentModel"
 					}
 				},
+				"something": {
+					"type": "integer"
+				},
 				"price": {
 					"type": "number"
 				},
 				"name": {
 					"type": "string"
 				},
+				"category": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/CategoryModel"
+					}
+				},
 				"inStock": {
 					"type": "boolean"
 				},
 				"author": {
 					"type": "string"
-				},
-				"something": {
-					"type": "integer"
 				}
 			}
 		}
