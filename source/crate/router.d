@@ -315,12 +315,25 @@ class CrateRouter
 		foreach(field; definition.fields) {
 			if(field.isRelation) {
 				auto crate = collection.getByType(field.type);
-				string id = data[field.name].to!string;
 
-				try {
-					crate.getItem(id);
-				} catch(CrateNotFoundException e) {
-					throw new CrateRelationNotFoundException("Item with id `" ~ id ~ "` not found");
+				if(field.isArray) {
+					foreach(jsonId; data[field.name]) {
+						string id = jsonId.to!string;
+
+						try {
+							crate.getItem(id);
+						} catch(CrateNotFoundException e) {
+							throw new CrateRelationNotFoundException("Item with id `" ~ id ~ "` not found");
+						}
+					}
+				} else {
+					string id = data[field.name].to!string;
+
+					try {
+						crate.getItem(id);
+					} catch(CrateNotFoundException e) {
+						throw new CrateRelationNotFoundException("Item with id `" ~ id ~ "` not found");
+					}
 				}
 			}
 		}
