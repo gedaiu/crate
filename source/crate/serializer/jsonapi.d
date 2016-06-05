@@ -477,3 +477,38 @@ unittest
 	assert(normalisedValue["child"][0] == "1");
 	assert(normalisedValue["child"][1] == "2");
 }
+
+
+@("String list")
+unittest
+{
+	struct ComposedModel
+	{
+		@optional
+		{
+			string _id;
+		}
+
+		string[] child;
+	}
+
+	auto serializer = new const CrateJsonApiSerializer;
+	auto value = ComposedModel();
+	value.child ~= "1";
+	value.child ~= "2";
+
+	auto fields = getFields!ComposedModel;
+	auto apiValue = serializer.denormalise(value.serializeToJson, fields);
+
+	assert(apiValue["data"]["attributes"]["child"].type == Json.Type.array);
+	assert(apiValue["data"]["attributes"]["child"].length == 2);
+	assert(apiValue["data"]["attributes"]["child"][0] == "1");
+	assert(apiValue["data"]["attributes"]["child"][1] == "2");
+
+	auto normalisedValue = serializer.normalise(apiValue, fields);
+
+	assert(normalisedValue["child"].type == Json.Type.array);
+	assert(normalisedValue["child"].length == 2);
+	assert(normalisedValue["child"][0] == "1");
+	assert(normalisedValue["child"][1] == "2");
+}
