@@ -264,7 +264,7 @@ template getFields(Prototype)
 			alias ItemFields = AliasSeq!(ItemFields!(FIELDS[0 .. $ / 2]),
 					ItemFields!(FIELDS[$ / 2 .. $]));
 		}
-		else static if (FIELDS.length == 1)
+		else static if (FIELDS.length == 1 && FIELDS[0] != "Monitor" && FIELDS[0] != "factory")
 		{
 
 			static if (ItemProperty!(Prototype, FIELDS[0]).length == 1)
