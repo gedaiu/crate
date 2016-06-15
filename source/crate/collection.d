@@ -13,7 +13,6 @@ class CrateProxy : Crate!void {
   	Json[] delegate() getListRef;
   	Json delegate(Json item) addItemRef;
   	Json delegate(string id) getItemRef;
-  	Json delegate(string id, Json fields) editItemRef;
   	void delegate(Json item) updateItemRef;
   	void delegate(string id) deleteItemRef;
 
@@ -25,7 +24,6 @@ class CrateProxy : Crate!void {
     getListRef = &crate.getList;
     addItemRef = &crate.addItem;
     getItemRef = &crate.getItem;
-    editItemRef = &crate.editItem;
     updateItemRef = &crate.updateItem;
     deleteItemRef = &crate.deleteItem;
 
@@ -50,10 +48,6 @@ class CrateProxy : Crate!void {
 
 	Json getItem(string id) {
     return getItemRef(id);
-  }
-
-	Json editItem(string id, Json fields) {
-    return editItemRef(id, fields);
   }
 
 	void updateItem(Json item) {
