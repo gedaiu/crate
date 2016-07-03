@@ -75,7 +75,6 @@ interface Crate(T)
 
 	Json addItem(Json item);
 	Json getItem(string id);
-	Json editItem(string id, Json fields);
 	void updateItem(Json item);
 	void deleteItem(string id);
 }

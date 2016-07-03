@@ -563,13 +563,6 @@ version (unittest)
 			return item.serializeToJson;
 		}
 
-		Json editItem(string, Json fields)
-		{
-			item.name = fields.name.to!string;
-
-			return item.serializeToJson;
-		}
-
 		void updateItem(Json item)
 		{
 			this.item.name = item.name.to!string;
@@ -701,11 +694,6 @@ unittest
 		}
 
 		Json getItem(string id)
-		{
-			throw new CrateNotFoundException("getItem not implemented");
-		}
-
-		Json editItem(string id, Json fields)
 		{
 			throw new CrateNotFoundException("getItem not implemented");
 		}
