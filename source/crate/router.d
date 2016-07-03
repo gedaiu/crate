@@ -317,7 +317,7 @@ class CrateRouter
 
 		FieldDefinition definition = crate.definition;
 
-		auto data = policy.serializer.normalise(request.params["id"], request.json, definition);
+		auto data = policy.serializer.normalise("", request.json, definition);
 		checkRelationships(data, definition);
 
 		auto item = policy.serializer.denormalise(crate.addItem(data), definition);

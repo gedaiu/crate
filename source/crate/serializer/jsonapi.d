@@ -182,7 +182,7 @@ unittest
 
 	auto fields = getFields!TestModel;
 
-	auto deserialized = serializer.normalise(serialized, fields);
+	auto deserialized = serializer.normalise("ID", serialized, fields);
 	assert(deserialized["id"] == "ID");
 	assert(deserialized["field1"] == "Ember Hamster");
 	assert(deserialized["field2"] == 5);
@@ -221,7 +221,7 @@ unittest
 
 	auto fields = getFields!TestModel;
 
-	auto deserialized = serializer.normalise(serialized, fields);
+	auto deserialized = serializer.normalise("570d5afa999f19d459000000", serialized, fields);
 	assert(deserialized["_id"].to!string == "570d5afa999f19d459000000");
 
 	//test the serialize method
@@ -247,7 +247,7 @@ unittest
 
 	try
 	{
-		serializer.normalise(`{
+		serializer.normalise("570d5afa999f19d459000000", `{
 			"data": {
 				"type": "unknown",
 				"id": "570d5afa999f19d459000000",
@@ -364,7 +364,7 @@ unittest
 		}
 	}}.parseJsonString;
 
-	auto value = serializer.normalise(serializedValue, fields);
+	auto value = serializer.normalise("id1", serializedValue, fields);
 
 	assert(value.child == "id2");
 }
@@ -401,7 +401,7 @@ unittest
 		}
 	}}.parseJsonString;
 
-	auto value = serializer.normalise(serializedValue, fields);
+	auto value = serializer.normalise("id1", serializedValue, fields);
 
 	assert(value.child.name == "test");
 }
@@ -434,7 +434,7 @@ unittest
 	assert(value["data"]["type"] == "plural1");
 	assert(value["data"]["relationships"]["child"]["data"]["type"] == "plural2");
 
-	assert("child" in serializer.normalise(value, fields));
+	assert("child" in serializer.normalise("", value, fields));
 }
 
 @("Relation list")
@@ -470,7 +470,7 @@ unittest
 	assert(apiValue["data"]["relationships"]["child"]["data"][0]["type"] == "testmodels");
 	assert(apiValue["data"]["relationships"]["child"]["data"][1]["id"] == "2");
 
-	auto normalisedValue = serializer.normalise(apiValue, fields);
+	auto normalisedValue = serializer.normalise("", apiValue, fields);
 
 	assert(normalisedValue["child"].type == Json.Type.array);
 	assert(normalisedValue["child"].length == 2);
@@ -505,7 +505,7 @@ unittest
 	assert(apiValue["data"]["attributes"]["child"][0] == "1");
 	assert(apiValue["data"]["attributes"]["child"][1] == "2");
 
-	auto normalisedValue = serializer.normalise(apiValue, fields);
+	auto normalisedValue = serializer.normalise("", apiValue, fields);
 
 	assert(normalisedValue["child"].type == Json.Type.array);
 	assert(normalisedValue["child"].length == 2);

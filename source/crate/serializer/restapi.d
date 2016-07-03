@@ -78,13 +78,12 @@ unittest
 	//test the deserialize method
 	auto serialized = `{
 		"testModel": {
-				"id": "ID",
 				"field1": "Ember Hamster",
 				"field2": 5
 		}
 	}`.parseJsonString;
 
-	auto deserialized = serializer.normalise(serialized, fields);
+	auto deserialized = serializer.normalise("ID", serialized, fields);
 	assert(deserialized["id"] == "ID");
 	assert(deserialized["field1"] == "Ember Hamster");
 	assert(deserialized["field2"] == 5);
@@ -147,5 +146,5 @@ unittest
 	assert("singularModel" in valueSingular);
 	assert("pluralModel" in valuePlural);
 
-	assert("_id" in serializer.normalise(valueSingular, fields));
+	assert("_id" in serializer.normalise("", valueSingular, fields));
 }
