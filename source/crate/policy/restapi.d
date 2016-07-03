@@ -93,10 +93,10 @@ private
 					"", CrateOperation.getItem);
 		}
 
-		if (config.updateItem)
+		if (config.replaceItem)
 		{
 			selectedPaths[basePath!T ~ "/:id"][HTTPMethod.PATCH][200] = PathDefinition(T.stringof ~ "Response",
-					T.stringof ~ "Request", CrateOperation.updateItem);
+					T.stringof ~ "Request", CrateOperation.replaceItem);
 		}
 
 		if (config.deleteItem)
@@ -231,7 +231,6 @@ private
 				{
 					data["properties"][field.name]["type"] = type;
 				}
-
 			}
 
 			static if (!field.isOptional)

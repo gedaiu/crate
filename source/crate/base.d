@@ -87,7 +87,7 @@ interface CrateSerializer
 		Json denormalise(Json[] data, ref const FieldDefinition definition);
 		Json denormalise(Json data, ref const FieldDefinition definition);
 
-		Json normalise(Json data, ref const FieldDefinition definition);
+		Json normalise(string id, Json data, ref const FieldDefinition definition);
 	}
 }
 

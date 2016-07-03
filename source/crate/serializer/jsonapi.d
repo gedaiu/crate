@@ -104,7 +104,7 @@ class CrateJsonApiSerializer : CrateSerializer
 		return value;
 	}
 
-	Json normalise(Json data, ref const FieldDefinition definition) inout
+	Json normalise(string id, Json data, ref const FieldDefinition definition) inout
 	{
 		enforce!CrateValidationException(data["data"]["type"].to!string == type(definition),
 				"data.type expected to be `" ~ type(definition) ~ "` instead of `" ~ data["data"]["type"].to!string ~ "`");

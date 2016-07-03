@@ -36,10 +36,17 @@ class CrateRestApiSerializer : CrateSerializer
 		return result;
 	}
 
-	Json normalise(Json data, ref const FieldDefinition definition) inout
+	Json normalise(string id, Json data, ref const FieldDefinition definition) inout
 	{
 		enforce!CrateValidationException(singular(definition) in data,
 				"object type expected to be `" ~ singular(definition) ~ "`");
+
+		foreach(field; definition.fields) {
+			if(field.isId) {
+				data[singular(definition)][field.name] = id;
+			}
+		}
+
 		return data[singular(definition)];
 	}
 

@@ -34,10 +34,10 @@ alias DefaultPolicy = crate.policy.jsonapi.CrateJsonApiPolicy;
 
 class CrateRouter
 {
+	const CratePolicy policy;
+
 	private
 	{
-		const CratePolicy policy;
-
 		CrateCollection collection;
 		CrateRoutes definedRoutes;
 		URLRouter router;
@@ -162,7 +162,7 @@ class CrateRouter
 			break;
 
 		case CrateOperation.replaceItem:
-			router.patch(path, checkError(&this.updateItem));
+			router.put(path, checkError(&this.replaceItem));
 			break;
 
 		default:
@@ -251,7 +251,7 @@ class CrateRouter
 		FieldDefinition definition = crate.definition;
 		auto item = crate.getItem(request.params["id"]);
 
-		auto newData = policy.serializer.normalise(request.json, definition);
+		auto newData = policy.serializer.normalise(request.params["id"], request.json, definition);
 		auto mixedData = mix(item, newData);
 
 		checkRelationships(mixedData, definition);
@@ -270,6 +270,22 @@ class CrateRouter
 		}
 
 		return mixedData;
+	}
+
+	void replaceItem(HTTPServerRequest request, HTTPServerResponse response)
+	{
+		auto crate = collection.getByPath(request.path);
+		addItemCORS(crate.config, response);
+
+		FieldDefinition definition = crate.definition;
+		auto item = crate.getItem(request.params["id"]);
+
+		auto newData = policy.serializer.normalise(request.params["id"], request.json, definition);
+
+		checkRelationships(newData, definition);
+		crate.updateItem(newData);
+
+		response.writeJsonBody(policy.serializer.denormalise(newData, definition), 200, policy.mime);
 	}
 
 	void deleteItem(HTTPServerRequest request, HTTPServerResponse response)
@@ -301,7 +317,7 @@ class CrateRouter
 
 		FieldDefinition definition = crate.definition;
 
-		auto data = policy.serializer.normalise(request.json, definition);
+		auto data = policy.serializer.normalise(request.params["id"], request.json, definition);
 		checkRelationships(data, definition);
 
 		auto item = policy.serializer.denormalise(crate.addItem(data), definition);
@@ -484,6 +500,11 @@ class CrateRouter
 			if (config.updateItem)
 			{
 				methods ~= ", PATCH";
+			}
+
+			if (config.replaceItem)
+			{
+				methods ~= ", PUT";
 			}
 
 			if (config.deleteItem)

@@ -3,6 +3,7 @@ import vibe.d;
 import crate.mongo;
 import crate.router;
 import crate.generator.openapi;
+import crate.generator.ember;
 import crate.policy.restapi;
 import std.stdio;
 
@@ -27,7 +28,7 @@ struct Book
 
 	string name;
 	string author;
-	Category category;
+	Category[] category;
 
 	@optional
 	int something;
@@ -48,6 +49,7 @@ struct Book
 		return inStock ? "ok." : "not ok.";
 	}
 }
+
 
 shared static this()
 {
@@ -73,6 +75,7 @@ shared static this()
 	crateRouter.enableAction!(Book, "actionResponse");
 
 	crateRouter.generateOpenApi;
+	crateRouter.generateEmber;
 
 	listenHTTP(settings, router);
 }
@@ -84,4 +87,9 @@ void generateOpenApi(T)(T crateRouter)
 	auto f = File("openApi.json", "w");
 
 	f.write(api.serializeToJson.toPrettyString);
+}
+
+void generateEmber(T)(T crateRouter)
+{
+	crateRouter.toEmber!Book("./ember/");
 }
