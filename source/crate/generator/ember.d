@@ -156,6 +156,11 @@ private
 	{
 		string fieldString = "";
 		string type = field.type.toEmberType(policy);
+		string options;
+
+		if(!field.isRelation && !field.isBasicType) {
+			options = ", { async: false }";
+		}
 
 		if (type != "")
 		{
@@ -164,15 +169,15 @@ private
 
 		if (field.isArray)
 		{
-			fieldString ~= field.name ~ ": DS.hasMany(" ~ type ~ "), \n";
+			fieldString ~= field.name ~ ": DS.hasMany(" ~ type ~ options ~ "), \n";
 		}
 		else if (field.isRelation)
 		{
-			fieldString ~= field.name ~ ": DS.belongsTo(" ~ type ~ "), \n";
+			fieldString ~= field.name ~ ": DS.belongsTo(" ~ type ~ options  ~ "), \n";
 		}
-		else if (field.isBasicType)
+		else
 		{
-			fieldString ~= field.name ~ ": DS.attr(" ~ type ~ "), \n";
+			fieldString ~= field.name ~ ": DS.attr(" ~ type ~ options  ~ "), \n";
 		}
 
 		return fieldString;
