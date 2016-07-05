@@ -63,10 +63,10 @@ void createRESTSerializer(FieldDefinition definition)(string path)
 		string document = "import DS from 'ember-data';\n";
 
 		document ~= "export default DS.RESTSerializer.extend(DS.EmbeddedRecordsMixin, {\n";
-		document ~= "  attr: {\n";
 
-		string glue = "";
-		string id = "";
+		string glue;
+		string id;
+		string attr;
 
 		foreach (field; definition.fields)
 		{
@@ -75,19 +75,25 @@ void createRESTSerializer(FieldDefinition definition)(string path)
 				id = field.name;
 			}
 
-			if (!field.isBasicType && field.isRelation)
+			if (!field.isBasicType && !field.isRelation && field.type != "BsonObjectID")
 			{
-				document ~= glue ~ "    " ~ field.name ~ ": { embeded: 'always' }";
+				attr ~= glue ~ "    " ~ field.name ~ ": { embedded: 'always' }";
 				glue = ",\n";
 			}
 		}
 
-		document ~= "\n  }";
-
-		if (id != "id")
+		glue = "";
+		if (attr != "")
 		{
-			document ~= ",\n  primaryKey: '" ~ id ~ "'";
+			document ~= "  attrs: {\n" ~ attr ~ "  \n}";
+			glue = ",\n";
 		}
+
+		if (id != "id" && id != "")
+		{
+			document ~= glue ~ "  primaryKey: '" ~ id ~ "'";
+		}
+
 		document ~= "\n});\n";
 
 		if (glue != "" || id != "id")
