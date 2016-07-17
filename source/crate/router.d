@@ -183,12 +183,12 @@ class CrateRouter
 				catch (CrateException e)
 				{
 					Json data = Json.emptyObject;
-					data.errors = Json.emptyArray;
-					data.errors ~= Json.emptyObject;
+					data["errors"] = Json.emptyArray;
+					data["errors"] ~= Json.emptyObject;
 
-					data.errors[0].status = e.statusCode;
-					data.errors[0].title = e.title;
-					data.errors[0].description = e.msg;
+					data["errors"][0]["status"] = e.statusCode;
+					data["errors"][0]["title"] = e.title;
+					data["errors"][0]["description"] = e.msg;
 
 					response.writeJsonBody(data, e.statusCode, policy.mime);
 				}
@@ -201,12 +201,12 @@ class CrateRouter
 				}
 
 				Json data = Json.emptyObject;
-				data.errors = Json.emptyArray;
-				data.errors ~= Json.emptyObject;
+				data["errors"] = Json.emptyArray;
+				data["errors"] ~= Json.emptyObject;
 
-				data.errors[0].status = 500;
-				data.errors[0].title = "Server error";
-				data.errors[0].description = e.msg;
+				data["errors"][0]["status"] = 500;
+				data["errors"][0]["title"] = "Server error";
+				data["errors"][0]["description"] = e.msg;
 
 				response.writeJsonBody(data, 500, policy.mime);
 			}
