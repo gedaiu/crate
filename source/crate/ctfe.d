@@ -3,7 +3,6 @@ module crate.ctfe;
 import crate.base;
 import vibe.data.json;
 
-import std.meta;
 import std.algorithm.searching;
 
 import std.traits, std.meta;

@@ -183,12 +183,12 @@ class CrateRouter
 				catch (CrateException e)
 				{
 					Json data = Json.emptyObject;
-					data.errors = Json.emptyArray;
-					data.errors ~= Json.emptyObject;
+					data["errors"] = Json.emptyArray;
+					data["errors"] ~= Json.emptyObject;
 
-					data.errors[0].status = e.statusCode;
-					data.errors[0].title = e.title;
-					data.errors[0].description = e.msg;
+					data["errors"][0]["status"] = e.statusCode;
+					data["errors"][0]["title"] = e.title;
+					data["errors"][0]["description"] = e.msg;
 
 					response.writeJsonBody(data, e.statusCode, policy.mime);
 				}
@@ -201,12 +201,12 @@ class CrateRouter
 				}
 
 				Json data = Json.emptyObject;
-				data.errors = Json.emptyArray;
-				data.errors ~= Json.emptyObject;
+				data["errors"] = Json.emptyArray;
+				data["errors"] ~= Json.emptyObject;
 
-				data.errors[0].status = 500;
-				data.errors[0].title = "Server error";
-				data.errors[0].description = e.msg;
+				data["errors"][0]["status"] = 500;
+				data["errors"][0]["title"] = "Server error";
+				data["errors"][0]["description"] = e.msg;
 
 				response.writeJsonBody(data, 500, policy.mime);
 			}
@@ -565,7 +565,7 @@ version (unittest)
 
 		void updateItem(Json item)
 		{
-			this.item.name = item.name.to!string;
+			this.item.name = item["name"].to!string;
 		}
 
 		void deleteItem(string)
@@ -587,7 +587,7 @@ unittest
 	request(router).get("/testmodels/1/actionChange").expectStatusCode(200)
 		.end((Response response) => {
 			auto value = crate.getItem("1");
-			assert(value.name == "changed");
+			assert(value["name"] == "changed");
 		});
 }
 
@@ -607,7 +607,7 @@ unittest
 		.expectStatusCode(201)
 		.end((Response response) => {
 			auto value = crate.getItem("1");
-			assert(value.name == "data123");
+			assert(value["name"] == "data123");
 		});
 }
 

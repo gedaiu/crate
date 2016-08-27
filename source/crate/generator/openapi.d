@@ -253,7 +253,7 @@ version (unittest)
 
 		Json editItem(string id, Json fields)
 		{
-			item.name = fields.name.to!string;
+			item.name = fields["name"].to!string;
 			return item.serializeToJson;
 		}
 

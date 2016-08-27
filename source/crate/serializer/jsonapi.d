@@ -287,7 +287,7 @@ unittest
 	value.child.name = "test";
 
 	auto serializedValue = serializer.denormalise(value.serializeToJson, fields);
-	assert(serializedValue.data.attributes.child.name == "test");
+	assert(serializedValue["data"]["attributes"]["child"]["name"] == "test");
 }
 
 unittest
@@ -318,9 +318,9 @@ unittest
 
 	auto serializedValue = serializer.denormalise(value.serializeToJson, fields);
 
-	assert(serializedValue.data.relationships.child.data["type"] == "testmodels");
-	assert(serializedValue.data.relationships.child.data.id == "id2");
-	assert(serializedValue.data.id == "id1");
+	assert(serializedValue["data"]["relationships"]["child"]["data"]["type"] == "testmodels");
+	assert(serializedValue["data"]["relationships"]["child"]["data"]["id"] == "id2");
+	assert(serializedValue["data"]["id"] == "id1");
 }
 
 unittest
@@ -366,7 +366,7 @@ unittest
 
 	auto value = serializer.normalise("id1", serializedValue, fields);
 
-	assert(value.child == "id2");
+	assert(value["child"] == "id2");
 }
 
 unittest
@@ -403,7 +403,7 @@ unittest
 
 	auto value = serializer.normalise("id1", serializedValue, fields);
 
-	assert(value.child.name == "test");
+	assert(value["child"]["name"] == "test");
 }
 
 @("Check denormalised type")
