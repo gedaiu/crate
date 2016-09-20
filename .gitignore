@@ -9,3 +9,7 @@ dub.selections.json
 __test__unittest__
 examples/testJsonApiModel/testModel
 examples/testRestApiModel/testModel
+crate
+ut.d
+examples/testJsonApiModel/ember
+examples/testRestApiModel/ember

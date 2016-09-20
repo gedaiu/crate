@@ -349,7 +349,7 @@ class CrateRouter
 					try {
 						crate.getItem(id);
 					} catch(CrateNotFoundException e) {
-						throw new CrateRelationNotFoundException("Item with id `" ~ id ~ "` not found");
+						throw new CrateRelationNotFoundException("Item `"~field.type~"` in field `"~field.name~"` with id `" ~ id ~ "` not found");
 					}
 				}
 			}
