@@ -61,6 +61,11 @@ final class RequestRouter
 		return request!(HTTPMethod.PATCH)(URL("http://localhost" ~ path));
 	}
 
+	RequestRouter put(string path)
+	{
+		return request!(HTTPMethod.PUT)(URL("http://localhost" ~ path));
+	}
+
 	RequestRouter delete_(string path)
 	{
 		return request!(HTTPMethod.DELETE)(URL("http://localhost" ~ path));

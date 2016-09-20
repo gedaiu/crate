@@ -20,7 +20,7 @@
             "mainSourceFile": "bin/ut.d",
             "dflags-dmd": ["-unittest"],
             "dependencies": {
-                "unit-threaded": "~>0.6.0"
+                "unit-threaded": "~>0.6.27"
             }
         }
     ]

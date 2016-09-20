@@ -253,11 +253,9 @@ class CrateRouter
 
 		auto newData = policy.serializer.normalise(request.params["id"], request.json, definition);
 		auto mixedData = mix(item, newData);
-
 		checkRelationships(mixedData, definition);
 
 		crate.updateItem(mixedData);
-
 		response.writeJsonBody(policy.serializer.denormalise(mixedData, definition), 200, policy.mime);
 	}
 
@@ -283,6 +281,7 @@ class CrateRouter
 		auto newData = policy.serializer.normalise(request.params["id"], request.json, definition);
 
 		checkRelationships(newData, definition);
+		checkFields(newData, definition);
 		crate.updateItem(newData);
 
 		response.writeJsonBody(policy.serializer.denormalise(newData, definition), 200, policy.mime);
@@ -319,6 +318,7 @@ class CrateRouter
 
 		auto data = policy.serializer.normalise("", request.json, definition);
 		checkRelationships(data, definition);
+		checkFields(data, definition);
 
 		auto item = policy.serializer.denormalise(crate.addItem(data), definition);
 
@@ -353,6 +353,15 @@ class CrateRouter
 					}
 				}
 			}
+		}
+	}
+
+	void checkFields(Json data, FieldDefinition definition) {
+		foreach(field; definition.fields) {
+			bool canCheck = !field.isId && !field.isOptional;
+			bool isSet = data[field.name].type !is Json.Type.undefined;
+
+			enforce!CrateValidationException(!canCheck || isSet, "`" ~ field.name ~ "` is required.");
 		}
 	}
 
@@ -660,22 +669,7 @@ unittest
 		});
 }
 
-@("check post with missing relations")
-unittest
-{
-	struct RelatedModel {
-		string _id;
-
-		string name;
-	}
-
-	struct BaseModel {
-		string _id;
-
-		string name;
-		RelatedModel relation;
-	}
-
+version(unittest) {
 	class MissingCrate(T) : Crate!T
 	{
 		CrateConfig config()
@@ -708,6 +702,23 @@ unittest
 		{
 			throw new CrateNotFoundException("getItem not implemented");
 		}
+	}
+}
+
+@("check post with missing relations")
+unittest
+{
+	struct RelatedModel {
+		string _id;
+
+		string name;
+	}
+
+	struct BaseModel {
+		string _id;
+
+		string name;
+		RelatedModel relation;
 	}
 
 	auto router = new URLRouter();
@@ -744,6 +755,50 @@ unittest
 		.patch("/basemodels/1")
 		.send(data)
 		.expectStatusCode(400)
+		.end((Response response) => {
+		});
+}
+
+@("check post with wrong fields")
+unittest
+{
+	import crate.policy.restapi;
+
+	struct Point {
+		immutable string type = "Point";
+		float[2] coordinates;
+	}
+
+	struct Site {
+		BsonObjectID _id;
+
+		Point position;
+	}
+
+	auto router = new URLRouter();
+	auto baseCrate = new TestCrate!Site;
+	auto relatedCrate = new MissingCrate!Point;
+
+	auto crateRouter = new CrateRouter(router, new CrateRestApiPolicy(), baseCrate, relatedCrate);
+
+	Json data = `{
+		"site": {
+			"latitude": 23,
+			"longitude": 21
+		}
+	}`.parseJsonString;
+
+	request(router)
+		.post("/sites")
+		.send(data)
+		.expectStatusCode(403)
+		.end((Response response) => {
+		});
+
+	request(router)
+		.put("/sites/1")
+		.send(data)
+		.expectStatusCode(403)
 		.end((Response response) => {
 		});
 }
