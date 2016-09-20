@@ -3,7 +3,7 @@
 	"description": "A crate web example",
 	"copyright": "Copyright © 2014, Szabo Bogdan",
 	"authors": ["Szabo Bogdan"],
-		"dependencies": {
+	"dependencies": {
 		"crate": {"version": ">=0.1.0", "path": "../../"}
 	},
 

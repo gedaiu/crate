@@ -322,8 +322,9 @@ class CrateRouter
 
 		auto item = policy.serializer.denormalise(crate.addItem(data), definition);
 
-		response.headers["Location"] = (request.fullURL ~ Path(item["data"]["id"].to!string))
+		response.headers["Location"] = (request.fullURL ~ Path(data["_id"].to!string))
 			.to!string;
+
 		response.writeJsonBody(item, 201, policy.mime);
 	}
 
