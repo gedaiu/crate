@@ -1,7 +1,6 @@
-module crate.mongo;
+module crate.collection.mongo;
 
 import crate.base;
-import crate.router;
 import crate.error;
 
 import vibe.inet.url;
@@ -130,6 +129,7 @@ class MongoCrate(T): Crate!T
 
 version (unittest)
 {
+	import crate.http.router;
 	import crate.request;
 	import vibe.data.serialization;
 

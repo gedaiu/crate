@@ -2,7 +2,7 @@ module crate.generator.openapi;
 
 import vibe.http.router;
 import crate.base;
-import crate.router;
+import crate.http.router;
 import swaggerize.definitions;
 import std.stdio, std.string, std.conv;
 import vibe.data.json;

@@ -69,13 +69,23 @@ interface Crate(T)
 {
 	alias Type = T;
 
+	static if(is(T == void)) {
+		alias Conversion = Json;
+	} else static if(isBuiltinType!T) {
+		alias Conversion = T;
+	} else {
+		alias Conversion = Json;
+	}
+
+	pragma(msg, "=>", T, "?", Conversion);
+
 	CrateConfig config();
 
-	Json[] getList();
+	Conversion[] getList();
 
-	Json addItem(Json item);
-	Json getItem(string id);
-	void updateItem(Json item);
+	Conversion addItem(Conversion item);
+	Conversion getItem(string id);
+	void updateItem(Conversion item);
 	void deleteItem(string id);
 }
 

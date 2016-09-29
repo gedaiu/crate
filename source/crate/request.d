@@ -23,6 +23,8 @@ final class RequestRouter
 
 		string[string] expectHeaders;
 		string[string] expectHeadersContains;
+
+		string[string] headers;
 		int expectedStatusCode;
 
 		string responseBody;
@@ -49,6 +51,12 @@ final class RequestRouter
 		{
 			return send(data.serializeToJson());
 		}
+	}
+
+	RequestRouter header(string name, string value)
+	{
+		headers[name] = value;
+		return this;
 	}
 
 	RequestRouter post(string path)
@@ -81,6 +89,10 @@ final class RequestRouter
 		preparedRequest = createTestHTTPServerRequest(url, method);
 		preparedRequest.host = "localhost";
 
+		foreach(name, value; headers) {
+			preparedRequest.headers[name] = value;
+		}
+
 		return this;
 	}
 
@@ -104,7 +116,6 @@ final class RequestRouter
 
 	private void performExpected(Response res)
 	{
-
 		if (expectedStatusCode != 0)
 		{
 			assert(expectedStatusCode == res.statusCode,
@@ -127,7 +138,6 @@ final class RequestRouter
 					"Response header `" ~ key ~ "` has an unexpected value. Expected `"
 					~ value ~ "` not found in `" ~ res.headers[key].to!string ~ "`");
 		}
-
 	}
 
 	void end(T)(T callback)
@@ -167,7 +177,7 @@ class Response
 		data = data.toStringz.to!string;
 		auto bodyIndex = data.indexOf("\r\n\r\n");
 
-		assert(bodyIndex != -1, "Invalid response data");
+		assert(bodyIndex != -1, "Invalid response data: \n" ~ data ~ "\n\n");
 
 		auto headers = data[0 .. bodyIndex].split("\r\n").array;
 

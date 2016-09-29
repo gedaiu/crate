@@ -1,4 +1,6 @@
-module crate.router;
+module crate.http.router;
+
+import std.exception;
 
 import vibe.inet.url;
 import vibe.http.router;
@@ -8,29 +10,32 @@ import vibe.data.bson;
 import crate.error;
 import crate.base;
 import crate.ctfe;
-import crate.collection;
+import crate.collection.proxy;
 
 static import crate.policy.jsonapi;
 static import crate.policy.restapi;
+static import crate.policy.raw;
 
 import std.traits, std.conv, std.string, std.stdio;
 import std.algorithm, std.array, std.traits, std.meta;
 
 string basePath(T)(string name) {
+	static if(is(Crate!T.Conversion == Json)) {
+		if(name == "Json API") {
+			return crate.policy.jsonapi.basePath!T;
+		}
 
-	if(name == "Json API") {
-		return crate.policy.jsonapi.basePath!T();
-	}
-
-	if(name == "Rest API") {
-		return crate.policy.restapi.basePath!T();
+		if(name == "Rest API") {
+			return crate.policy.restapi.basePath!T;
+		}
+	} else {
+		return crate.policy.raw.basePath(name);
 	}
 
 	assert(false, "Unknown " ~ name);
 }
 
 alias DefaultPolicy = crate.policy.jsonapi.CrateJsonApiPolicy;
-
 
 class CrateRouter
 {
@@ -121,17 +126,23 @@ class CrateRouter
 	}
 
 	CrateRoutes routes(T)(string name, Crate!T localCrate) {
+		static if(is(Crate!T.Conversion == Json)) {
+			if(name == "Json API") {
+				collection.addByPath(basePath!T(policy.name), localCrate);
 
-		if(name == "Json API") {
-			collection.addByPath(basePath!T(policy.name), localCrate);
+				return crate.policy.jsonapi.routes!T(localCrate.config);
+			}
 
-			return crate.policy.jsonapi.routes!T(localCrate.config);
-		}
+			if(name == "Rest API") {
+				collection.addByPath(basePath!T(policy.name), localCrate);
 
-		if(name == "Rest API") {
-			collection.addByPath(basePath!T(policy.name), localCrate);
+				return crate.policy.restapi.routes!T(localCrate.config);
+			}
+		} else {
+			pragma(msg, "\nCan not use selected policy for `Crate!", T.stringof, "`");
+			pragma(msg, "Using raw policy instead\n");
 
-			return crate.policy.restapi.routes!T(localCrate.config);
+			return crate.policy.raw.routes!T(localCrate.config);
 		}
 
 		assert(false, "Unknown " ~ name);

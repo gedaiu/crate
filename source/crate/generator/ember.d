@@ -4,7 +4,7 @@ import std.stdio, std.file, std.uni, std.conv;
 
 import crate.ctfe;
 import crate.base;
-import crate.router;
+import crate.http.router;
 
 import vibe.data.json;
 

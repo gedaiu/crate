@@ -1,4 +1,4 @@
-module crate.collection;
+module crate.collection.proxy;
 
 import crate.base;
 import crate.ctfe;
