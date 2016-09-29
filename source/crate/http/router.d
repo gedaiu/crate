@@ -125,7 +125,8 @@ class CrateRouter
 		}
 	}
 
-	CrateRoutes routes(T)(string name, Crate!T localCrate) {
+	CrateRoutes routes(T)(string name, Crate!T localCrate)
+	{
 		static if(is(Crate!T.Conversion == Json)) {
 			if(name == "Json API") {
 				collection.addByPath(basePath!T(policy.name), localCrate);
@@ -242,17 +243,6 @@ class CrateRouter
 
 		crate.updateItem(mixedData);
 		response.writeJsonBody(policy.serializer.denormalise(mixedData, definition), 200, policy.mime);
-	}
-
-	deprecated("Write a better mixer")
-	Json mix(Json data, Json newData) {
-		Json mixedData = data;
-
-		foreach(string key, value; newData) {
-			mixedData[key] = value;
-		}
-
-		return mixedData;
 	}
 
 	void replaceItem(HTTPServerRequest request, HTTPServerResponse response)
@@ -512,6 +502,49 @@ class CrateRouter
 			response.headers["Access-Control-Allow-Headers"] = "Content-Type";
 		}
 	}
+}
+
+Json mix(Json data, Json newData) {
+	Json mixedData = data;
+
+	foreach(string key, value; newData) {
+		if(mixedData[key].type == Json.Type.object) {
+			mixedData[key] = mix(mixedData[key], value);
+		} else {
+			mixedData[key] = value;
+		}
+	}
+
+	return mixedData;
+}
+
+@("check the json mixer with simple values")
+unittest {
+	Json data = Json.emptyObject;
+	Json newData = Json.emptyObject;
+
+	data["key1"] = 1;
+	newData["key2"] = 2;
+
+	auto result = data.mix(newData);
+	assert(result["key1"].to!int == 1);
+	assert(result["key2"].to!int == 2);
+}
+
+@("check the json mixer with nested values")
+unittest {
+	Json data = Json.emptyObject;
+	Json newData = Json.emptyObject;
+
+	data["key"] = Json.emptyObject;
+	data["key"]["nested1"] = 1;
+
+	newData["key"] = Json.emptyObject;
+	newData["key"]["nested2"] = 2;
+
+	auto result = data.mix(newData);
+	assert(result["key"]["nested1"].to!int == 1);
+	assert(result["key"]["nested2"].to!int == 2);
 }
 
 version (unittest)
