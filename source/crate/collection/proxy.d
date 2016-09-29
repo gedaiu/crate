@@ -6,86 +6,104 @@ import vibe.data.json;
 
 import std.stdio, std.string;
 
-class CrateProxy : Crate!void {
+class CrateProxy : Crate!void
+{
 
-  private {
-    CrateConfig delegate() configRef;
-  	Json[] delegate() getListRef;
-  	Json delegate(Json item) addItemRef;
-  	Json delegate(string id) getItemRef;
-  	void delegate(Json item) updateItemRef;
-  	void delegate(string id) deleteItemRef;
+	private
+	{
+		CrateConfig delegate() configRef;
+		Json[]delegate() getListRef;
+		Json delegate(Json item) addItemRef;
+		Json delegate(string id) getItemRef;
+		void delegate(Json item) updateItemRef;
+		void delegate(string id) deleteItemRef;
 
-    FieldDefinition _definition;
-  }
+		FieldDefinition _definition;
+	}
 
-  this(T)(ref Crate!T crate) {
-    configRef = &crate.config;
-    getListRef = &crate.getList;
-    addItemRef = &crate.addItem;
-    getItemRef = &crate.getItem;
-    updateItemRef = &crate.updateItem;
-    deleteItemRef = &crate.deleteItem;
+	this(T)(ref Crate!T crate)
+	{
+		configRef = &crate.config;
+		getListRef = &crate.getList;
+		addItemRef = &crate.addItem;
+		getItemRef = &crate.getItem;
+		updateItemRef = &crate.updateItem;
+		deleteItemRef = &crate.deleteItem;
 
-    _definition = getFields!T;
-  }
+		_definition = getFields!T;
+	}
 
-  FieldDefinition definition() {
-    return _definition;
-  }
+	FieldDefinition definition()
+	{
+		return _definition;
+	}
 
-  CrateConfig config() {
-    return configRef();
-  }
+	CrateConfig config()
+	{
+		return configRef();
+	}
 
-	Json[] getList() {
-    return getListRef();
-  }
+	Json[] getList()
+	{
+		return getListRef();
+	}
 
-	Json addItem(Json item) {
-    return addItemRef(item);
-  }
+	Json addItem(Json item)
+	{
+		return addItemRef(item);
+	}
 
-	Json getItem(string id) {
-    return getItemRef(id);
-  }
+	Json getItem(string id)
+	{
+		return getItemRef(id);
+	}
 
-	void updateItem(Json item) {
-    updateItemRef(item);
-  }
+	void updateItem(Json item)
+	{
+		updateItemRef(item);
+	}
 
-	void deleteItem(string id) {
-    deleteItemRef(id);
-  }
+	void deleteItem(string id)
+	{
+		deleteItemRef(id);
+	}
 }
 
-struct CrateCollection {
+struct CrateCollection
+{
 
-  private {
-    CrateProxy[string] crates;
-    string[string] types;
-  }
+	private
+	{
+		CrateProxy[string] crates;
+		string[string] types;
+	}
 
-  void addByPath(T)(string basePath, ref Crate!T crate) {
-    crates[basePath] = new CrateProxy(crate);
-    types[T.stringof] = basePath;
-  }
+	void addByPath(T)(string basePath, ref Crate!T crate)
+	{
+		crates[basePath] = new CrateProxy(crate);
+		types[T.stringof] = basePath;
+	}
 
-  CrateProxy getByPath(string path) {
-    foreach(basePath, crate; crates) {
-      if(path.indexOf(basePath) == 0) {
-        return crate;
-      }
-    }
+	CrateProxy getByPath(string path)
+	{
+		foreach (basePath, crate; crates)
+		{
+			if (path.indexOf(basePath) == 0)
+			{
+				return crate;
+			}
+		}
 
-    assert(false, "Crate not found");
-  }
+		assert(false, "Crate not found");
+	}
 
-  CrateProxy getByType(string type) {
-    if(type in types) {
-      return crates[types[type]];
-    }
+	CrateProxy getByType(string type)
+	{
+		if (type in types)
+		{
+			return crates[types[type]];
+		}
 
-    assert(false, "Crate not found");
-  }
+		assert(false, "Crate not found");
+	}
 }
