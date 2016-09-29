@@ -187,39 +187,13 @@ class CrateRouter
 		{
 			try
 			{
-				try
-				{
-					func(request, response);
-				}
-				catch (CrateException e)
-				{
-					Json data = Json.emptyObject;
-					data["errors"] = Json.emptyArray;
-					data["errors"] ~= Json.emptyObject;
-
-					data["errors"][0]["status"] = e.statusCode;
-					data["errors"][0]["title"] = e.title;
-					data["errors"][0]["description"] = e.msg;
-
-					response.writeJsonBody(data, e.statusCode, policy.mime);
-				}
+				func(request, response);
 			}
 			catch (Exception e)
 			{
-				debug
-				{
-					e.writeln;
-				}
+				Json data = e.toJson;
 
-				Json data = Json.emptyObject;
-				data["errors"] = Json.emptyArray;
-				data["errors"] ~= Json.emptyObject;
-
-				data["errors"][0]["status"] = 500;
-				data["errors"][0]["title"] = "Server error";
-				data["errors"][0]["description"] = e.msg;
-
-				response.writeJsonBody(data, 500, policy.mime);
+				response.writeJsonBody(data, data["errors"][0]["status"].to!int, policy.mime);
 			}
 		}
 
