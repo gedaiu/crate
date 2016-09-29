@@ -201,108 +201,6 @@ class CrateRouter
 		return &check;
 	}
 
-	void optionsItem(HTTPServerRequest request, HTTPServerResponse response)
-	{
-		auto crate = collection.getByPath(request.path);
-		addItemCORS(crate.config, response);
-
-		crate.getItem(request.params["id"]);
-		response.writeBody("", 200);
-	}
-
-	void optionsList(HTTPServerRequest request, HTTPServerResponse response)
-	{
-		auto crate = collection.getByPath(request.path);
-		addListCORS(crate.config, response);
-		response.writeBody("", 200);
-	}
-
-	void getItem(HTTPServerRequest request, HTTPServerResponse response)
-	{
-		auto crate = collection.getByPath(request.path);
-		addItemCORS(crate.config, response);
-		auto data = crate.getItem(request.params["id"]);
-
-		FieldDefinition definition = crate.definition;
-		auto denormalised = policy.serializer.denormalise(data, definition);
-
-		response.writeJsonBody(denormalised, 200, policy.mime);
-	}
-
-	void updateItem(HTTPServerRequest request, HTTPServerResponse response)
-	{
-		auto crate = collection.getByPath(request.path);
-		addItemCORS(crate.config, response);
-
-		FieldDefinition definition = crate.definition;
-		auto item = crate.getItem(request.params["id"]);
-
-		auto newData = policy.serializer.normalise(request.params["id"], request.json, definition);
-		auto mixedData = mix(item, newData);
-		checkRelationships(mixedData, definition);
-
-		crate.updateItem(mixedData);
-		response.writeJsonBody(policy.serializer.denormalise(mixedData, definition), 200, policy.mime);
-	}
-
-	void replaceItem(HTTPServerRequest request, HTTPServerResponse response)
-	{
-		auto crate = collection.getByPath(request.path);
-		addItemCORS(crate.config, response);
-
-		FieldDefinition definition = crate.definition;
-		auto item = crate.getItem(request.params["id"]);
-
-		auto newData = policy.serializer.normalise(request.params["id"], request.json, definition);
-
-		checkRelationships(newData, definition);
-		checkFields(newData, definition);
-		crate.updateItem(newData);
-
-		response.writeJsonBody(policy.serializer.denormalise(newData, definition), 200, policy.mime);
-	}
-
-	void deleteItem(HTTPServerRequest request, HTTPServerResponse response)
-	{
-		auto crate = collection.getByPath(request.path);
-		addItemCORS(crate.config, response);
-
-		crate.deleteItem(request.params["id"]);
-		response.writeBody("", 204, policy.mime);
-	}
-
-	void getList(HTTPServerRequest request, HTTPServerResponse response)
-	{
-		auto crate = collection.getByPath(request.path);
-
-		addListCORS(crate.config, response);
-
-		FieldDefinition definition = crate.definition;
-
-		auto data = policy.serializer.denormalise(crate.getList, definition);
-
-		response.writeJsonBody(data, 200, policy.mime);
-	}
-
-	void postItem(HTTPServerRequest request, HTTPServerResponse response)
-	{
-		auto crate = collection.getByPath(request.path);
-		addListCORS(crate.config, response);
-
-		FieldDefinition definition = crate.definition;
-
-		auto data = policy.serializer.normalise("", request.json, definition);
-		checkRelationships(data, definition);
-		checkFields(data, definition);
-
-		auto item = policy.serializer.denormalise(crate.addItem(data), definition);
-
-		response.headers["Location"] = (request.fullURL ~ Path(data["_id"].to!string))
-			.to!string;
-
-		response.writeJsonBody(item, 201, policy.mime);
-	}
-
 	void checkRelationships(Json data, FieldDefinition definition) {
 		foreach(field; definition.fields) {
 			if(field.isRelation) {
@@ -449,7 +347,7 @@ class CrateRouter
 
 	string[] mime()
 	{
-		return [policy.mime];
+		return [ policy.mime ];
 	}
 
 	private
