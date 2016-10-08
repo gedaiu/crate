@@ -7,7 +7,7 @@ import vibe.inet.url;
 import vibe.http.router;
 import vibe.data.json;
 
-import std.conv, std.stdio;
+import std.conv, std.stdio, std.exception;
 
 struct S {}
 

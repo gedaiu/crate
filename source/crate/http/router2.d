@@ -14,7 +14,7 @@ import vibe.http.router;
 
 import std.conv;
 
-alias DefaultPolicy = crate.policy.jsonapi.CrateJsonApiPolicy;
+alias DefaultPolicy = crate.policy.restapi.CrateRestApiPolicy;
 
 
 version (unittest)
@@ -70,13 +70,12 @@ version (unittest)
 			this.item.name = item["name"].to!string;
 		}
 
-		void deleteItem(string)
+		void deleteItem(string id)
 		{
-			throw new Exception("deleteItem not implemented");
+			assert(id == "1");
 		}
 	}
 }
-
 
 string basePath(T)(string name)
 {
@@ -106,6 +105,10 @@ URLRouter addCrate(URLRouter router) {
 
 CrateRouter!T crateSetup(T)(URLRouter router) {
 	return new CrateRouter!T(router);
+}
+
+CrateRouter!CrateRestApiPolicy crateSetup(URLRouter router) {
+	return new CrateRouter!CrateRestApiPolicy(router);
 }
 
 class CrateRouter(RouterPolicy) {
@@ -269,7 +272,7 @@ class CrateRouter(RouterPolicy) {
 	}
 }
 
-@("check post with wrong fields")
+@("REST API tests")
 unittest
 {
 	import crate.policy.restapi;
@@ -292,13 +295,10 @@ unittest
 	auto baseCrate = new TestCrate!Site;
 	auto relatedCrate = new TestCrate!Point;
 
-
 	router
-		.crateSetup!DefaultPolicy
+		.crateSetup
 			.add(baseCrate)
 			.add(relatedCrate);
-
-	//auto crateRouter = new CrateRouter(router, new CrateRestApiPolicy(), baseCrate, relatedCrate);
 
 	Json data = `{
 		"site": {
@@ -307,15 +307,69 @@ unittest
 		}
 	}`.parseJsonString;
 
+	request(router)
+		.get("/sites")
+			.send(data)
+				.expectStatusCode(200)
+				.end((Response response) => {
+					assert(response.bodyJson["sites"].length > 0);
+					assert(response.bodyJson["sites"][0]["_id"] == "1");
+				});
+
+	request(router)
+		.get("/sites/1")
+			.send(data)
+				.expectStatusCode(200)
+				.end((Response response) => {
+					assert(response.bodyJson["site"]["_id"] == "1");
+				});
 
 	request(router)
 		.post("/sites")
 			.send(data)
-			.expectStatusCode(403)
+				.expectStatusCode(403)
 				.end((Response response) => {
-					response.writeln;
+					assert(response.bodyJson["errors"][0]["title"] == "Validation error");
 				});
-/*
-	request(router).put("/api/sites/1").send(data).expectStatusCode(403).end((Response) => {
-	});*/
+
+	data = `{
+		"site": {
+			"position": {
+				"type": "Point",
+				"coordinates": [23, 21]
+			}
+		}
+	}`.parseJsonString;
+
+	request(router)
+		.post("/sites")
+			.send(data)
+				.expectStatusCode(201)
+				.end((Response response) => {
+					assert(response.bodyJson["site"]["_id"] == "1");
+				});
+
+	data = `{
+		"site": {
+			"position": {
+				"type": "Point",
+				"coordinates": [0, 1]
+			}
+		}
+	}`.parseJsonString;
+
+	request(router)
+		.put("/sites/1")
+			.send(data)
+				.expectStatusCode(200)
+				.end((Response response) => {
+					assert(response.bodyJson["site"]["position"]["coordinates"][0] == 0);
+					assert(response.bodyJson["site"]["position"]["coordinates"][1] == 1);
+				});
+
+	request(router)
+		.delete_("/sites/1")
+			.expectStatusCode(204)
+			.end((Response response) => {
+			});
 }

@@ -167,6 +167,8 @@ class Response
 	private
 	{
 		Json _bodyJson;
+		string responseLine;
+		string data;
 	}
 
 	string[string] headers;
@@ -175,12 +177,15 @@ class Response
 	this(string data)
 	{
 		data = data.toStringz.to!string;
+		this.data = data;
+
 		auto bodyIndex = data.indexOf("\r\n\r\n");
 
 		assert(bodyIndex != -1, "Invalid response data: \n" ~ data ~ "\n\n");
 
 		auto headers = data[0 .. bodyIndex].split("\r\n").array;
 
+		responseLine = headers[0];
 		statusCode = headers[0].split(" ")[1].to!int;
 
 		foreach (i; 1 .. headers.length)
@@ -200,5 +205,10 @@ class Response
 		}
 
 		return _bodyJson;
+	}
+
+	override
+	string toString() {
+		return data;
 	}
 }
