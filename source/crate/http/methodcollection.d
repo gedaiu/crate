@@ -8,6 +8,9 @@ import crate.base;
 import crate.error;
 import crate.collection.proxy;
 
+import std.conv;
+import std.exception;
+
 class MethodCollection
 {
 	private

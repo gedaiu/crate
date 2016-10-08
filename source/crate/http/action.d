@@ -2,6 +2,7 @@ module crate.http.action;
 
 import std.traits;
 import std.string;
+import std.conv;
 
 import vibe.inet.url;
 import vibe.http.router;
