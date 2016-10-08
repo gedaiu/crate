@@ -1,11 +1,4 @@
-module crate.http.router;
-
-import std.exception;
-
-import vibe.inet.url;
-import vibe.http.router;
-import vibe.data.json;
-import vibe.data.bson;
+module crate.http.router2;
 
 import crate.error;
 import crate.base;
@@ -13,274 +6,23 @@ import crate.ctfe;
 import crate.collection.proxy;
 import crate.http.methodcollection;
 import crate.http.action;
+import crate.policy.jsonapi;
+import crate.policy.restapi;
 
-static import crate.policy.jsonapi;
-static import crate.policy.restapi;
-static import crate.policy.raw;
+import vibe.data.json;
+import vibe.http.router;
 
-import std.traits, std.conv, std.string, std.stdio;
-import std.algorithm, std.array, std.traits, std.meta;
+import std.conv;
 
-string basePath(T)(string name)
-{
-	static if (is(Crate!T.Conversion == Json))
-	{
-		if (name == "Json API")
-		{
-			return crate.policy.jsonapi.basePath!T;
-		}
+alias DefaultPolicy = crate.policy.restapi.CrateRestApiPolicy;
 
-		if (name == "Rest API")
-		{
-			return crate.policy.restapi.basePath!T;
-		}
-	}
-	else
-	{
-		return crate.policy.raw.basePath(name);
-	}
-
-	assert(false, "Unknown " ~ name);
-}
-
-alias DefaultPolicy = crate.policy.jsonapi.CrateJsonApiPolicy;
-
-class CrateRouter
-{
-	const CratePolicy policy;
-
-	private
-	{
-		CrateCollection collection;
-		CrateRoutes definedRoutes;
-		URLRouter router;
-	}
-
-	this(T...)(URLRouter router, const(CratePolicy) policy, T crates)
-	{
-		this.policy = policy;
-		this.router = router;
-		this.collection = CrateCollection();
-
-		foreach (crate; crates)
-		{
-			addCrate(crate);
-		}
-	}
-
-	this(U, T...)(URLRouter router, Crate!U firstCrate, T crates)
-	{
-		this.policy = new const DefaultPolicy;
-		this.router = router;
-		this.collection = CrateCollection();
-
-		addCrate(firstCrate);
-
-		foreach (crate; crates)
-		{
-			addCrate(crate);
-		}
-	}
-
-	this(T)(URLRouter router, Crate!T crate, const(CratePolicy) policy = new const DefaultPolicy)
-	{
-		this(router, policy, crate);
-	}
-
-	alias Types = AliasSeq!();
-
-	void addCrate(T)(Crate!T crate)
-	{
-		auto tmpRoutes = routes(policy.name, crate);
-
-		foreach (string name, schema; tmpRoutes.schemas)
-		{
-			definedRoutes.schemas[name] = schema;
-		}
-
-		foreach (string path, methods; tmpRoutes.paths)
-			foreach (method, responses; methods)
-				foreach (response, pathDefinition; responses)
-					definedRoutes.paths[path][method][response] = pathDefinition;
-
-		bindRoutes(crate);
-	}
-
-	void bindRoutes(T)(Crate!T crate)
-	{
-		auto methodCollection = new MethodCollection(policy, collection, crate.config);
-
-		if (crate.config.getList || crate.config.addItem)
-		{
-			router.match(HTTPMethod.OPTIONS, basePath!T(policy.name),
-					checkError(&methodCollection.optionsList));
-		}
-
-		if (crate.config.getItem || crate.config.updateItem || crate.config.deleteItem)
-		{
-			router.match(HTTPMethod.OPTIONS, basePath!T(policy.name) ~ "/:id",
-					checkError(&methodCollection.optionsItem));
-		}
-
-		foreach (string path, methods; definedRoutes.paths)
-			foreach (method, responses; methods)
-				foreach (response, pathDefinition; responses)
-					addRoute(path, methodCollection, pathDefinition);
-	}
-
-	CrateRoutes routes(T)(string name, Crate!T localCrate)
-	{
-		static if (is(Crate!T.Conversion == Json))
-		{
-			if (name == "Json API")
-			{
-				collection.addByPath(basePath!T(policy.name), localCrate);
-
-				return crate.policy.jsonapi.routes!T(localCrate.config);
-			}
-
-			if (name == "Rest API")
-			{
-				collection.addByPath(basePath!T(policy.name), localCrate);
-
-				return crate.policy.restapi.routes!T(localCrate.config);
-			}
-		}
-		else
-		{
-			pragma(msg, "\nCan not use selected policy for `Crate!", T.stringof, "`");
-			pragma(msg, "Using raw policy instead\n");
-
-			return crate.policy.raw.routes!T(localCrate.config);
-		}
-
-		assert(false, "Unknown " ~ name);
-	}
-
-	void addRoute(string path, MethodCollection methodCollection, PathDefinition definition)
-	{
-		switch (definition.operation)
-		{
-		case CrateOperation.getList:
-			router.get(path, checkError(&methodCollection.getList));
-			break;
-
-		case CrateOperation.getItem:
-			router.get(path, checkError(&methodCollection.getItem));
-			break;
-
-		case CrateOperation.addItem:
-			router.post(path, checkError(&methodCollection.postItem));
-			break;
-
-		case CrateOperation.deleteItem:
-			router.delete_(path,
-					checkError(&methodCollection.deleteItem));
-			break;
-
-		case CrateOperation.updateItem:
-			router.patch(path,
-					checkError(&methodCollection.updateItem));
-			break;
-
-		case CrateOperation.replaceItem:
-			router.put(path,
-					checkError(&methodCollection.replaceItem));
-			break;
-
-		default:
-			throw new Exception("Operation not supported: " ~ definition.operation.to!string);
-		}
-	}
-
-	auto checkError(T)(T func)
-	{
-		void check(HTTPServerRequest request, HTTPServerResponse response)
-		{
-			try
-			{
-				func(request, response);
-			}
-			catch (Exception e)
-			{
-				Json data = e.toJson;
-
-				response.writeJsonBody(data, data["errors"][0]["status"].to!int, policy.mime);
-			}
-		}
-
-		return &check;
-	}
-
-	void enableAction(T, string actionName)()
-	{
-		auto action = new Action!(T, actionName)(collection);
-
-		static if (__traits(hasMember, T, actionName))
-		{
-			alias Param = Parameters!(__traits(getMember, T, actionName));
-			alias RType = ReturnType!(__traits(getMember, T, actionName));
-
-			auto path = basePath!T(policy.name) ~ "/:id/" ~ actionName;
-
-			static if (is(RType == void))
-			{
-				string returnType = "";
-			}
-			else
-			{
-				string returnType = "StringResponse";
-			}
-
-			static if (Param.length == 0)
-			{
-				HTTPMethod method = HTTPMethod.GET;
-			}
-			else
-			{
-				HTTPMethod method = HTTPMethod.POST;
-			}
-
-			definedRoutes.paths[path][method][200] = PathDefinition(returnType,
-					"", CrateOperation.otherItem);
-
-			static if (Param.length == 0)
-			{
-				auto func = &action.call;
-
-				router.get(path, checkError(func));
-			}
-			else static if (Param.length == 1)
-			{
-				auto func = &action.call;
-
-				router.post(path, checkError(func));
-			}
-			else
-			{
-				pragma(msg, "There is no action named `" ~ actionName ~ "`");
-			}
-		}
-		else
-		{
-			static assert(false, T.stringof ~ " has no `" ~ actionName ~ "` member.");
-		}
-	}
-
-	CrateRoutes allRoutes()
-	{
-		return definedRoutes;
-	}
-
-	string[] mime()
-	{
-		return [policy.mime];
-	}
-}
 
 version (unittest)
 {
+	import crate.base;
 	import crate.request;
+	import vibe.data.json;
+	import vibe.data.bson;
 
 	struct TestModel
 	{
@@ -328,181 +70,213 @@ version (unittest)
 			this.item.name = item["name"].to!string;
 		}
 
-		void deleteItem(string)
-		{
-			throw new Exception("deleteItem not implemented");
-		}
-	}
-}
-
-@("Check and action with a string response")
-unittest
-{
-	auto router = new URLRouter();
-	auto crate = new TestCrate!TestModel;
-	auto crateRouter = new CrateRouter(router, crate);
-
-	crateRouter.enableAction!(TestModel, "actionChange");
-
-	request(router).get("/testmodels/1/actionChange").expectStatusCode(200)
-		.end((Response response) => {
-			auto value = crate.getItem("1");
-			assert(value["name"] == "changed");
-		});
-}
-
-@("Check and action with a string parameter")
-unittest
-{
-	auto router = new URLRouter();
-	auto crate = new TestCrate!TestModel;
-	auto crateRouter = new CrateRouter(router, crate);
-
-	crateRouter.enableAction!(TestModel, "actionParam");
-
-	request(router).post("/testmodels/1/actionParam").send("data123")
-		.expectStatusCode(201).end((Response response) => {
-			auto value = crate.getItem("1");
-			assert(value["name"] == "data123");
-		});
-}
-
-@("check post with existing relations")
-unittest
-{
-	struct RelatedModel
-	{
-		string _id;
-
-		string name;
-	}
-
-	struct BaseModel
-	{
-		string _id;
-
-		string name;
-		RelatedModel relation;
-	}
-
-	auto router = new URLRouter();
-	auto baseCrate = new TestCrate!BaseModel;
-	auto relatedCrate = new TestCrate!RelatedModel;
-
-	auto crateRouter = new CrateRouter(router, baseCrate, relatedCrate);
-
-	Json data = `{
-		"data": {
-			"attributes": {
-				"name": "hello"
-			},
-			"type": "basemodels",
-			"relationships": {
-				"relation": {
-					"data": {
-						"type": "relatedmodels",
-						"id": "1"
-					}
-				}
-			}
-		}
-	}`.parseJsonString;
-
-	request(router).post("/basemodels").send(data).end((Response response) => {
-		assert(response.bodyJson["data"]["id"] == "1");
-		assert(response.bodyJson["data"]["relationships"]["relation"]["data"]["id"] == "1");
-	});
-}
-
-version (unittest)
-{
-	class MissingCrate(T) : Crate!T
-	{
-		CrateConfig config()
-		{
-			return CrateConfig();
-		}
-
-		Json[] getList()
-		{
-			throw new Exception("getList not implemented");
-		}
-
-		Json addItem(Json item)
-		{
-			item["_id"] = "1";
-			return item;
-		}
-
-		Json getItem(string id)
-		{
-			throw new CrateNotFoundException("getItem not implemented");
-		}
-
-		void updateItem(Json item)
-		{
-			throw new CrateNotFoundException("getItem not implemented");
-		}
-
 		void deleteItem(string id)
 		{
-			throw new CrateNotFoundException("getItem not implemented");
+			assert(id == "1");
 		}
 	}
 }
 
-@("check post with missing relations")
-unittest
+string basePath(T)(string name)
 {
-	struct RelatedModel
+	static if (is(Crate!T.Conversion == Json))
 	{
-		string _id;
+		if (name == "Json API")
+		{
+			return crate.policy.jsonapi.basePath!T;
+		}
 
-		string name;
+		if (name == "Rest API")
+		{
+			return crate.policy.restapi.basePath!T;
+		}
+	}
+	else
+	{
+		return crate.policy.raw.basePath(name);
 	}
 
-	struct BaseModel
-	{
-		string _id;
+	assert(false, "Unknown " ~ name);
+}
 
-		string name;
-		RelatedModel relation;
+URLRouter addCrate(URLRouter router) {
+	return router;
+}
+
+CrateRouter!T crateSetup(T)(URLRouter router) {
+	return new CrateRouter!T(router);
+}
+
+CrateRouter!CrateRestApiPolicy crateSetup(URLRouter router) {
+	return new CrateRouter!CrateRestApiPolicy(router);
+}
+
+class CrateRouter(RouterPolicy) {
+
+	private {
+		URLRouter router;
+		CrateRoutes definedRoutes;
+		CrateCollection collection;
 	}
 
-	auto router = new URLRouter();
-	auto baseCrate = new TestCrate!BaseModel;
-	auto relatedCrate = new MissingCrate!RelatedModel;
+	this(URLRouter router) {
+		this.collection = CrateCollection();
+		this.router = router;
+	}
 
-	auto crateRouter = new CrateRouter(router, baseCrate, relatedCrate);
+	CrateRoutes routes(T)(const CratePolicy policy, Crate!T localCrate)
+	{
+		string name = policy.name;
 
-	Json data = `{
-		"data": {
-			"attributes": {
-				"name": "hello"
-			},
-			"type": "basemodels",
-			"relationships": {
-				"relation": {
-					"data": {
-						"type": "relatedmodels",
-						"id": "1"
-					}
-				}
+		static if (is(Crate!T.Conversion == Json))
+		{
+			if (name == "Json API")
+			{
+				collection.addByPath(basePath!T(policy.name), localCrate);
+
+				return crate.policy.jsonapi.routes!T(localCrate.config);
+			}
+
+			if (name == "Rest API")
+			{
+				collection.addByPath(basePath!T(policy.name), localCrate);
+				return crate.policy.restapi.routes!T(localCrate.config);
 			}
 		}
-	}`.parseJsonString;
+		else
+		{
+			pragma(msg, "\nCan not use selected policy for `Crate!", T.stringof, "`");
+			pragma(msg, "Using raw policy instead\n");
 
-	request(router).post("/basemodels").send(data).expectStatusCode(400).end((Response response) => {
-	});
+			return crate.policy.raw.routes!T(localCrate.config);
+		}
 
-	request(router).patch("/basemodels/1").send(data).expectStatusCode(400)
-		.end((Response response) => {  });
+		assert(false, "Unknown " ~ name);
+	}
+
+	CrateRouter add(Policy, T)(Crate!T crate) {
+		const policy = new const Policy;
+
+		auto tmpRoutes = routes(policy, crate);
+
+		foreach (string name, schema; tmpRoutes.schemas)
+		{
+			definedRoutes.schemas[name] = schema;
+		}
+
+		foreach (string path, methods; tmpRoutes.paths)
+			foreach (method, responses; methods)
+				foreach (response, pathDefinition; responses)
+					definedRoutes.paths[path][method][response] = pathDefinition;
+
+		bindRoutes(policy, crate);
+
+		return this;
+	}
+
+	CrateRouter add(T)(Crate!T crate) {
+		const policy = new const RouterPolicy;
+
+		auto tmpRoutes = routes(policy, crate);
+
+		foreach (string name, schema; tmpRoutes.schemas)
+		{
+			definedRoutes.schemas[name] = schema;
+		}
+
+		foreach (string path, methods; tmpRoutes.paths)
+			foreach (method, responses; methods)
+				foreach (response, pathDefinition; responses)
+					definedRoutes.paths[path][method][response] = pathDefinition;
+
+		bindRoutes(policy, crate);
+
+		return this;
+	}
+
+	void bindRoutes(T)(const CratePolicy policy, Crate!T crate)
+	{
+		auto methodCollection = new MethodCollection(policy, collection, crate.config);
+
+		if (crate.config.getList || crate.config.addItem)
+		{
+			router.match(HTTPMethod.OPTIONS, basePath!T(policy.name),
+					checkError(policy, &methodCollection.optionsList));
+		}
+
+		if (crate.config.getItem || crate.config.updateItem || crate.config.deleteItem)
+		{
+			router.match(HTTPMethod.OPTIONS, basePath!T(policy.name) ~ "/:id",
+					checkError(policy, &methodCollection.optionsItem));
+		}
+
+		foreach (string path, methods; definedRoutes.paths)
+			foreach (method, responses; methods)
+				foreach (response, pathDefinition; responses)
+					addRoute(policy, path, methodCollection, pathDefinition);
+	}
+
+	void addRoute(const CratePolicy policy, string path, MethodCollection methodCollection, PathDefinition definition)
+	{
+		switch (definition.operation)
+		{
+		case CrateOperation.getList:
+			router.get(path, checkError(policy, &methodCollection.getList));
+			break;
+
+		case CrateOperation.getItem:
+			router.get(path, checkError(policy, &methodCollection.getItem));
+			break;
+
+		case CrateOperation.addItem:
+			router.post(path, checkError(policy, &methodCollection.postItem));
+			break;
+
+		case CrateOperation.deleteItem:
+			router.delete_(path,
+					checkError(policy, &methodCollection.deleteItem));
+			break;
+
+		case CrateOperation.updateItem:
+			router.patch(path,
+					checkError(policy, &methodCollection.updateItem));
+			break;
+
+		case CrateOperation.replaceItem:
+			router.put(path,
+					checkError(policy, &methodCollection.replaceItem));
+			break;
+
+		default:
+			throw new Exception("Operation not supported: " ~ definition.operation.to!string);
+		}
+	}
+
+	auto checkError(T)(const CratePolicy policy, T func)
+	{
+		void check(HTTPServerRequest request, HTTPServerResponse response)
+		{
+			try
+			{
+				func(request, response);
+			}
+			catch (Exception e)
+			{
+				Json data = e.toJson;
+
+				response.writeJsonBody(data, data["errors"][0]["status"].to!int, policy.mime);
+			}
+		}
+
+		return &check;
+	}
 }
 
-@("check post with wrong fields")
+@("REST API tests")
 unittest
 {
 	import crate.policy.restapi;
+	import std.stdio;
 
 	struct Point
 	{
@@ -519,9 +293,12 @@ unittest
 
 	auto router = new URLRouter();
 	auto baseCrate = new TestCrate!Site;
-	auto relatedCrate = new MissingCrate!Point;
+	auto relatedCrate = new TestCrate!Point;
 
-	auto crateRouter = new CrateRouter(router, new CrateRestApiPolicy(), baseCrate, relatedCrate);
+	router
+		.crateSetup
+			.add(baseCrate)
+			.add(relatedCrate);
 
 	Json data = `{
 		"site": {
@@ -530,9 +307,69 @@ unittest
 		}
 	}`.parseJsonString;
 
-	request(router).post("/sites").send(data).expectStatusCode(403).end((Response response) => {
-	});
+	request(router)
+		.get("/sites")
+			.send(data)
+				.expectStatusCode(200)
+				.end((Response response) => {
+					assert(response.bodyJson["sites"].length > 0);
+					assert(response.bodyJson["sites"][0]["_id"] == "1");
+				});
 
-	request(router).put("/sites/1").send(data).expectStatusCode(403).end((Response response) => {
-	});
+	request(router)
+		.get("/sites/1")
+			.send(data)
+				.expectStatusCode(200)
+				.end((Response response) => {
+					assert(response.bodyJson["site"]["_id"] == "1");
+				});
+
+	request(router)
+		.post("/sites")
+			.send(data)
+				.expectStatusCode(403)
+				.end((Response response) => {
+					assert(response.bodyJson["errors"][0]["title"] == "Validation error");
+				});
+
+	data = `{
+		"site": {
+			"position": {
+				"type": "Point",
+				"coordinates": [23, 21]
+			}
+		}
+	}`.parseJsonString;
+
+	request(router)
+		.post("/sites")
+			.send(data)
+				.expectStatusCode(201)
+				.end((Response response) => {
+					assert(response.bodyJson["site"]["_id"] == "1");
+				});
+
+	data = `{
+		"site": {
+			"position": {
+				"type": "Point",
+				"coordinates": [0, 1]
+			}
+		}
+	}`.parseJsonString;
+
+	request(router)
+		.put("/sites/1")
+			.send(data)
+				.expectStatusCode(200)
+				.end((Response response) => {
+					assert(response.bodyJson["site"]["position"]["coordinates"][0] == 0);
+					assert(response.bodyJson["site"]["position"]["coordinates"][1] == 1);
+				});
+
+	request(router)
+		.delete_("/sites/1")
+			.expectStatusCode(204)
+			.end((Response response) => {
+			});
 }
