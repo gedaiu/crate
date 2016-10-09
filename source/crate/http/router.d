@@ -13,6 +13,7 @@ import vibe.data.json;
 import vibe.http.router;
 
 import std.conv;
+import std.traits;
 
 alias DefaultPolicy = crate.policy.restapi.CrateRestApiPolicy;
 
@@ -122,7 +123,8 @@ CrateRouter!CrateRestApiPolicy crateSetup(URLRouter router) {
 
 class CrateRouter(RouterPolicy) {
 
-	private {
+	private
+	{
 		URLRouter router;
 		CrateRoutes definedRoutes;
 		CrateCollection collection;
@@ -130,7 +132,8 @@ class CrateRouter(RouterPolicy) {
 		bool[string] mimeList;
 	}
 
-	this(URLRouter router) {
+	this(URLRouter router)
+	{
 		this.collection = CrateCollection();
 		this.router = router;
 	}
@@ -165,11 +168,73 @@ class CrateRouter(RouterPolicy) {
 		assert(false, "Unknown " ~ name);
 	}
 
-	CrateRouter enableAction(T, string action)() {
+
+	CrateRouter enableAction(T, string actionName)()
+	{
+		return enableAction!(T, actionName, RouterPolicy);
+	}
+
+	CrateRouter enableAction(T, string actionName, Policy)()
+	{
+		auto const policy = new Policy;
+
+		auto action = new Action!(T, actionName)(collection);
+
+		static if (__traits(hasMember, T, actionName))
+		{
+			alias Param = Parameters!(__traits(getMember, T, actionName));
+			alias RType = ReturnType!(__traits(getMember, T, actionName));
+
+			auto path = basePath!T(policy.name) ~ "/:id/" ~ actionName;
+
+			static if (is(RType == void))
+			{
+				string returnType = "";
+			}
+			else
+			{
+				string returnType = "StringResponse";
+			}
+
+			static if (Param.length == 0)
+			{
+				HTTPMethod method = HTTPMethod.GET;
+			}
+			else
+			{
+				HTTPMethod method = HTTPMethod.POST;
+			}
+
+			definedRoutes.paths[path][method][200] = PathDefinition(returnType,
+					"", CrateOperation.otherItem);
+
+			static if (Param.length == 0)
+			{
+				auto func = &action.call;
+
+				router.get(path, checkError(policy, func));
+			}
+			else static if (Param.length == 1)
+			{
+				auto func = &action.call;
+
+				router.post(path, checkError(policy, func));
+			}
+			else
+			{
+				pragma(msg, "There is no action named `" ~ actionName ~ "`");
+			}
+		}
+		else
+		{
+			static assert(false, T.stringof ~ " has no `" ~ actionName ~ "` member.");
+		}
+
 		return this;
 	}
 
-	CrateRoutes allRoutes() {
+	CrateRoutes allRoutes()
+	{
 		return definedRoutes;
 	}
 
@@ -178,7 +243,8 @@ class CrateRouter(RouterPolicy) {
 		return mimeList.keys;
 	}
 
-	CrateRouter add(Policy, T)(Crate!T crate) {
+	CrateRouter add(Policy, T)(Crate!T crate)
+	{
 		const policy = new const Policy;
 
 		mimeList[policy.mime] = true;
@@ -200,11 +266,13 @@ class CrateRouter(RouterPolicy) {
 		return this;
 	}
 
-	CrateRouter add(T)(Crate!T crate) {
+	CrateRouter add(T)(Crate!T crate)
+	{
 		return add!RouterPolicy(crate);
 	}
 
-	private {
+	private
+	{
 		void bindRoutes(T)(const CratePolicy policy, Crate!T crate)
 		{
 			auto methodCollection = new MethodCollection(policy, collection, crate.config);

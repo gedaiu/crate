@@ -3,6 +3,8 @@ module crate.generator.openapi;
 import vibe.http.router;
 import crate.base;
 import crate.http.router;
+import crate.policy.jsonapi;
+
 import swaggerize.definitions;
 import std.stdio, std.string, std.conv;
 import vibe.data.json;
@@ -277,6 +279,7 @@ unittest
 
 	auto crateRouter = router
 											.crateSetup
+												.add(crate)
 												.enableAction!(TestModel, "action")
 												.enableAction!(TestModel, "actionResponse");
 
@@ -292,7 +295,6 @@ unittest
 	assert("TestModelList" in api.definitions);
 	assert("TestModelResponse" in api.definitions);
 	assert("TestModelRequest" in api.definitions);
-
 	assert(Path.OperationsType.get in api.paths["/testmodels/{id}/actionResponse"].operations);
 }
 
@@ -302,7 +304,7 @@ unittest
 	auto router = new URLRouter();
 	auto crate = new TestCrate!TestModel;
 
-	auto crateRouter = router.crateSetup.add(crate);
+	auto crateRouter = router.crateSetup!CrateJsonApiPolicy.add(crate);
 
 	auto api = crateRouter.toOpenApi.serializeToJson;
 
@@ -326,7 +328,7 @@ unittest
 	auto router = new URLRouter();
 	auto crate = new TestCrate!TestModel;
 
-	auto crateRouter = router.crateSetup.add(crate);
+	auto crateRouter = router.crateSetup!CrateJsonApiPolicy.add(crate);
 
 	auto api = crateRouter.toOpenApi.serializeToJson;
 

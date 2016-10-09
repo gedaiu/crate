@@ -353,6 +353,8 @@ unittest
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
 
+	router.crateSetup.add(crate);
+
 	request(router).get("/testmodels")
 		.expectHeader("Access-Control-Allow-Origin", "*").end((Response response) => { });
 }

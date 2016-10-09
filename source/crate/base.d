@@ -77,8 +77,6 @@ interface Crate(T)
 		alias Conversion = Json;
 	}
 
-	pragma(msg, "=>", T, "?", Conversion);
-
 	CrateConfig config();
 
 	Conversion[] getList();

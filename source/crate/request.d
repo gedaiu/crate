@@ -152,11 +152,22 @@ final class RequestRouter
 
 		router.handleRequest(preparedRequest, res);
 
-		auto response = new Response(cast(string) data);
+		string responseString = (cast(string) data).toStringz.to!string;
+		checkResponse(responseString);
+
+		auto response = new Response(responseString);
 
 		performExpected(response);
 
 		callback(response)();
+	}
+
+	void checkResponse(ref string data) {
+		if(data.length > 0) {
+			return;
+		}
+
+		data = "HTTP/1.1 404 No Content\r\n\r\n";
 	}
 }
 
@@ -176,7 +187,6 @@ class Response
 
 	this(string data)
 	{
-		data = data.toStringz.to!string;
 		this.data = data;
 
 		auto bodyIndex = data.indexOf("\r\n\r\n");
