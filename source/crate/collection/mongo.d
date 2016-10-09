@@ -167,6 +167,7 @@ version (unittest)
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
+	import crate.policy.jsonapi : CrateJsonApiPolicy;
 
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
@@ -174,7 +175,7 @@ unittest
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
 
-	auto crateRouter = new CrateRouter(router, crate);
+	router.crateSetup!CrateJsonApiPolicy.add(crate);
 
 	Json data = Json.emptyObject;
 	data["data"] = Json.emptyObject;
@@ -193,6 +194,7 @@ unittest
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
+	import crate.policy.jsonapi : CrateJsonApiPolicy;
 
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
@@ -202,7 +204,8 @@ unittest
 
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
-	auto crateRouter = new const CrateRouter(router, crate);
+
+	router.crateSetup!CrateJsonApiPolicy.add(crate);
 
 	request(router).get("/testmodels").expectHeader("Content-Type",
 			"application/vnd.api+json").expectStatusCode(200).end((Response response) => {
@@ -215,6 +218,7 @@ unittest
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
+	import crate.policy.jsonapi : CrateJsonApiPolicy;
 
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
@@ -223,7 +227,8 @@ unittest
 
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
-	auto crateRouter = new CrateRouter(router, crate);
+
+	router.crateSetup!CrateJsonApiPolicy.add(crate);
 
 	request(router)
 		.get("/testmodels/573cbc2fc3b7025427000000")
@@ -237,6 +242,7 @@ unittest
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
+	import crate.policy.jsonapi : CrateJsonApiPolicy;
 
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
@@ -245,7 +251,8 @@ unittest
 
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
-	auto crateRouter = new const CrateRouter(router, crate);
+
+	router.crateSetup!CrateJsonApiPolicy.add(crate);
 
 	auto data = Json.emptyObject;
 	data["data"] = Json.emptyObject;
@@ -266,6 +273,7 @@ unittest
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
+	import crate.policy.jsonapi : CrateJsonApiPolicy;
 
 	bool actionCalled;
 
@@ -275,7 +283,8 @@ unittest
 
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
-	auto crateRouter = new CrateRouter(router, crate);
+
+	router.crateSetup!CrateJsonApiPolicy.add(crate);
 
 	request(router).get("/testmodels/1").expectStatusCode(404).end((Response response) => {
 		assert(response.bodyJson["errors"][0]["status"] == 404);
@@ -287,6 +296,7 @@ unittest
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
+	import crate.policy.jsonapi : CrateJsonApiPolicy;
 
 	isTestActionCalled = false;
 
@@ -296,8 +306,7 @@ unittest
 
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
-	auto crateRouter = new CrateRouter(router, crate);
-	crateRouter.enableAction!(TestModel, "action");
+	router.crateSetup!CrateJsonApiPolicy.add(crate).enableAction!(TestModel, "action");
 
 	request(router).get("/testmodels/573cbc2fc3b7025427000000/action").expectStatusCode(200).end((Response response) => {
 		assert(response.bodyString == "");
@@ -308,6 +317,7 @@ unittest
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
+	import crate.policy.jsonapi : CrateJsonApiPolicy;
 
 	isTestActionCalled = false;
 
@@ -318,8 +328,8 @@ unittest
 
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
-	auto crateRouter = new CrateRouter(router, crate);
-	crateRouter.enableAction!(TestModel, "actionResponse");
+
+	router.crateSetup!CrateJsonApiPolicy.add(crate).enableAction!(TestModel, "actionResponse");
 
 	request(router).get("/testmodels/573cbc2fc3b7025427000000/actionResponse").expectStatusCode(200)
 		.end((Response response) => {
@@ -331,6 +341,7 @@ unittest
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
+	import crate.policy.jsonapi : CrateJsonApiPolicy;
 
 	isTestActionCalled = false;
 
@@ -341,7 +352,6 @@ unittest
 
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
-	auto crateRouter = new CrateRouter(router, crate);
 
 	request(router).get("/testmodels")
 		.expectHeader("Access-Control-Allow-Origin", "*").end((Response response) => { });

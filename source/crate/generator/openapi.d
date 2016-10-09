@@ -7,7 +7,7 @@ import swaggerize.definitions;
 import std.stdio, std.string, std.conv;
 import vibe.data.json;
 
-Swagger toOpenApi(CrateRouter router)
+Swagger toOpenApi(T)(CrateRouter!T router)
 {
 	Swagger openApi;
 	openApi.host = "localhost";
@@ -241,28 +241,28 @@ version (unittest)
 			return [item.serializeToJson];
 		}
 
-		Json addItem(Json item)
+		Json addItem(Json)
 		{
 			throw new Exception("addItem not implemented");
 		}
 
-		Json getItem(string id)
+		Json getItem(string)
 		{
 			return item.serializeToJson;
 		}
 
-		Json editItem(string id, Json fields)
+		Json editItem(string, Json fields)
 		{
 			item.name = fields["name"].to!string;
 			return item.serializeToJson;
 		}
 
-		void updateItem(Json item)
+		void updateItem(Json)
 		{
 
 		}
 
-		void deleteItem(string id)
+		void deleteItem(string)
 		{
 			throw new Exception("deleteItem not implemented");
 		}
@@ -275,9 +275,10 @@ unittest
 	auto router = new URLRouter();
 	auto crate = new TestCrate!TestModel;
 
-	auto crateRouter = new CrateRouter(router, crate);
-	crateRouter.enableAction!(TestModel, "action");
-	crateRouter.enableAction!(TestModel, "actionResponse");
+	auto crateRouter = router
+											.crateSetup
+												.enableAction!(TestModel, "action")
+												.enableAction!(TestModel, "actionResponse");
 
 	auto api = crateRouter.toOpenApi;
 
@@ -301,7 +302,7 @@ unittest
 	auto router = new URLRouter();
 	auto crate = new TestCrate!TestModel;
 
-	auto crateRouter = new CrateRouter(router, crate);
+	auto crateRouter = router.crateSetup.add(crate);
 
 	auto api = crateRouter.toOpenApi.serializeToJson;
 
@@ -325,7 +326,7 @@ unittest
 	auto router = new URLRouter();
 	auto crate = new TestCrate!TestModel;
 
-	auto crateRouter = new CrateRouter(router, crate);
+	auto crateRouter = router.crateSetup.add(crate);
 
 	auto api = crateRouter.toOpenApi.serializeToJson;
 
