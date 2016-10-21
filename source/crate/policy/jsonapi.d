@@ -33,7 +33,7 @@ class CrateJsonApiPolicy : CratePolicy
 	}
 }
 
-CrateRoutes routes(T)(const CrateConfig config)
+CrateRoutes defineRoutes(T)(const CrateJsonApiPolicy, const CrateConfig config)
 {
 	CrateRoutes definedRoutes;
 

@@ -6,14 +6,17 @@ import crate.ctfe;
 import crate.collection.proxy;
 import crate.http.methodcollection;
 import crate.http.action;
+
 import crate.policy.jsonapi;
 import crate.policy.restapi;
+import crate.policy.binary;
 
 import vibe.data.json;
 import vibe.http.router;
 
 import std.conv;
 import std.traits;
+import std.stdio;
 
 alias DefaultPolicy = crate.policy.restapi.CrateRestApiPolicy;
 
@@ -107,7 +110,7 @@ string basePath(T)(string name)
 	}
 	else
 	{
-		return crate.policy.raw.basePath(name);
+		return crate.policy.binary.basePath(name);
 	}
 
 	assert(false, "Unknown " ~ name);
@@ -137,37 +140,6 @@ class CrateRouter(RouterPolicy) {
 		this.collection = CrateCollection();
 		this.router = router;
 	}
-
-	CrateRoutes routes(T)(const CratePolicy policy, Crate!T localCrate)
-	{
-		string name = policy.name;
-
-		static if (is(Crate!T.Conversion == Json))
-		{
-			if (name == "Json API")
-			{
-				collection.addByPath(basePath!T(policy.name), localCrate);
-
-				return crate.policy.jsonapi.routes!T(localCrate.config);
-			}
-
-			if (name == "Rest API")
-			{
-				collection.addByPath(basePath!T(policy.name), localCrate);
-				return crate.policy.restapi.routes!T(localCrate.config);
-			}
-		}
-		else
-		{
-			pragma(msg, "\nCan not use selected policy for `Crate!", T.stringof, "`");
-			pragma(msg, "Using raw policy instead\n");
-
-			return crate.policy.raw.routes!T(localCrate.config);
-		}
-
-		assert(false, "Unknown " ~ name);
-	}
-
 
 	CrateRouter enableAction(T, string actionName)()
 	{
@@ -245,23 +217,30 @@ class CrateRouter(RouterPolicy) {
 
 	CrateRouter add(Policy, T)(Crate!T crate)
 	{
+		1.writeln;
 		const policy = new const Policy;
 
+		2.writeln;
 		mimeList[policy.mime] = true;
 
-		auto tmpRoutes = routes(policy, crate);
+		3.writeln;
+		auto tmpRoutes = defineRoutes!T(policy, crate.config());
 
+		4.writeln;
 		foreach (string name, schema; tmpRoutes.schemas)
 		{
 			definedRoutes.schemas[name] = schema;
 		}
 
+		5.writeln;
 		foreach (string path, methods; tmpRoutes.paths)
 			foreach (method, responses; methods)
 				foreach (response, pathDefinition; responses)
 					definedRoutes.paths[path][method][response] = pathDefinition;
 
+		6.writeln;
 		bindRoutes(policy, crate);
+		7.writeln;
 
 		return this;
 	}

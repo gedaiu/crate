@@ -94,7 +94,7 @@ struct CrateCollection
 			}
 		}
 
-		assert(false, "Crate not found");
+		assert(false, "No crate found found at `" ~ path ~ "`");
 	}
 
 	CrateProxy getByType(string type)
