@@ -20,8 +20,10 @@ struct IdCreator {
     Json newData = data;
 
     foreach(field; definition.fields) {
-      if((field.name !in data || data[field.name].to!string.length != 24) && field.type == "BsonObjectID") {
+      if((field.name !in data || data[field.name].to!string.length != 24) && field.originalType == "BsonObjectID") {
         newData[field.name] = BsonObjectID.generate.toString;
+      } else if(field.name !in data && field.isId) {
+        newData[field.name] = "";
       } else if(data[field.name].type == Json.Type.object) {
         newData[field.name] = IdCreator(data[field.name], field).toJson;
       } else if(data[field.name].type == Json.Type.array) {
@@ -36,6 +38,7 @@ struct IdCreator {
 @("It should remove the _id field")
 unittest {
   struct Relation {
+    string id;
     BsonObjectID _id;
     string name;
   }
@@ -65,9 +68,11 @@ unittest {
   assert("relation" in result);
   assert("relations" in result);
 
+  assert("id" in result["relation"]);
   assert("_id" in result["relation"]);
   assert("name" in result["relation"]);
 
+  assert("id" in result["relations"][0]);
   assert("_id" in result["relations"][0]);
   assert("name" in result["relations"][0]);
 }

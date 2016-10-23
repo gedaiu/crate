@@ -4,6 +4,7 @@ import std.range;
 import std.traits;
 import std.conv;
 import std.stdio;
+import std.string;
 
 
 struct CrateFile {
@@ -15,6 +16,10 @@ struct CrateFile {
 
 	string toString() const {
 		return currentFileName;
+	}
+
+	static CrateFile fromString(string encoded) {
+		return CrateFile.fromBase64("file.txt", encoded);
 	}
 
 	static CrateFile fromBase64(Range)(string name, Range r) if (isInputRange!(Unqual!Range)) {
@@ -72,45 +77,12 @@ version (unittest)
 		string _id = "item_id";
 		Child child;
 		CrateFile file;
-
-		Json toJson() const {
-			Json data = Json.emptyObject;
-			data["_id"] = _id;
-			data["child"] = serializeToJson(child);
-			data["file"] = file.toString();
-
-			return data;
-		}
-
-		static Item fromJson(Json src) {
-			"item from json".writeln;
-
-			return Item(
-				src["_id"].to!string,
-				src["child"].deserializeJson!Child,
-				CrateFile.fromBase64(src["_id"].to!string ~ "_file", src["file"].to!string));
-		}
 	}
 
 	struct Child
 	{
 		string _id = "child_id";
 		CrateFile file;
-
-		Json toJson() const {
-			Json data = Json.emptyObject;
-			data["_id"] = _id;
-			data["file"] = file.toString();
-
-			return data;
-		}
-
-		static Child fromJson(Json src) {
-			"child from json".writeln;
-			return Child(
-				src["_id"].to!string,
-				CrateFile.fromBase64(src["_id"].to!string ~ "_file", src["file"].to!string));
-		}
 	}
 }
 
@@ -145,7 +117,7 @@ unittest {
 				.end((Response response) => {
 					response.bodyJson.toPrettyString.writeln;
 
-					//assert(response.bodyJson["item"]["file"] == "item_id_file.txt");
-					//assert(response.bodyJson["item"]["child"]["file"] == "child_id_file.txt");
+					assert(response.bodyJson["item"]["file"].to!string.indexOf(".txt") != -1);
+					assert(response.bodyJson["item"]["child"]["file"].to!string.indexOf(".txt") != -1);
 				});
 }

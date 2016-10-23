@@ -500,5 +500,5 @@ unittest
 	auto schema = schemas!TestModel.serializeToJson;
 
 	assert(definition.idField == "_id");
-	assert(schema["BsonObjectIDModel"]["type"] == "string");
+	assert(schema["TestModelItem"]["properties"]["id"]["type"] == "string");
 }

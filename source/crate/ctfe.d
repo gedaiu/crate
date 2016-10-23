@@ -2,6 +2,7 @@ module crate.ctfe;
 
 import crate.base;
 import vibe.data.json;
+import vibe.data.serialization;
 
 import std.algorithm.searching;
 
@@ -39,15 +40,13 @@ template FieldType(alias F)
 
 	static if (!isSomeString!(FT) && isArray!(FT))
 	{
-
 		alias FieldType = ArrayType!(FT);
 	}
 	else static if (isAssociativeArray!(FT))
 	{
 		alias FieldType = ValueType!(FT);
 	}
-	else
-	{
+	else {
 		alias FieldType = Unqual!(FT);
 	}
 }
@@ -187,7 +186,7 @@ template IsRelation(T)
 {
 	static if (is(T == class) || is(T == struct))
 	{
-		static if (__traits(hasMember, T, "id") || __traits(hasMember, T, "_id"))
+		static if (!isStringSerializable!T && (__traits(hasMember, T, "id") || __traits(hasMember, T, "_id")))
 		{
 			enum isRelation = true;
 		}
@@ -277,14 +276,21 @@ template getFields(Prototype)
 				}
 				else
 				{
-					alias Type = FieldType!(ItemProperty!(Prototype, FIELDS[0]));
+					alias T = FieldType!(ItemProperty!(Prototype, FIELDS[0]));
+
+					static if (isStringSerializable!T) {
+						alias Type = string;
+					} else {
+						alias Type = T;
+					}
+
 					alias OriginalType = OriginalFieldType!(ItemProperty!(Prototype, FIELDS[0]));
 
 					enum fieldName = FieldName!(FIELDS[0], Prototype);
 					enum isId = IsId!(FIELDS[0]);
 					enum isOptional = IsOptional!(FIELDS[0], Prototype);
 
-					static if (IsBasicType!Type)
+					static if (IsBasicType!Type || isStringSerializable!Type)
 					{
 						enum fields = [];
 						enum singular = "";
@@ -298,8 +304,8 @@ template getFields(Prototype)
 					}
 
 					alias ItemFields = AliasSeq!([FieldDefinition(fieldName,
-							FIELDS[0], attributes, Type.stringof, IsBasicType!Type,
-							IsRelation!Type, isId, isOptional, isArray!OriginalType
+							FIELDS[0], attributes, Type.stringof, T.stringof, IsBasicType!T,
+							IsRelation!T, isId, isOptional, isArray!OriginalType
 							&& !is(OriginalType == string), fields, singular, plural)]);
 				}
 			}
@@ -314,7 +320,7 @@ template getFields(Prototype)
 
 	mixin("enum list = [ " ~ Join!(ItemFields!(__traits(allMembers, Prototype))) ~ " ];");
 
-	enum fieldDefinition = FieldDefinition("", "", [], Prototype.stringof, false,
+	enum fieldDefinition = FieldDefinition("", "", [], Prototype.stringof, Prototype.stringof, false,
 				false, false, false, false, list, Singular!Prototype, Plural!Prototype);
 
 	alias getFields = fieldDefinition;
@@ -389,4 +395,27 @@ unittest
 	}
 
 	assert(def.fields.length == 2);
+}
+
+unittest {
+	struct StringSerializable {
+		string toString() const {
+			return "";
+		}
+
+		static StringSerializable fromString(string) {
+			throw new Exception("");
+		}
+	}
+
+	struct Model {
+		string _id;
+		StringSerializable str;
+	}
+
+	import std.stdio;
+
+	enum def = getFields!Model;
+
+	def.serializeToJson.toPrettyString.writeln;
 }

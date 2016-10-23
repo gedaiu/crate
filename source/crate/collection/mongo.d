@@ -34,6 +34,7 @@ class MongoCrate(T): Crate!T
 
 		foreach (item; cursor)
 		{
+			item.writeln;
 			list ~= item;
 		}
 
@@ -81,6 +82,10 @@ class MongoCrate(T): Crate!T
 	}
 
 	private auto toId(string id) {
+		if(id.length != 24) {
+			throw new CrateNotFoundException("There is no item with id `" ~ id ~ "` inside `" ~ collection.name ~ "`");
+		}
+
 		try {
 			return BsonObjectID.fromString(id);
 		} catch (ConvException e) {

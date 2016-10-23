@@ -87,21 +87,22 @@ version (unittest)
 
 	struct Site
 	{
-		BsonObjectID _id;
+		string _id;
 		Point position;
 
 		Json toJson() const {
 			Json data = Json.emptyObject;
 
-			data["_id"] = _id.toString;
+			data["_id"] = _id;
 			data["position"] = position.serializeToJson;
 
 			return data;
 		}
 
 		static Site fromJson(Json src) {
+
 			return Site(
-				BsonObjectID.fromString(src["_id"].to!string),
+				src["_id"].to!string,
 				Point("Point", [ src["position"]["coordinates"][0].to!int, src["position"]["coordinates"][1].to!int ])
 			);
 		}

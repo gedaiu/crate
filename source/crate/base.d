@@ -48,6 +48,7 @@ struct FieldDefinition
 
 	string[] attributes;
 	string type;
+	string originalType;
 	bool isBasicType;
 	bool isRelation;
 	bool isId;
