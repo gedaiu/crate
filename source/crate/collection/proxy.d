@@ -4,6 +4,7 @@ import crate.base;
 import crate.ctfe;
 import vibe.data.json;
 
+import std.traits;
 import std.stdio, std.string;
 
 class CrateProxy : Crate!void
@@ -30,7 +31,11 @@ class CrateProxy : Crate!void
 		updateItemRef = &crate.updateItem;
 		deleteItemRef = &crate.deleteItem;
 
-		_definition = getFields!T;
+		static if(isAggregateType!T) {
+			_definition = getFields!T;
+		} else {
+			_definition = FieldDefinition();
+		}
 	}
 
 	FieldDefinition definition()

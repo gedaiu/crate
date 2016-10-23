@@ -65,25 +65,15 @@ struct ModelDefinition
 	FieldDefinition[string] fields;
 }
 
-interface Crate(T)
+interface Crate(Type)
 {
-	alias Type = T;
-
-	static if(is(T == void)) {
-		alias Conversion = Json;
-	} else static if(isBuiltinType!T) {
-		alias Conversion = T;
-	} else {
-		alias Conversion = Json;
-	}
-
 	CrateConfig config();
 
-	Conversion[] getList();
+	Json[] getList();
 
-	Conversion addItem(Conversion item);
-	Conversion getItem(string id);
-	void updateItem(Conversion item);
+	Json addItem(Json item);
+	Json getItem(string id);
+	void updateItem(Json item);
 	void deleteItem(string id);
 }
 

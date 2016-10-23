@@ -96,7 +96,7 @@ version (unittest)
 
 string basePath(T)(string name)
 {
-	static if (is(Crate!T.Conversion == Json))
+	static if (isAggregateType!T)
 	{
 		if (name == "Json API")
 		{
@@ -108,9 +108,10 @@ string basePath(T)(string name)
 			return crate.policy.restapi.basePath!T;
 		}
 	}
-	else
+
+	if (name == "Binary")
 	{
-		return crate.policy.binary.basePath(name);
+		return crate.policy.binary.basePath!T;
 	}
 
 	assert(false, "Unknown " ~ name);
