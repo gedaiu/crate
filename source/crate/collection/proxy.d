@@ -69,7 +69,7 @@ class CrateProxy : Crate!void
 	}
 }
 
-struct CrateCollection
+class CrateCollection
 {
 
 	private
@@ -82,6 +82,10 @@ struct CrateCollection
 	{
 		crates[basePath] = new CrateProxy(crate);
 		types[T.stringof] = basePath;
+	}
+
+	string[] paths() {
+		return crates.keys;
 	}
 
 	CrateProxy getByPath(string path)

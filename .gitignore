@@ -10,5 +10,6 @@ __test__unittest__
 examples/testJsonApiModel/testModel
 examples/testRestApiModel/testModel
 ut.d
+./crate
 examples/testJsonApiModel/ember
 examples/testRestApiModel/ember

@@ -116,13 +116,15 @@ string basePath(T)(string name)
 	assert(false, "Unknown " ~ name);
 }
 
-CrateRouter!T crateSetup(T)(URLRouter router) {
+auto crateSetup(T)(URLRouter router) {
 	return new CrateRouter!T(router);
 }
 
-CrateRouter!CrateRestApiPolicy crateSetup(URLRouter router) {
+auto crateSetup(URLRouter router) {
 	return new CrateRouter!CrateRestApiPolicy(router);
 }
+
+private static CrateCollection[URLRouter] proxyCollection;
 
 class CrateRouter(RouterPolicy) {
 
@@ -130,15 +132,17 @@ class CrateRouter(RouterPolicy) {
 	{
 		URLRouter router;
 		CrateRoutes definedRoutes;
-		CrateCollection collection;
 
 		bool[string] mimeList;
 	}
 
 	this(URLRouter router)
 	{
-		this.collection = CrateCollection();
 		this.router = router;
+
+		if(router !in proxyCollection) {
+			proxyCollection[router] = new CrateCollection();
+		}
 	}
 
 	CrateRouter enableAction(T, string actionName)()
@@ -150,7 +154,7 @@ class CrateRouter(RouterPolicy) {
 	{
 		auto const policy = new Policy;
 
-		auto action = new Action!(T, actionName)(collection);
+		auto action = new Action!(T, actionName)(proxyCollection[router]);
 
 		static if (__traits(hasMember, T, actionName))
 		{
@@ -217,30 +221,28 @@ class CrateRouter(RouterPolicy) {
 
 	CrateRouter add(Policy, T)(Crate!T crate)
 	{
-		1.writeln;
 		const policy = new const Policy;
 
-		2.writeln;
 		mimeList[policy.mime] = true;
 
-		3.writeln;
 		auto tmpRoutes = defineRoutes!T(policy, crate.config());
 
-		4.writeln;
 		foreach (string name, schema; tmpRoutes.schemas)
 		{
 			definedRoutes.schemas[name] = schema;
 		}
 
-		5.writeln;
 		foreach (string path, methods; tmpRoutes.paths)
 			foreach (method, responses; methods)
 				foreach (response, pathDefinition; responses)
 					definedRoutes.paths[path][method][response] = pathDefinition;
 
-		6.writeln;
 		bindRoutes(policy, crate);
-		7.writeln;
+
+		proxyCollection[router].addByPath(basePath!T(policy.name), crate);
+
+		"==>".writeln(proxyCollection[router].paths);
+
 
 		return this;
 	}
@@ -254,7 +256,9 @@ class CrateRouter(RouterPolicy) {
 	{
 		void bindRoutes(T)(const CratePolicy policy, Crate!T crate)
 		{
-			auto methodCollection = new MethodCollection(policy, collection, crate.config);
+			auto methodCollection = new MethodCollection(policy, proxyCollection[router], crate.config);
+
+			basePath!T(policy.name).writeln;
 
 			if (crate.config.getList || crate.config.addItem)
 			{
@@ -340,6 +344,8 @@ unittest
 	auto router = new URLRouter();
 	auto baseCrate = new TestCrate!Site;
 	auto relatedCrate = new TestCrate!Point;
+
+	writeln("==================================");
 
 	router
 		.crateSetup
