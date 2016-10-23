@@ -143,12 +143,16 @@ final class RequestRouter
 	void end(T)(T callback)
 	{
 		import vibe.stream.operations : readAllUTF8;
+		import vibe.inet.webform;
 
 		auto data = new ubyte[5000];
 
 		MemoryStream stream = new MemoryStream(data);
 		HTTPServerResponse res = createTestHTTPServerResponse(stream);
 		res.statusCode = 404;
+
+		auto ptype = "Content-Type" in preparedRequest.headers;
+		if (ptype) parseFormData(preparedRequest.form, preparedRequest.files, *ptype, preparedRequest.bodyReader, 5000);
 
 		router.handleRequest(preparedRequest, res);
 
@@ -157,9 +161,9 @@ final class RequestRouter
 
 		auto response = new Response(responseString);
 
-		performExpected(response);
-
 		callback(response)();
+
+		performExpected(response);
 	}
 
 	void checkResponse(ref string data) {

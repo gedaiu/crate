@@ -7,11 +7,14 @@ import vibe.data.json;
 import crate.base;
 import crate.error;
 import crate.collection.proxy;
+import crate.collection.idremover;
+import crate.collection.idcreator;
 
 import std.conv;
 import std.exception;
+import std.stdio;
 
-class MethodCollection
+class MethodCollection(Type)
 {
 	private
 	{
@@ -25,6 +28,21 @@ class MethodCollection
 		this.policy = policy;
 		this.collection = collection;
 		this.config = config;
+	}
+
+	private Json requestJson(HTTPServerRequest request) {
+		import std.stdio;
+		Json data = request.json;
+
+		if(data.type == Json.Type.undefined) {
+			data = Json.emptyObject;
+
+			foreach(key; request.form) {
+				data[key] = request.form[key];
+			}
+		}
+
+		return data;
 	}
 
 	void optionsItem(HTTPServerRequest request, HTTPServerResponse response)
@@ -62,7 +80,7 @@ class MethodCollection
 		FieldDefinition definition = crate.definition;
 		auto item = crate.getItem(request.params["id"]);
 
-		auto newData = policy.serializer.normalise(request.params["id"], request.json, definition);
+		auto newData = policy.serializer.normalise(request.params["id"], requestJson(request), definition);
 		auto mixedData = mix(item, newData);
 		checkRelationships(mixedData, definition);
 
@@ -79,7 +97,7 @@ class MethodCollection
 		FieldDefinition definition = crate.definition;
 		auto item = crate.getItem(request.params["id"]);
 
-		auto newData = policy.serializer.normalise(request.params["id"], request.json, definition);
+		auto newData = policy.serializer.normalise(request.params["id"], requestJson(request), definition);
 
 		checkRelationships(newData, definition);
 		checkFields(newData, definition);
@@ -122,11 +140,16 @@ class MethodCollection
 
 		FieldDefinition definition = crate.definition;
 
-		auto data = policy.serializer.normalise("", request.json, definition);
+		auto data = policy.serializer.normalise("", requestJson(request), definition);
 		checkRelationships(data, definition);
 		checkFields(data, definition);
 
-		auto item = policy.serializer.denormalise(crate.addItem(data), definition);
+		data = IdCreator(data, definition).toJson;
+		data = IdRemover(data.deserializeJson!Type.serializeToJson, definition).toJson;
+
+		crate.addItem(data);
+
+		auto item = policy.serializer.denormalise(data, definition);
 
 		response.headers["Location"] = (request.fullURL ~ Path(data["_id"].to!string)).to!string;
 

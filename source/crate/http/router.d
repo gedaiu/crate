@@ -9,7 +9,6 @@ import crate.http.action;
 
 import crate.policy.jsonapi;
 import crate.policy.restapi;
-import crate.policy.binary;
 
 import vibe.data.json;
 import vibe.http.router;
@@ -89,8 +88,23 @@ version (unittest)
 	struct Site
 	{
 		BsonObjectID _id;
-
 		Point position;
+
+		Json toJson() const {
+			Json data = Json.emptyObject;
+
+			data["_id"] = _id.toString;
+			data["position"] = position.serializeToJson;
+
+			return data;
+		}
+
+		static Site fromJson(Json src) {
+			return Site(
+				BsonObjectID.fromString(src["_id"].to!string),
+				Point("Point", [ src["position"]["coordinates"][0].to!int, src["position"]["coordinates"][1].to!int ])
+			);
+		}
 	}
 }
 
@@ -107,11 +121,6 @@ string basePath(T)(string name)
 		{
 			return crate.policy.restapi.basePath!T;
 		}
-	}
-
-	if (name == "Binary")
-	{
-		return crate.policy.binary.basePath!T;
 	}
 
 	assert(false, "Unknown " ~ name);
@@ -235,15 +244,13 @@ class CrateRouter(RouterPolicy) {
 
 		foreach (string path, methods; tmpRoutes.paths)
 			foreach (method, responses; methods)
-				foreach (response, pathDefinition; responses)
+				foreach (response, pathDefinition; responses) {
 					definedRoutes.paths[path][method][response] = pathDefinition;
+				}
 
 		bindRoutes(policy, crate);
 
 		proxyCollection[router].addByPath(basePath!T(policy.name), crate);
-
-		"==>".writeln(proxyCollection[router].paths);
-
 
 		return this;
 	}
@@ -257,7 +264,7 @@ class CrateRouter(RouterPolicy) {
 	{
 		void bindRoutes(T)(const CratePolicy policy, Crate!T crate)
 		{
-			auto methodCollection = new MethodCollection(policy, proxyCollection[router], crate.config);
+			auto methodCollection = new MethodCollection!T(policy, proxyCollection[router], crate.config);
 
 			basePath!T(policy.name).writeln;
 
@@ -279,7 +286,7 @@ class CrateRouter(RouterPolicy) {
 						addRoute(policy, path, methodCollection, pathDefinition);
 		}
 
-		void addRoute(const CratePolicy policy, string path, MethodCollection methodCollection, PathDefinition definition)
+		void addRoute(T)(const CratePolicy policy, string path, MethodCollection!T methodCollection, PathDefinition definition)
 		{
 			switch (definition.operation)
 			{
@@ -327,6 +334,12 @@ class CrateRouter(RouterPolicy) {
 				{
 					Json data = e.toJson;
 
+					debug {
+						if(data["errors"][0]["status"].to!int == 500) {
+								stderr.writeln(e);
+						}
+					}
+
 					response.writeJsonBody(data, data["errors"][0]["status"].to!int, policy.mime);
 				}
 			}
@@ -345,8 +358,6 @@ unittest
 	auto router = new URLRouter();
 	auto baseCrate = new TestCrate!Site;
 	auto relatedCrate = new TestCrate!Point;
-
-	writeln("==================================");
 
 	router
 		.crateSetup

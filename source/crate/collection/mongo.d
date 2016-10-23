@@ -291,6 +291,7 @@ unittest
 		assert(response.bodyJson["errors"][0]["title"] == "Crate not found");
 		assert(response.bodyJson["errors"][0]["description"] == "There is no item with id `1` inside `model`");
 	});
+
 }
 
 unittest
