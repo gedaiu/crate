@@ -417,5 +417,7 @@ unittest {
 
 	enum def = getFields!Model;
 
-	def.serializeToJson.toPrettyString.writeln;
+	assert(def.fields[1].originalName == "str");
+	assert(def.fields[1].originalType == "StringSerializable");
+	assert(def.fields[1].type == "string");
 }

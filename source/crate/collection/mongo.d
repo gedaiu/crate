@@ -34,7 +34,6 @@ class MongoCrate(T): Crate!T
 
 		foreach (item; cursor)
 		{
-			item.writeln;
 			list ~= item;
 		}
 
