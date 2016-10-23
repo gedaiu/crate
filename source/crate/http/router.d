@@ -267,8 +267,6 @@ class CrateRouter(RouterPolicy) {
 		{
 			auto methodCollection = new MethodCollection!T(policy, proxyCollection[router], crate.config);
 
-			basePath!T(policy.name).writeln;
-
 			if (crate.config.getList || crate.config.addItem)
 			{
 				router.match(HTTPMethod.OPTIONS, basePath!T(policy.name),

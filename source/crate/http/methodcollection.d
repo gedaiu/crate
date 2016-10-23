@@ -119,7 +119,6 @@ class MethodCollection(Type)
 	void getList(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		import std.stdio;
-		collection.paths.writeln;
 		auto crate = collection.getByPath(request.path);
 
 		addListCORS(response);
