@@ -150,8 +150,6 @@ unittest {
 			.send(data)
 				.expectStatusCode(201)
 				.end((Response response) => {
-					response.bodyJson.toPrettyString.writeln;
-
 					string parentFile = response.bodyJson["item"]["file"].to!string;
 					string childFile = response.bodyJson["item"]["child"]["file"].to!string;
 
