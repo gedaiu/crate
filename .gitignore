@@ -13,3 +13,4 @@ ut.d
 ./crate
 examples/testJsonApiModel/ember
 examples/testRestApiModel/ember
+./files

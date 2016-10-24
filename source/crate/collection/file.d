@@ -5,10 +5,16 @@ import std.traits;
 import std.conv;
 import std.stdio;
 import std.string;
-
+import std.file;
+import std.base64;
+import std.algorithm;
+import std.uuid;
+import std.path;
+import crate.mime;
 
 struct CrateFile {
 	private string currentFileName;
+	public static string defaultPath = "files/";
 
 	this(string name) {
 		currentFileName = name;
@@ -19,11 +25,41 @@ struct CrateFile {
 	}
 
 	static CrateFile fromString(string encoded) {
-		return CrateFile.fromBase64("file.txt", encoded);
+		return CrateFile.fromBase64(encoded);
 	}
 
+	static CrateFile fromBase64(Range)(Range r) if (isInputRange!(Unqual!Range)) {
+		return fromBase64(randomUUID.to!string.replace("-", ""), r);
+	}
+
+
 	static CrateFile fromBase64(Range)(string name, Range r) if (isInputRange!(Unqual!Range)) {
-		return CrateFile(name);
+		return fromBase64(defaultPath, name, r);
+	}
+
+	static CrateFile fromBase64(Range)(string path, string name, Range r) if (isInputRange!(Unqual!Range)) {
+		enum dataLength = "data:".length;
+		enum base64Length = ";base64,".length;
+
+		enforce!Exception(r[0..dataLength] == "data:", "Invalid file format. Expected `data:[mime];base64,[content]`");
+
+		if(!path.exists) {
+			path.mkdirRecurse;
+		}
+
+		auto contentStart = r.indexOf(";base64,");
+
+		const string mime = r[dataLength..contentStart];
+		string filePath = chainPath(path, name).to!string ~ mime.toExtension;
+
+		auto f = File(filePath, "w");
+		scope(exit) f.close;
+
+		foreach(decoded; Base64.decoder(r[contentStart + base64Length ..$].map!(a => cast(char) a))) {
+			f.write(cast(char) decoded);
+		}
+
+		return CrateFile(filePath);
 	}
 }
 
@@ -86,7 +122,6 @@ version (unittest)
 	}
 }
 
-
 @("the user should be able to upload a file as a base64 data")
 unittest {
 	import crate.policy.restapi;
@@ -117,7 +152,18 @@ unittest {
 				.end((Response response) => {
 					response.bodyJson.toPrettyString.writeln;
 
-					assert(response.bodyJson["item"]["file"].to!string.indexOf(".txt") != -1);
-					assert(response.bodyJson["item"]["child"]["file"].to!string.indexOf(".txt") != -1);
+					string parentFile = response.bodyJson["item"]["file"].to!string;
+					string childFile = response.bodyJson["item"]["child"]["file"].to!string;
+
+					assert(parentFile.indexOf(".txt") != -1, "Invalid filename");
+					assert(childFile.indexOf(".txt") != -1, "Invalid filename inside relation");
+
+					assert(exists(parentFile), "The parent file was not created");
+					assert(exists(childFile), "The child file was not created");
+
+					assert(readText(parentFile) == "this is a text file", "The parent file contains invalid data");
+					assert(readText(childFile) == "hello world" , "The child file contains invalid data");
+
+					"files/".rmdirRecurse;
 				});
 }
