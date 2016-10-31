@@ -6,9 +6,9 @@ import crate.ctfe;
 import std.algorithm, std.array;
 
 import vibe.data.json;
+import vibe.data.bson;
 
 version(unittest) {
-  import vibe.data.bson;
   import std.stdio;
 }
 

@@ -10,6 +10,7 @@ import std.base64;
 import std.algorithm;
 import std.uuid;
 import std.path;
+import std.exception;
 import crate.mime;
 
 struct CrateFile {
@@ -145,6 +146,8 @@ unittest {
 		}
 	}`.parseJsonString;
 
+	scope(exit) "files/".rmdirRecurse;
+
 	request(router)
 		.post("/items")
 			.send(data)
@@ -161,7 +164,33 @@ unittest {
 
 					assert(readText(parentFile) == "this is a text file", "The parent file contains invalid data");
 					assert(readText(childFile) == "hello world" , "The child file contains invalid data");
-
-					"files/".rmdirRecurse;
 				});
+}
+
+@("the user should be able to download a file")
+unittest {
+	import crate.policy.restapi;
+	import std.stdio;
+
+	auto item = new TestCrate!Item;
+	item.item.file = CrateFile("files/item.txt");
+
+	auto child = new TestCrate!Child;
+	child.item.file = CrateFile("files/child.txt");
+
+	auto router = new URLRouter();
+	auto baseCrate = item;
+	auto relatedCrate = child;
+
+	router
+		.crateSetup
+			.add(baseCrate)
+			.add(relatedCrate);
+
+	request(router)
+		.get("/items/0/file")
+			.expectStatusCode(200)
+			.end((Response response) => {
+
+			});
 }
