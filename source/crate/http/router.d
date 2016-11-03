@@ -19,96 +19,6 @@ import std.stdio;
 
 alias DefaultPolicy = crate.policy.restapi.CrateRestApiPolicy;
 
-
-version (unittest)
-{
-	import crate.base;
-	import crate.request;
-	import vibe.data.json;
-	import vibe.data.bson;
-
-	struct TestModel
-	{
-		@optional string _id = "1";
-		string name = "";
-
-		void actionChange()
-		{
-			name = "changed";
-		}
-
-		void actionParam(string data)
-		{
-			name = data;
-		}
-	}
-
-	class TestCrate(T) : Crate!T
-	{
-		TestModel item;
-
-		CrateConfig config()
-		{
-			return CrateConfig();
-		}
-
-		Json[] getList()
-		{
-			return [item.serializeToJson];
-		}
-
-		Json addItem(Json item)
-		{
-			item["_id"] = "1";
-			return item;
-		}
-
-		Json getItem(string)
-		{
-			return item.serializeToJson;
-		}
-
-		void updateItem(Json item)
-		{
-			this.item.name = item["name"].to!string;
-		}
-
-		void deleteItem(string id)
-		{
-			assert(id == "1");
-		}
-	}
-
-	struct Point
-	{
-		immutable string type = "Point";
-		float[2] coordinates;
-	}
-
-	struct Site
-	{
-		string _id;
-		Point position;
-
-		Json toJson() const {
-			Json data = Json.emptyObject;
-
-			data["_id"] = _id;
-			data["position"] = position.serializeToJson;
-
-			return data;
-		}
-
-		static Site fromJson(Json src) {
-
-			return Site(
-				src["_id"].to!string,
-				Point("Point", [ src["position"]["coordinates"][0].to!int, src["position"]["coordinates"][1].to!int ])
-			);
-		}
-	}
-}
-
 string basePath(T)(string name)
 {
 	static if (isAggregateType!T)
@@ -249,7 +159,7 @@ class CrateRouter(RouterPolicy) {
 					definedRoutes.paths[path][method][response] = pathDefinition;
 				}
 
-		bindRoutes(policy, crate);
+		bindRoutes(tmpRoutes, policy, crate);
 
 		proxyCollection[router].addByPath(basePath!T(policy.name), crate);
 
@@ -263,7 +173,7 @@ class CrateRouter(RouterPolicy) {
 
 	private
 	{
-		void bindRoutes(T)(const CratePolicy policy, Crate!T crate)
+		void bindRoutes(T)(CrateRoutes routes, const CratePolicy policy, Crate!T crate)
 		{
 			auto methodCollection = new MethodCollection!T(policy, proxyCollection[router], crate.config);
 
@@ -279,10 +189,11 @@ class CrateRouter(RouterPolicy) {
 						checkError(policy, &methodCollection.optionsItem));
 			}
 
-			foreach (string path, methods; definedRoutes.paths)
+			foreach (string path, methods; routes.paths)
 				foreach (method, responses; methods)
-					foreach (response, pathDefinition; responses)
+					foreach (response, pathDefinition; responses) {
 						addRoute(policy, path, methodCollection, pathDefinition);
+					}
 		}
 
 		void addRoute(T)(const CratePolicy policy, string path, MethodCollection!T methodCollection, PathDefinition definition)
@@ -348,6 +259,99 @@ class CrateRouter(RouterPolicy) {
 	}
 }
 
+
+version (unittest)
+{
+	import crate.base;
+	import crate.request;
+	import vibe.data.json;
+	import vibe.data.bson;
+
+	struct TestModel
+	{
+		@optional string _id = "1";
+		string name = "";
+
+		void actionChange()
+		{
+			name = "changed";
+		}
+
+		void actionParam(string data)
+		{
+			name = data;
+		}
+	}
+
+	class TestCrate(T) : Crate!T
+	{
+		TestModel item;
+
+		CrateConfig config()
+		{
+			return CrateConfig();
+		}
+
+		void action()
+		{}
+
+		Json[] getList()
+		{
+			return [item.serializeToJson];
+		}
+
+		Json addItem(Json item)
+		{
+			item["_id"] = "1";
+			return item;
+		}
+
+		Json getItem(string)
+		{
+			return item.serializeToJson;
+		}
+
+		void updateItem(Json item)
+		{
+			this.item.name = item["name"].to!string;
+		}
+
+		void deleteItem(string id)
+		{
+			assert(id == "1");
+		}
+	}
+
+	struct Point
+	{
+		immutable string type = "Point";
+		float[2] coordinates;
+	}
+
+	struct Site
+	{
+		string _id;
+		Point position;
+
+		Json toJson() const {
+			Json data = Json.emptyObject;
+
+			data["_id"] = _id;
+			data["position"] = position.serializeToJson;
+
+			return data;
+		}
+
+		static Site fromJson(Json src) {
+
+			return Site(
+				src["_id"].to!string,
+				Point("Point", [ src["position"]["coordinates"][0].to!int, src["position"]["coordinates"][1].to!int ])
+			);
+		}
+	}
+}
+
 @("REST API tests")
 unittest
 {
@@ -361,6 +365,7 @@ unittest
 	router
 		.crateSetup
 			.add(baseCrate)
+				.enableAction!(TestCrate!Site, "action")
 			.add(relatedCrate);
 
 	Json data = `{
