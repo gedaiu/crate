@@ -314,7 +314,6 @@ version (unittest)
 
 		Json[] getList()
 		{
-			item.serializeToJson.writeln;
 			return [item.serializeToJson];
 		}
 

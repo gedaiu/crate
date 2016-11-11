@@ -32,8 +32,6 @@ version(unittest) {
 
 		void read(const FilePart file) {
 			lastRead = readText(file.tempPath.toString);
-
-			lastRead.writeln;
 		}
 
 		ulong size() {
@@ -83,7 +81,6 @@ unittest {
 		.get("/resourcemodels/1")
 			.expectStatusCode(200)
 			.end((Response response) => {
-				response.bodyString.writeln;
 				assert(response.bodyJson["resourceModel"]["resource"] == "test resource");
 			});
 
@@ -102,6 +99,7 @@ unittest {
 	data ~= "hello\r\n";
 	data ~= "-----------------------------9855312492823326321373169801--\r\n";
 
+	TestResource.lastRead = "";
 	request(router)
 		.header("Content-Type", "multipart/form-data; boundary=---------------------------9855312492823326321373169801")
 		.post("/resourcemodels/1/resource")
@@ -110,7 +108,24 @@ unittest {
 		.end((Response response) => {
 			assert(TestResource.lastRead == "hello");
 		});
+
+	data = "-----------------------------9855312492823326321373169801\r\n";
+	data ~= "Content-Disposition: form-data; name=\"other\" filename=\"resource.txt\"\r\n";
+	data ~= "Content-Type: text/plain\r\n\r\n";
+	data ~= "hello\r\n";
+	data ~= "-----------------------------9855312492823326321373169801--\r\n";
+
+	TestResource.lastRead = "";
+	request(router)
+		.header("Content-Type", "multipart/form-data; boundary=---------------------------9855312492823326321373169801")
+		.post("/resourcemodels/1/resource")
+		.expectStatusCode(403)
+		.send(data)
+		.end((Response response) => {
+			assert(TestResource.lastRead == "");
+		});
 }
+
 
 
 
@@ -133,7 +148,6 @@ unittest {
 		.get("/relationmodels/1")
 			.expectStatusCode(200)
 			.end((Response response) => {
-				response.bodyString.writeln;
 				assert(response.bodyJson["relationModel"]["relation"]["resource"] == "test resource");
 			});
 

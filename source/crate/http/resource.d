@@ -10,6 +10,7 @@ import vibe.http.router;
 import vibe.data.json;
 
 import crate.base;
+import crate.error;
 import crate.resource;
 import crate.collection.proxy;
 
@@ -35,7 +36,6 @@ class Resource(T, string resourcePath)
 		addItemCORS(crate.config, response);
 		auto item = crate.getItem(request.params["id"]).deserializeJson!T;
 
-		pragma(msg, "CrateResource obj = item." ~ resourceAccess ~ ";");
 		mixin("CrateResource obj = item." ~ resourceAccess ~ ";");
 
 		response.headers["Content-Type"] = obj.contentType;
@@ -47,23 +47,16 @@ class Resource(T, string resourcePath)
 	{
 		response.statusCode = 201;
 
-		pragma(msg, T,  " resourceAccess ", resourcePath.split("/"), " ", resourceAccess);
-
 		auto crate = collection.getByPath(request.path);
 		addItemCORS(crate.config, response);
 		auto item = crate.getItem(request.params["id"]).deserializeJson!T;
 
-		pragma(msg, "CrateResource obj = item." ~ resourceAccess ~ ";");
 		mixin("CrateResource obj = item." ~ resourceAccess ~ ";");
 
-		if(resourcePath in request.files) {
-			auto file = request.files.get(resourceName);
+		enforce!CrateValidationException(resourceName in request.files, "`" ~ resourceName ~ "` not found.");
 
-			file.filename.writeln("!!!!!");
-			file.tempPath.writeln("!!!!!");
-
-			obj.read(file);
-		}
+		auto file = request.files.get(resourceName);
+		obj.read(file);
 
 		response.writeBody("", 201);
 	}
