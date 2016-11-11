@@ -78,11 +78,8 @@ class CrateRouter(RouterPolicy) {
 		auto path = basePath!T(policy.name) ~ "/:id/" ~ resourcePath;
 		auto resource = new Resource!(T, resourcePath)(proxyCollection[router]);
 
-		HTTPMethod method = HTTPMethod.GET;
-
 		router.get(path, checkError(policy, &resource.get));
 		router.post(path, checkError(policy, &resource.post));
-
 
 		return this;
 	}

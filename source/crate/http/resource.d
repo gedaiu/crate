@@ -18,6 +18,8 @@ class Resource(T, string resourcePath)
 	private
 	{
 		CrateCollection collection;
+		enum resourceAccess = resourcePath.split("/").join(".");
+		enum resourceName = "resource";
 	}
 
 	this(CrateCollection collection)
@@ -33,7 +35,8 @@ class Resource(T, string resourcePath)
 		addItemCORS(crate.config, response);
 		auto item = crate.getItem(request.params["id"]).deserializeJson!T;
 
-		mixin("CrateResource obj = item." ~ resourcePath ~ ";");
+		pragma(msg, "CrateResource obj = item." ~ resourceAccess ~ ";");
+		mixin("CrateResource obj = item." ~ resourceAccess ~ ";");
 
 		response.headers["Content-Type"] = obj.contentType;
 		response.headers["Content-Length"] = obj.size.to!string;
@@ -43,16 +46,18 @@ class Resource(T, string resourcePath)
 	void post(HTTPServerRequest request, HTTPServerResponse response)
 	{
 		response.statusCode = 201;
-		"========================================".writeln;
+
+		pragma(msg, T,  " resourceAccess ", resourcePath.split("/"), " ", resourceAccess);
 
 		auto crate = collection.getByPath(request.path);
 		addItemCORS(crate.config, response);
 		auto item = crate.getItem(request.params["id"]).deserializeJson!T;
 
-		mixin("CrateResource obj = item." ~ resourcePath ~ ";");
+		pragma(msg, "CrateResource obj = item." ~ resourceAccess ~ ";");
+		mixin("CrateResource obj = item." ~ resourceAccess ~ ";");
 
 		if(resourcePath in request.files) {
-			auto file = request.files.get(resourcePath);
+			auto file = request.files.get(resourceName);
 
 			file.filename.writeln("!!!!!");
 			file.tempPath.writeln("!!!!!");
@@ -60,9 +65,7 @@ class Resource(T, string resourcePath)
 			obj.read(file);
 		}
 
-
 		response.writeBody("", 201);
-		"========================================".writeln;
 	}
 
 	private
