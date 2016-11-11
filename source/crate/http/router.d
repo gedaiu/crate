@@ -6,6 +6,7 @@ import crate.ctfe;
 import crate.collection.proxy;
 import crate.http.methodcollection;
 import crate.http.action;
+import crate.http.resource;
 
 import crate.policy.jsonapi;
 import crate.policy.restapi;
@@ -64,6 +65,28 @@ class CrateRouter(RouterPolicy) {
 		if(router !in proxyCollection) {
 			proxyCollection[router] = new CrateCollection();
 		}
+	}
+
+	CrateRouter enableResource(T, string resourcePath)()
+	{
+		return enableResource!(T, resourcePath, RouterPolicy);
+	}
+
+	CrateRouter enableResource(T, string resourcePath, Policy)()
+	{
+		auto const policy = new Policy;
+		auto path = basePath!T(policy.name) ~ "/:id/" ~ resourcePath;
+		auto resource = new Resource!(T, resourcePath)(proxyCollection[router]);
+
+		HTTPMethod method = HTTPMethod.GET;
+
+		writeln("path ", path);
+		router.get(path, checkError(policy, &resource.get));
+
+		//definedRoutes.paths[path][method][200] = PathDefinition(returnType,
+		//		"", CrateOperation.otherItem);
+
+		return this;
 	}
 
 	CrateRouter enableAction(T, string actionName)()
@@ -259,7 +282,6 @@ class CrateRouter(RouterPolicy) {
 	}
 }
 
-
 version (unittest)
 {
 	import crate.base;
@@ -285,7 +307,7 @@ version (unittest)
 
 	class TestCrate(T) : Crate!T
 	{
-		TestModel item;
+		T item;
 
 		CrateConfig config()
 		{
@@ -297,6 +319,7 @@ version (unittest)
 
 		Json[] getList()
 		{
+			item.serializeToJson.writeln;
 			return [item.serializeToJson];
 		}
 
@@ -313,7 +336,9 @@ version (unittest)
 
 		void updateItem(Json item)
 		{
-			this.item.name = item["name"].to!string;
+			static if(__traits(hasMember, T, "name")) {
+				this.item.name = item["name"].to!string;
+			}
 		}
 
 		void deleteItem(string id)
@@ -324,13 +349,13 @@ version (unittest)
 
 	struct Point
 	{
-		immutable string type = "Point";
+		string type = "Point";
 		float[2] coordinates;
 	}
 
 	struct Site
 	{
-		string _id;
+		string _id = "1";
 		Point position;
 
 		Json toJson() const {
@@ -343,7 +368,6 @@ version (unittest)
 		}
 
 		static Site fromJson(Json src) {
-
 			return Site(
 				src["_id"].to!string,
 				Point("Point", [ src["position"]["coordinates"][0].to!int, src["position"]["coordinates"][1].to!int ])

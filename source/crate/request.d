@@ -86,6 +86,7 @@ final class RequestRouter
 
 	RequestRouter request(HTTPMethod method)(URL url)
 	{
+		writeln(method, " ", url);
 		preparedRequest = createTestHTTPServerRequest(url, method);
 		preparedRequest.host = "localhost";
 
@@ -215,7 +216,11 @@ class Response
 	{
 		if (_bodyJson.type == Json.Type.undefined)
 		{
-			_bodyJson = bodyString.parseJson;
+			try {
+				_bodyJson = bodyString.parseJson;
+			} catch(Exception e) {
+				writeln("`" ~ bodyString ~ "` is not a json string");
+			}
 		}
 
 		return _bodyJson;
