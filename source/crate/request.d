@@ -86,7 +86,6 @@ final class RequestRouter
 
 	RequestRouter request(HTTPMethod method)(URL url)
 	{
-		writeln(method, " ", url);
 		preparedRequest = createTestHTTPServerRequest(url, method);
 		preparedRequest.host = "localhost";
 
@@ -153,7 +152,10 @@ final class RequestRouter
 		res.statusCode = 404;
 
 		auto ptype = "Content-Type" in preparedRequest.headers;
-		if (ptype) parseFormData(preparedRequest.form, preparedRequest.files, *ptype, preparedRequest.bodyReader, 5000);
+
+		if (ptype) {
+			parseFormData(preparedRequest.form, preparedRequest.files, *ptype, preparedRequest.bodyReader, 5000);
+		}
 
 		router.handleRequest(preparedRequest, res);
 

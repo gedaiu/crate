@@ -80,11 +80,9 @@ class CrateRouter(RouterPolicy) {
 
 		HTTPMethod method = HTTPMethod.GET;
 
-		writeln("path ", path);
 		router.get(path, checkError(policy, &resource.get));
+		router.post(path, checkError(policy, &resource.post));
 
-		//definedRoutes.paths[path][method][200] = PathDefinition(returnType,
-		//		"", CrateOperation.otherItem);
 
 		return this;
 	}

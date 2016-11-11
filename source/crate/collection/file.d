@@ -23,6 +23,9 @@ class CrateFile : CrateResource {
 		currentFileName = name;
 	}
 
+	void read(const FilePart file) {
+	}
+
 	override string toString() const {
 		return currentFileName;
 	}
