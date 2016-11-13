@@ -6,6 +6,7 @@ import std.conv;
 import std.stdio;
 import std.string;
 import std.file;
+import std.path;
 import std.base64;
 import std.algorithm;
 import std.uuid;
@@ -19,30 +20,47 @@ class CrateFile : CrateResource {
 	private string currentFileName;
 	public static string defaultPath = "files/";
 
+	this() {}
+
 	this(string name) {
+		writeln("0");
 		currentFileName = name;
 	}
 
 	void read(const FilePart file) {
+		file.writeln;
+		throw new Exception("not implemented");
 	}
 
 	override string toString() const {
+		writeln("2");
 		return currentFileName;
 	}
 
 	static CrateFile fromString(string encoded) {
-		return CrateFile.fromBase64(encoded);
+		writeln("3 ", encoded);
+		enum dataLength = "data:".length;
+
+		if(encoded.length > dataLength && encoded[0..dataLength] == "data:") {
+			return CrateFile.fromBase64(encoded);
+		}
+
+		return new CrateFile(encoded);
 	}
 
 	static CrateFile fromBase64(Range)(Range r) if (isInputRange!(Unqual!Range)) {
+		writeln("4");
 		return fromBase64(randomUUID.to!string.replace("-", ""), r);
 	}
 
 	static CrateFile fromBase64(Range)(string name, Range r) if (isInputRange!(Unqual!Range)) {
+		writeln("5");
 		return fromBase64(defaultPath, name, r);
 	}
 
 	static CrateFile fromBase64(Range)(string path, string name, Range r) if (isInputRange!(Unqual!Range)) {
+		writeln("6");
+
 		enum dataLength = "data:".length;
 		enum base64Length = ";base64,".length;
 
@@ -68,14 +86,23 @@ class CrateFile : CrateResource {
 	}
 
 	string contentType() {
-		return "";
+		return currentFileName.extension.toMime;
 	}
 
-  void write(OutputStream bodyWriter) {
+	void write(OutputStream bodyWriter) {
+		writeln("8");
 
+		auto f = File(currentFileName, "r");
+		scope(exit) f.close;
+
+		foreach (ubyte[] buffer; f.chunks(512))
+		{
+			bodyWriter.write(buffer);
+		}
 	}
-  ulong size() {
-		return 0;
+
+	ulong size() {
+		return currentFileName.getSize;
 	}
 }
 
@@ -128,16 +155,16 @@ version (unittest)
 	struct Item {
 		string _id = "item_id";
 		Child child;
-		CrateFile file;
+		CrateFile file = new CrateFile;
 	}
 
 	struct Child
 	{
 		string _id = "child_id";
-		CrateFile file;
+		CrateFile file = new CrateFile;
 	}
 }
-/*
+
 @("the user should be able to upload a file as a base64 data")
 unittest {
 	import crate.policy.restapi;
@@ -150,7 +177,9 @@ unittest {
 	router
 		.crateSetup
 			.add(baseCrate)
-			.add(relatedCrate);
+				.enableResource!(Item, "file")
+			.add(relatedCrate)
+				.enableResource!(Child, "file");
 
 	Json data = `{
 		"item": {
@@ -187,26 +216,66 @@ unittest {
 	import crate.policy.restapi;
 	import std.stdio;
 
+	"files".mkdirRecurse;
+
+	auto f = File("files/item.txt", "w");
+	f.write("this is the item");
+	f.close;
+
+	f = File("files/child.txt", "w");
+	f.write("this is the child");
+	f.close;
+
+	//scope(exit) "files/".rmdirRecurse;
+
 	auto item = new TestCrate!Item;
 	item.item.file = new CrateFile("files/item.txt");
-
-	auto child = new TestCrate!Child;
-	child.item.file = new CrateFile("files/child.txt");
+	item.item.child.file = new CrateFile("files/child.txt");
 
 	auto router = new URLRouter();
 	auto baseCrate = item;
-	auto relatedCrate = child;
 
 	router
 		.crateSetup
 			.add(baseCrate)
-			.add(relatedCrate);
+				.enableResource!(Item, "file")
+				.enableResource!(Item, "child/file");
 
 	request(router)
 		.get("/items/0/file")
 			.expectStatusCode(200)
 			.end((Response response) => {
+				assert(response.bodyString == "this is the item");
+			});
 
+	request(router)
+		.get("/items/0/child/file")
+			.expectStatusCode(200)
+			.end((Response response) => {
+				response.writeln;
+				assert(response.bodyString == "this is the child");
+			});
+
+	"====================".writeln;
+	string data = "-----------------------------9855312492823326321373169801\r\n";
+	data ~= "Content-Disposition: form-data; name=\"file\"; filename=\"resource.txt\"\r\n";
+	data ~= "Content-Type: text/plain\r\n\r\n";
+	data ~= "new file\r\n";
+	data ~= "-----------------------------9855312492823326321373169801--\r\n";
+
+	request(router)
+		.header("Content-Type", "multipart/form-data; boundary=---------------------------9855312492823326321373169801")
+		.post("/items/0/file")
+			.send(data)
+			.expectStatusCode(201)
+			.end((Response response) => {
+			});
+
+	request(router)
+		.get("/items/0/file")
+			.expectStatusCode(200)
+			.end((Response response) => {
+				response.writeln;
+				assert(response.bodyString == "new file");
 			});
 }
-*/

@@ -126,9 +126,6 @@ unittest {
 		});
 }
 
-
-
-
 @("Access a relation with resources")
 unittest {
 	import vibe.http.router;

@@ -20,11 +20,13 @@ class Resource(T, string resourcePath)
 	{
 		CrateCollection collection;
 		enum resourceAccess = resourcePath.split("/").join(".");
-		enum resourceName = "resource";
+		immutable string resourceName;
 	}
 
 	this(CrateCollection collection)
 	{
+		auto pathItems = resourcePath.split("/");
+		resourceName = pathItems[pathItems.length - 1];
 		this.collection = collection;
 	}
 
@@ -53,7 +55,7 @@ class Resource(T, string resourcePath)
 
 		mixin("CrateResource obj = item." ~ resourceAccess ~ ";");
 
-		enforce!CrateValidationException(resourceName in request.files, "`" ~ resourceName ~ "` not found.");
+		enforce!CrateValidationException(resourceName in request.files, "`" ~ resourceName ~ "` attachement not found.");
 
 		auto file = request.files.get(resourceName);
 		obj.read(file);

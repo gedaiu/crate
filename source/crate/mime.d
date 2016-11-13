@@ -49,3 +49,52 @@ string toExtension(string name) {
 
   return name in mime ? mime[name] : "";
 }
+
+string toMime(string name) {
+  immutable auto mime = [
+    ".au": "audio/basic",
+    ".avi": "video/avi",
+    ".avi": "video/msvideo",
+    ".avi": "video/x-msvideo",
+    ".bmp": "image/bmp",
+    ".bz2": "application/x-bzip2",
+    ".css": "text/css",
+    ".dtd": "application/xml-dtd",
+    ".doc": "application/msword",
+    ".exe": "application/octet-stream",
+    ".gif": "image/gif",
+    ".gz": "application/x-gzip",
+    ".hqx": "application/mac-binhex40",
+    ".html": "text/html",
+    ".jar": "application/java-archive",
+    ".jpg": "image/jpeg",
+    ".js": "application/x-javascript",
+    ".midi": "audio/x-midi",
+    ".mp3": "audio/mpeg",
+    ".mpeg": "video/mpeg",
+    ".ogg": "audio/vorbis",
+    ".ogg": "application/ogg",
+    ".pdf": "application/pdf",
+    ".pl": "application/x-perl",
+    ".png": "image/png",
+    ".ppt": "application/vnd.ms-powerpoint",
+    ".ps": "application/postscript",
+    ".rdf": "application/rdf",
+    ".rdf": "application/rdf+xml",
+    ".rtf": "application/rtf",
+    ".sgml": "text/sgml",
+    ".sit": "application/x-stuffit",
+    ".svg": "image/svg+xml",
+    ".swf": "application/x-shockwave-flash",
+    ".tar.gz": "application/x-tar",
+    ".tgz": "application/x-tar",
+    ".tiff": "image/tiff",
+    ".tsv": "text/tab-separated-values",
+    ".txt": "text/plain",
+    ".wav": "audio/wav, audio/x-wav",
+    ".xls": "application/vnd.ms-excel",
+    ".xml": "application/xml",
+    ".zip": "application/zip"];
+
+  return name in mime ? mime[name] : "application/octet-stream";
+}
