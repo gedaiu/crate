@@ -23,22 +23,25 @@ class CrateFile : CrateResource {
 	this() {}
 
 	this(string name) {
-		writeln("0");
 		currentFileName = name;
 	}
 
 	void read(const FilePart file) {
-		file.writeln;
-		throw new Exception("not implemented");
+		currentFileName.remove;
+
+		auto ext = file.headers["Content-Type"].to!string.toExtension;
+		auto name = randomUUID.to!string.replace("-", "");
+
+		currentFileName = chainPath(defaultPath, name.to!string).to!string ~ ext;
+
+		file.tempPath.toString.copy(currentFileName);
 	}
 
 	override string toString() const {
-		writeln("2");
 		return currentFileName;
 	}
 
 	static CrateFile fromString(string encoded) {
-		writeln("3 ", encoded);
 		enum dataLength = "data:".length;
 
 		if(encoded.length > dataLength && encoded[0..dataLength] == "data:") {
@@ -49,18 +52,14 @@ class CrateFile : CrateResource {
 	}
 
 	static CrateFile fromBase64(Range)(Range r) if (isInputRange!(Unqual!Range)) {
-		writeln("4");
 		return fromBase64(randomUUID.to!string.replace("-", ""), r);
 	}
 
 	static CrateFile fromBase64(Range)(string name, Range r) if (isInputRange!(Unqual!Range)) {
-		writeln("5");
 		return fromBase64(defaultPath, name, r);
 	}
 
 	static CrateFile fromBase64(Range)(string path, string name, Range r) if (isInputRange!(Unqual!Range)) {
-		writeln("6");
-
 		enum dataLength = "data:".length;
 		enum base64Length = ";base64,".length;
 
@@ -90,8 +89,6 @@ class CrateFile : CrateResource {
 	}
 
 	void write(OutputStream bodyWriter) {
-		writeln("8");
-
 		auto f = File(currentFileName, "r");
 		scope(exit) f.close;
 
@@ -145,6 +142,7 @@ version (unittest)
 
 		void updateItem(Json item)
 		{
+			this.item = item.deserializeJson!Item;
 		}
 
 		void deleteItem(string id)
@@ -226,7 +224,7 @@ unittest {
 	f.write("this is the child");
 	f.close;
 
-	//scope(exit) "files/".rmdirRecurse;
+	scope(exit) "files/".rmdirRecurse;
 
 	auto item = new TestCrate!Item;
 	item.item.file = new CrateFile("files/item.txt");
@@ -252,11 +250,9 @@ unittest {
 		.get("/items/0/child/file")
 			.expectStatusCode(200)
 			.end((Response response) => {
-				response.writeln;
 				assert(response.bodyString == "this is the child");
 			});
 
-	"====================".writeln;
 	string data = "-----------------------------9855312492823326321373169801\r\n";
 	data ~= "Content-Disposition: form-data; name=\"file\"; filename=\"resource.txt\"\r\n";
 	data ~= "Content-Type: text/plain\r\n\r\n";
@@ -268,14 +264,12 @@ unittest {
 		.post("/items/0/file")
 			.send(data)
 			.expectStatusCode(201)
-			.end((Response response) => {
-			});
+			.end((Response response) => { });
 
 	request(router)
 		.get("/items/0/file")
 			.expectStatusCode(200)
 			.end((Response response) => {
-				response.writeln;
 				assert(response.bodyString == "new file");
 			});
 }

@@ -4,6 +4,7 @@ import std.traits;
 import std.string;
 import std.conv;
 import std.stdio;
+import std.exception;
 
 import vibe.inet.url;
 import vibe.http.router;
@@ -59,6 +60,8 @@ class Resource(T, string resourcePath)
 
 		auto file = request.files.get(resourceName);
 		obj.read(file);
+
+		crate.updateItem(item.serializeToJson);
 
 		response.writeBody("", 201);
 	}
