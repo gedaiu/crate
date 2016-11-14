@@ -42,7 +42,11 @@ class Resource(T, string resourcePath)
 		mixin("CrateResource obj = item." ~ resourceAccess ~ ";");
 
 		response.headers["Content-Type"] = obj.contentType;
-		response.headers["Content-Length"] = obj.size.to!string;
+
+		if(obj.hasSize) {
+			response.headers["Content-Length"] = obj.size.to!string;
+		}
+
 		obj.write(response.bodyWriter);
 	}
 

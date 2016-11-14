@@ -11,8 +11,11 @@ import std.stdio;
 
 interface CrateResource {
 	string contentType();
+
 	void write(OutputStream bodyWriter);
 	void read(const FilePart file);
+
+	bool hasSize();
 	ulong size();
 }
 
@@ -32,6 +35,10 @@ version(unittest) {
 
 		void read(const FilePart file) {
 			lastRead = readText(file.tempPath.toString);
+		}
+
+		bool hasSize() {
+			return true;
 		}
 
 		ulong size() {

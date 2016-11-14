@@ -98,6 +98,10 @@ class CrateFile : CrateResource {
 		}
 	}
 
+	bool hasSize() {
+		return true;
+	}
+
 	ulong size() {
 		return currentFileName.getSize;
 	}
