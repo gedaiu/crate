@@ -13,6 +13,7 @@ import crate.collection.idcreator;
 import std.conv;
 import std.exception;
 import std.stdio;
+import std.json;
 
 class MethodCollection(Type)
 {
@@ -85,8 +86,9 @@ class MethodCollection(Type)
 		checkRelationships(mixedData, definition);
 
 		crate.updateItem(mixedData);
-		response.writeJsonBody(policy.serializer.denormalise(mixedData,
-				definition), 200, policy.mime);
+
+		auto data = policy.serializer.denormalise(mixedData, definition);
+		response.writeJsonBody(data, 200, policy.mime);
 	}
 
 	void replaceItem(HTTPServerRequest request, HTTPServerResponse response)
@@ -141,12 +143,16 @@ class MethodCollection(Type)
 		checkRelationships(data, definition);
 		checkFields(data, definition);
 
-		data = IdCreator(data, definition).toJson;
-		data = IdRemover(data.deserializeJson!Type.serializeToJson, definition).toJson;
+		try {
+			data = IdCreator(data, definition).toJson;
+			data = IdRemover(data.deserializeJson!Type.serializeToJson, definition).toJson;
+		} catch (JSONException e) {
+			throw new CrateValidationException(e.msg);
+		}
 
 		crate.addItem(data);
 
-		auto item = policy.serializer.denormalise(data, definition);
+		Json item = policy.serializer.denormalise(data, definition);
 
 		response.headers["Location"] = (request.fullURL ~ Path(data["_id"].to!string)).to!string;
 
@@ -218,7 +224,7 @@ class MethodCollection(Type)
 			}
 		}
 
-		void checkRelationships(Json data, FieldDefinition definition)
+		void checkRelationships(ref Json data, FieldDefinition definition)
 		{
 			foreach (field; definition.fields)
 			{
@@ -249,7 +255,7 @@ class MethodCollection(Type)
 
 						try
 						{
-							crate.getItem(id);
+							data[field.name] = crate.getItem(id);
 						}
 						catch (CrateNotFoundException e)
 						{

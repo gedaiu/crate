@@ -56,7 +56,6 @@ version(unittest) {
 
 	struct ResourceModel
 	{
-		string _id = "1";
 		string name = "test";
 		TestResource resource = new TestResource;
 	}
@@ -162,7 +161,6 @@ unittest {
 			.end((Response response) => {
 				assert(response.bodyString == "test body");
 			});
-
 
 	string data = "-----------------------------9855312492823326321373169801\r\n";
 	data ~= "Content-Disposition: form-data; name=\"resource\"; filename=\"resource.txt\"\r\n";

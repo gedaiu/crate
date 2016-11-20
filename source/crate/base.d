@@ -60,6 +60,16 @@ struct FieldDefinition
 	string plural;
 }
 
+string idOriginalName(const FieldDefinition definition) pure {
+	foreach(field; definition.fields) {
+		if(field.isId) {
+			return field.originalName;
+		}
+	}
+
+	return null;
+}
+
 struct ModelDefinition
 {
 	string idField;

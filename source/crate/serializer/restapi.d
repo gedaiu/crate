@@ -31,7 +31,17 @@ class CrateRestApiSerializer : CrateSerializer
 	Json denormalise(Json data, ref const FieldDefinition definition) inout {
 		Json result = Json.emptyObject;
 
-		result[singular(definition)] = data;
+		result[singular(definition)] = Json.emptyObject;
+
+		foreach(field; definition.fields) {
+			string id = field.idOriginalName;
+
+			if(id !is null)  {
+				result[singular(definition)][field.name] = data[field.name][id];
+			} else {
+				result[singular(definition)][field.name] = data[field.name];
+			}
+		}
 
 		return result;
 	}
@@ -147,4 +157,30 @@ unittest
 	assert("pluralModel" in valuePlural);
 
 	assert("_id" in serializer.normalise("", valueSingular, fields));
+}
+
+@("Check denormalised object relations")
+unittest
+{
+	struct TestChild
+	{
+		string _id;
+	}
+
+	struct TestModel
+	{
+		string _id;
+
+		TestChild child;
+	}
+
+	auto fields = getFields!TestModel;
+	auto serializer = new const CrateRestApiSerializer;
+
+	TestModel test = TestModel("id1", TestChild("id2"));
+
+	auto value = const serializer.denormalise(test.serializeToJson, fields);
+
+	assert(value["testModel"]["child"].type == Json.Type.string);
+	assert(value["testModel"]["child"] == "id2");
 }

@@ -134,7 +134,6 @@ version (unittest)
 		Json addItem(Json item)
 		{
 			item["_id"] = "item_id";
-			item["child"]["_id"] = "child_id";
 
 			return item;
 		}
@@ -162,7 +161,6 @@ version (unittest)
 
 	struct Child
 	{
-		string _id = "child_id";
 		CrateFile file = new CrateFile;
 	}
 }
@@ -174,14 +172,12 @@ unittest {
 
 	auto router = new URLRouter();
 	auto baseCrate = new TestCrate!Item;
-	auto relatedCrate = new TestCrate!Child;
 
 	router
 		.crateSetup
 			.add(baseCrate)
 				.enableResource!(Item, "file")
-			.add(relatedCrate)
-				.enableResource!(Child, "file");
+				.enableResource!(Item, "child/file");
 
 	Json data = `{
 		"item": {
