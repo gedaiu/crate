@@ -8,7 +8,7 @@ import vibe.data.bson;
 
 import swaggerize.definitions;
 
-import std.meta, std.string, std.exception;
+import std.meta, std.string, std.exception, std.array;
 import std.algorithm.searching, std.algorithm.iteration;
 
 import std.traits, std.stdio, std.meta, std.conv;
@@ -19,11 +19,7 @@ class CrateRestApiSerializer : CrateSerializer
 	Json denormalise(Json[] data, ref const FieldDefinition definition) inout {
 		Json result = Json.emptyObject;
 
-		result[plural(definition)] = Json.emptyArray;
-
-		foreach(item; data) {
-			result[plural(definition)] ~= item;
-		}
+		result[plural(definition)] = Json(data.map!(a => extractFields(a, definition)).array);
 
 		return result;
 	}
@@ -31,15 +27,25 @@ class CrateRestApiSerializer : CrateSerializer
 	Json denormalise(Json data, ref const FieldDefinition definition) inout {
 		Json result = Json.emptyObject;
 
-		result[singular(definition)] = Json.emptyObject;
+		result[singular(definition)] = extractFields(data, definition);
+
+		return result;
+	}
+
+	private Json extractFields(Json data, ref const FieldDefinition definition) inout {
+		Json result = data;
 
 		foreach(field; definition.fields) {
 			string id = field.idOriginalName;
 
 			if(id !is null)  {
-				result[singular(definition)][field.name] = data[field.name][id];
+				if(data[field.name].type == Json.Type.array) {
+					result[field.name] = Json(data[field.name][0..$].map!(a => a[id]).array);
+				} else {
+					result[field.name] = data[field.name][id];
+				}
 			} else {
-				result[singular(definition)][field.name] = data[field.name];
+				result[field.name] = extractFields(data[field.name], field);
 			}
 		}
 
@@ -183,4 +189,67 @@ unittest
 
 	assert(value["testModel"]["child"].type == Json.Type.string);
 	assert(value["testModel"]["child"] == "id2");
+
+	value = const serializer.denormalise([test.serializeToJson], fields);
+
+	assert(value["testModels"][0]["child"].type == Json.Type.string);
+	assert(value["testModels"][0]["child"] == "id2");
+}
+
+@("Check denormalised array relations")
+unittest
+{
+	struct TestChild
+	{
+		string _id;
+	}
+
+	struct TestModel
+	{
+		string _id;
+		TestChild[] child;
+	}
+
+	auto fields = getFields!TestModel;
+	auto serializer = new const CrateRestApiSerializer;
+
+	TestModel test = TestModel("id1", [ TestChild("id2") ]);
+
+	auto value = const serializer.denormalise(test.serializeToJson, fields);
+
+	assert(value["testModel"]["child"][0].type == Json.Type.string);
+	assert(value["testModel"]["child"][0] == "id2");
+}
+
+
+@("Check denormalised nested relations")
+unittest
+{
+	struct TestRelation
+	{
+		string _id;
+	}
+
+	struct TestChild
+	{
+		TestRelation relation;
+	}
+
+	struct TestModel
+	{
+		string _id;
+		TestChild child;
+	}
+
+	auto fields = getFields!TestModel;
+	auto serializer = new const CrateRestApiSerializer;
+
+	TestModel test = TestModel("id1");
+
+	test.child.relation._id = "id2";
+
+	auto value = const serializer.denormalise(test.serializeToJson, fields);
+
+	assert(value["testModel"]["child"]["relation"].type == Json.Type.string);
+	assert(value["testModel"]["child"]["relation"] == "id2");
 }
