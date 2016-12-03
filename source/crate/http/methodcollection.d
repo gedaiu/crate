@@ -229,6 +229,14 @@ class MethodCollection(Type)
 		{
 			foreach (field; definition.fields)
 			{
+				if(!field.isOptional && data[field.name].type == Json.Type.undefined) {
+					throw new CrateValidationException("`" ~ field.name ~ "` is missing");
+				}
+
+				if(field.isOptional && data[field.name].type == Json.Type.undefined) {
+					continue;
+				}
+
 				if (field.isRelation)
 				{
 					auto crate = collection.getByType(field.type);
