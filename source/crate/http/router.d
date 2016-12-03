@@ -75,6 +75,7 @@ class CrateRouter(RouterPolicy) {
 	CrateRouter enableResource(T, string resourcePath, Policy)()
 	{
 		auto const policy = new Policy;
+
 		auto path = basePath!T(policy.name) ~ "/:id/" ~ resourcePath;
 		auto resource = new Resource!(T, resourcePath)(proxyCollection[router]);
 

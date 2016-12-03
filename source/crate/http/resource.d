@@ -15,12 +15,28 @@ import crate.error;
 import crate.resource;
 import crate.collection.proxy;
 
+private string createResourceAccess(string resourcePath) {
+	auto parts = resourcePath.split("/");
+
+	string res = "";
+
+	foreach(part; parts) {
+		if(part[0] == ':') {
+			res ~= "[request.params[\"" ~ part[1 .. $] ~ "\"].to!ulong]";
+		} else {
+			res ~= "." ~ part;
+		}
+	}
+
+	return res;
+}
+
 class Resource(T, string resourcePath)
 {
 	private
 	{
 		CrateCollection collection;
-		enum resourceAccess = resourcePath.split("/").join(".");
+		enum resourceAccess = createResourceAccess(resourcePath);
 		immutable string resourceName;
 	}
 
@@ -39,7 +55,7 @@ class Resource(T, string resourcePath)
 		addItemCORS(crate.config, response);
 		auto item = crate.getItem(request.params["id"]).deserializeJson!T;
 
-		mixin("CrateResource obj = item." ~ resourceAccess ~ ";");
+		mixin("CrateResource obj = item" ~ resourceAccess ~ ";");
 
 		response.headers["Content-Type"] = obj.contentType;
 
@@ -58,7 +74,7 @@ class Resource(T, string resourcePath)
 		addItemCORS(crate.config, response);
 		auto item = crate.getItem(request.params["id"]).deserializeJson!T;
 
-		mixin("CrateResource obj = item." ~ resourceAccess ~ ";");
+		mixin("CrateResource obj = item" ~ resourceAccess ~ ";");
 
 		enforce!CrateValidationException(resourceName in request.files, "`" ~ resourceName ~ "` attachement not found.");
 

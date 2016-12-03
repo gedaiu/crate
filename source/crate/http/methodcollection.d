@@ -67,6 +67,7 @@ class MethodCollection(Type)
 		addItemCORS(response);
 		auto data = crate.getItem(request.params["id"]);
 
+
 		FieldDefinition definition = crate.definition;
 		auto denormalised = policy.serializer.denormalise(data, definition);
 

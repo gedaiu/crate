@@ -19,7 +19,7 @@ class CrateRestApiSerializer : CrateSerializer
 	Json denormalise(Json[] data, ref const FieldDefinition definition) inout {
 		Json result = Json.emptyObject;
 
-		result[plural(definition)] = Json(data.map!(a => extractFields(a, definition)).array);
+		result[plural(definition)] = extractFields(Json(data), definition);
 
 		return result;
 	}
@@ -34,6 +34,10 @@ class CrateRestApiSerializer : CrateSerializer
 
 	private Json extractFields(Json data, ref const FieldDefinition definition) inout {
 		Json result = data;
+
+		if(data.type == Json.Type.array) {
+			return Json((cast(Json[]) data).map!(a => extractFields(a, definition)).array);
+		}
 
 		foreach(field; definition.fields) {
 			string id = field.idOriginalName;
@@ -239,6 +243,7 @@ unittest
 	{
 		string _id;
 		TestChild child;
+		TestChild[] childs = [ TestChild() ];
 	}
 
 	auto fields = getFields!TestModel;
@@ -247,9 +252,12 @@ unittest
 	TestModel test = TestModel("id1");
 
 	test.child.relation._id = "id2";
+	test.childs[0].relation._id = "id3";
 
 	auto value = const serializer.denormalise(test.serializeToJson, fields);
 
 	assert(value["testModel"]["child"]["relation"].type == Json.Type.string);
 	assert(value["testModel"]["child"]["relation"] == "id2");
+	assert(value["testModel"]["childs"].length == 1);
+	assert(value["testModel"]["childs"][0]["relation"] == "id3");
 }

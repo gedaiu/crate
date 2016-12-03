@@ -66,6 +66,13 @@ version(unittest) {
 		string name = "test";
 		ResourceModel relation;
 	}
+
+	struct ArrayModel
+	{
+		string _id = "1";
+		string name = "test";
+		ResourceModel[] relation = [ ResourceModel() ];
+	}
 }
 
 @("Access a model with resources")
@@ -171,6 +178,53 @@ unittest {
 	request(router)
 		.header("Content-Type", "multipart/form-data; boundary=---------------------------9855312492823326321373169801")
 		.post("/relationmodels/1/relation/resource")
+		.expectStatusCode(201)
+		.send(data)
+		.end((Response response) => {
+			assert(TestResource.lastRead == "hello");
+		});
+}
+
+@("Access resources from an relation array")
+unittest {
+	import vibe.http.router;
+	import crate.policy.restapi;
+	import crate.http.router;
+	import std.stdio;
+
+	auto router = new URLRouter();
+	auto resourceCrate = new TestCrate!ArrayModel;
+
+	router
+		.crateSetup
+			.add(resourceCrate)
+			.enableResource!(ArrayModel, "relation/:index/resource");
+
+	request(router)
+		.get("/arraymodels/1")
+			.expectStatusCode(200)
+			.end((Response response) => {
+				assert(response.bodyJson["arrayModel"]["relation"][0]["resource"] == "test resource");
+			});
+
+	request(router)
+		.get("/arraymodels/1/relation/0/resource")
+			.expectStatusCode(200)
+			.expectHeader("Content-Type", "test/resource")
+			.end((Response response) => {
+				assert(response.bodyString == "test body");
+			});
+
+	string data = "-----------------------------9855312492823326321373169801\r\n";
+	data ~= "Content-Disposition: form-data; name=\"resource\"; filename=\"resource.txt\"\r\n";
+	data ~= "Content-Type: text/plain\r\n\r\n";
+	data ~= "hello\r\n";
+	data ~= "-----------------------------9855312492823326321373169801--\r\n";
+
+	TestResource.lastRead = "";
+	request(router)
+		.header("Content-Type", "multipart/form-data; boundary=---------------------------9855312492823326321373169801")
+		.post("/arraymodels/1/relation/0/resource")
 		.expectStatusCode(201)
 		.send(data)
 		.end((Response response) => {
