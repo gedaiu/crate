@@ -43,6 +43,28 @@ struct IdRemover {
   }
 }
 
+
+struct ItemIdRemover {
+  Json data;
+  FieldDefinition definition;
+
+  Json toJson() {
+    Json newData = data;
+
+    if(newData.type != Json.Type.object) {
+      return newData;
+    }
+
+    foreach(field; definition.fields) {
+      if(field.isId && field.name in data) {
+        data.remove(field.name);
+      }
+    }
+
+    return newData;
+  }
+}
+
 @("It should remove the _id field")
 unittest {
   struct Relation {

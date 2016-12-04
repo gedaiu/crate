@@ -8,9 +8,7 @@
 
   "dependencies": {
     "swaggerize": "*",
-    "vibe-d": {
-      "path": "../vibe.d"
-    }
+    "vibe-d": "*"
   },
 
   "_configurations": [

@@ -154,7 +154,6 @@ auto toId(string id, string type = "") {
 	}
 }
 
-
 Bson toBson(FieldDefinition definition, Json model, string parent = "unknown model") {
 	if(definition.isId) {
 		return Bson(model.to!string.toId(parent));
@@ -178,7 +177,7 @@ Bson toBson(FieldDefinition definition, Json model, string parent = "unknown mod
 		throw new CrateValidationException("No `id` field for `" ~ definition.name ~ "` inside `" ~ definition.type ~ "`");
 	}
 
-	if(!definition.isBasicType) {
+	if(!definition.isBasicType && model.type == Json.Type.object) {
 		Bson data = Bson.emptyObject;
 
 		definition.fields
@@ -186,7 +185,7 @@ Bson toBson(FieldDefinition definition, Json model, string parent = "unknown mod
 			.array
 			.each!(item => data[item.name] = item.value);
 
-			return data;
+		return data;
 	}
 
 	return Bson.fromJson(model);

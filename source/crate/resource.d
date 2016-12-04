@@ -194,7 +194,6 @@ unittest {
 
 @("Access resources from an relation array")
 unittest {
-	writeln("============================================");
 	import vibe.http.router;
 	import crate.policy.restapi;
 	import crate.http.router;

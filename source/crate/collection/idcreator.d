@@ -39,6 +39,29 @@ struct IdCreator {
   }
 }
 
+struct ItemIdCreator {
+  Json data;
+  FieldDefinition definition;
+
+  Json toJson() {
+    Json newData = data;
+
+    if(newData.type != Json.Type.object) {
+      return newData;
+    }
+
+    foreach(field; definition.fields) {
+      if((field.name !in data || data[field.name].to!string.length != 24) && field.originalType == "BsonObjectID") {
+        newData[field.name] = BsonObjectID.generate.toString;
+      } else if(field.name !in data && field.isId) {
+        newData[field.name] = "";
+      }
+    }
+
+    return newData;
+  }
+}
+
 @("It should remove the _id field")
 unittest {
   struct Relation {
