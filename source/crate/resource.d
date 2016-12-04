@@ -54,8 +54,15 @@ version(unittest) {
 		}
 	}
 
+	struct ResourceEmbeded
+	{
+		string name = "test";
+		TestResource resource = new TestResource;
+	}
+
 	struct ResourceModel
 	{
+		string _id = "1";
 		string name = "test";
 		TestResource resource = new TestResource;
 	}
@@ -64,14 +71,14 @@ version(unittest) {
 	{
 		string _id = "1";
 		string name = "test";
-		ResourceModel relation;
+		ResourceEmbeded relation;
 	}
 
 	struct ArrayModel
 	{
 		string _id = "1";
 		string name = "test";
-		ResourceModel[] relation = [ ResourceModel() ];
+		ResourceEmbeded[] relation = [ ResourceEmbeded() ];
 	}
 }
 
@@ -187,6 +194,7 @@ unittest {
 
 @("Access resources from an relation array")
 unittest {
+	writeln("============================================");
 	import vibe.http.router;
 	import crate.policy.restapi;
 	import crate.http.router;

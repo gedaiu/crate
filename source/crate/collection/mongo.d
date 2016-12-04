@@ -2,13 +2,15 @@ module crate.collection.mongo;
 
 import crate.base;
 import crate.error;
+import crate.ctfe;
 
 import vibe.inet.url;
 import vibe.http.router;
 import vibe.data.json;
 import vibe.db.mongo.collection;
 
-import std.conv, std.stdio;
+import std.conv, std.stdio, std.array;
+import std.algorithm, std.typecons;
 
 class MongoCrate(T): Crate!T
 {
@@ -43,91 +45,50 @@ class MongoCrate(T): Crate!T
 	Json addItem(Json item)
 	{
 		item["_id"] = BsonObjectID.generate().to!string;
-
-		collection.insert(toBson(item));
+		collection.insert(toBson!T(item));
 
 		return item;
 	}
 
 	Json getItem(string id)
 	{
-		if (collection.count(["_id" : toId(id)]) == 0)
+		if (collection.count(["_id" : toId(id, collection.name)]) == 0)
 		{
 			throw new CrateNotFoundException("There is no item with id `" ~ id ~ "` inside `" ~ collection.name ~ "`");
 		}
 
-		return collection.findOne!Json(["_id" : toId(id)]);
+		return collection.findOne!Json(["_id" : toId(id, collection.name)]);
 	}
 
 	Json editItem(string id, Json fields)
 	{
-		if (collection.count(["_id" : toId(id)]) == 0)
+		if (collection.count(["_id" : toId(id, collection.name)]) == 0)
 		{
 			throw new CrateNotFoundException("There is no item with id `" ~ id ~ "` inside `" ~ collection.name ~ "`");
 		}
 
-		auto data = toBson(fields);
+		auto data = toBson!T(fields);
 
-		collection.update(["_id" : toId(id)], data);
+		collection.update(["_id" : toId(id, collection.name)], data);
 
 		return getItem(id);
 	}
 
 	void updateItem(Json item)
 	{
-		auto updateItem = toBson(item);
+		auto updateItem = toBson!T(item);
 
-		collection.update(["_id" : toId(item["_id"].to!string)], updateItem);
-	}
-
-	private auto toId(string id) {
-		if(id.length != 24) {
-			throw new CrateNotFoundException("There is no item with id `" ~ id ~ "` inside `" ~ collection.name ~ "`");
-		}
-
-		try {
-			return BsonObjectID.fromString(id);
-		} catch (ConvException e) {
-			throw new CrateNotFoundException("There is no item with id `" ~ id ~ "` inside `" ~ collection.name ~ "`");
-		}
-	}
-
-	private Bson toBson(Json data) {
-		if(data.type == Json.Type.int_ || data.type == Json.Type.bigInt) {
-			return Bson(data.to!long.to!double);
-		} else if(data.type == Json.Type.object) {
-			Bson object = Bson.emptyObject;
-
-			foreach(string key, value; data) {
-				if(key == "_id") {
-					object[key] = BsonObjectID.fromString(value.to!string);
-				} else {
-					object[key] = toBson(value);
-				}
-			}
-
-			return object;
-		} else if(data.type == Json.Type.array) {
-			Bson[] list = [];
-
-			foreach(value; data) {
-				list ~= toBson(value);
-			}
-
-			return Bson(list);
-		} else {
-			return Bson.fromJson(data);
-		}
+		collection.update(["_id" : toId(item["_id"].to!string, collection.name)], updateItem);
 	}
 
 	void deleteItem(string id)
 	{
-		if (collection.count(["_id" : toId(id)]) == 0)
+		if (collection.count(["_id" : toId(id, collection.name)]) == 0)
 		{
 			throw new CrateNotFoundException("There is no item with id `" ~ id ~ "` inside `" ~ collection.name ~ "`");
 		}
 
-		collection.remove(["_id" : toId(id)]);
+		collection.remove(["_id" : toId(id, collection.name)]);
 	}
 }
 
@@ -138,6 +99,21 @@ version (unittest)
 	import vibe.data.serialization;
 
 	bool isTestActionCalled;
+
+	struct EmbededModel {
+		string field;
+		TestModel relation;
+	}
+
+	struct RelationModel
+	{
+		BsonObjectID _id;
+		string name = "";
+
+		EmbededModel embeded;
+		TestModel relation;
+		TestModel[] relations;
+	}
 
 	struct TestModel
 	{
@@ -166,6 +142,79 @@ version (unittest)
 			name = "changed";
 		}
 	}
+}
+
+auto toId(string id, string type = "") {
+	enforce!CrateNotFoundException(id.length == 24, "There is no item with id `" ~ id ~ "` inside `" ~ type ~ "`");
+
+	try {
+		return BsonObjectID.fromString(id);
+	} catch (ConvException e) {
+		throw new CrateNotFoundException("There is no item with id `" ~ id ~ "` inside `" ~ type ~ "`");
+	}
+}
+
+
+Bson toBson(FieldDefinition definition, Json model, string parent = "unknown model") {
+	if(definition.isId) {
+		return Bson(model.to!string.toId(parent));
+	}
+
+	if(definition.isArray) {
+		auto tmpField = definition;
+		tmpField.isArray = false;
+
+		auto r = (cast(Json[])model).map!(item => toBson(tmpField, item));
+		return Bson(r.array);
+	}
+
+	if(definition.isRelation) {
+		foreach(f; definition.fields) {
+			if(f.isId) {
+				return Bson(model[f.name].to!string.toId(definition.type));
+			}
+		}
+
+		throw new CrateValidationException("No `id` field for `" ~ definition.name ~ "` inside `" ~ definition.type ~ "`");
+	}
+
+	if(!definition.isBasicType) {
+		Bson data = Bson.emptyObject;
+
+		definition.fields
+			.map!(field => tuple!("name", "value")(field.name, toBson(field, model[field.name], definition.type)))
+			.array
+			.each!(item => data[item.name] = item.value);
+
+			return data;
+	}
+
+	return Bson.fromJson(model);
+}
+
+Bson toBson(T)(Json model) {
+	return toBson(getFields!T, model);
+}
+
+@("Check model to bson conversion")
+unittest {
+	RelationModel model;
+	model.embeded.field = "field";
+	model.embeded.relation._id = BsonObjectID.generate;
+	model._id = BsonObjectID.generate;
+	model.relation = TestModel(BsonObjectID.generate, "other1");
+	model.relations = [ TestModel(BsonObjectID.generate, "other1") ];
+	model.name = "test";
+
+	auto result = model.serializeToJson.toBson!RelationModel;
+
+	assert(result["_id"].toJson.to!string == model._id.to!string);
+	assert(result["name"].get!string == "test");
+	assert(result["embeded"]["field"].get!string == "field");
+	assert(result["embeded"]["relation"].toJson.to!string == model.embeded.relation._id.to!string);
+	assert(result["relation"].toJson.to!string == model.relation._id.to!string);
+	assert(result["relations"].length == 1);
+	assert(result["relations"][0].toJson.to!string == model.relations[0]._id.to!string);
 }
 
 unittest
@@ -295,7 +344,6 @@ unittest
 		assert(response.bodyJson["errors"][0]["title"] == "Crate not found");
 		assert(response.bodyJson["errors"][0]["description"] == "There is no item with id `1` inside `model`");
 	});
-
 }
 
 unittest

@@ -19,6 +19,10 @@ struct IdCreator {
   Json toJson() {
     Json newData = data;
 
+    if(newData.type != Json.Type.object) {
+      return newData;
+    }
+
     foreach(field; definition.fields) {
       if((field.name !in data || data[field.name].to!string.length != 24) && field.originalType == "BsonObjectID") {
         newData[field.name] = BsonObjectID.generate.toString;

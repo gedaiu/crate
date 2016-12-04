@@ -17,8 +17,11 @@ struct IdRemover {
   FieldDefinition definition;
 
   Json toJson() {
-    import std.stdio;
     Json newData = data;
+
+    if(newData.type != Json.Type.object) {
+      return newData;
+    }
 
     foreach(field; definition.fields) {
       if(field.isId && field.name in data) {

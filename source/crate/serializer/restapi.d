@@ -35,19 +35,28 @@ class CrateRestApiSerializer : CrateSerializer
 	private Json extractFields(Json data, ref const FieldDefinition definition) inout {
 		Json result = data;
 
-		if(data.type == Json.Type.array) {
+		if(data.type == Json.Type.array && !definition.isBasicType) {
 			return Json((cast(Json[]) data).map!(a => extractFields(a, definition)).array);
 		}
 
 		foreach(field; definition.fields) {
+			if(data[field.name].type == Json.Type.undefined && !field.isOptional) {
+				throw new CrateValidationException("Missing `" ~ field.name ~ "` value.");
+			}
+
+			if(data[field.name].type == Json.Type.undefined && field.isOptional) {
+				break;
+			}
+
 			string id = field.idOriginalName;
 
 			if(id !is null)  {
 				if(data[field.name].type == Json.Type.array) {
-					result[field.name] = Json(data[field.name][0..$].map!(a => a[id]).array);
+					result[field.name] = Json(data[field.name][0..$].map!(a => a.type == Json.Type.object ? a[id] : a).array);
 				} else {
 					result[field.name] = data[field.name][id];
 				}
+
 			} else {
 				result[field.name] = extractFields(data[field.name], field);
 			}

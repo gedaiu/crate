@@ -14,6 +14,8 @@ import std.conv;
 import std.exception;
 import std.stdio;
 import std.json;
+import std.algorithm;
+import std.array;
 
 class MethodCollection(Type)
 {
@@ -139,24 +141,14 @@ class MethodCollection(Type)
 		addListCORS(response);
 
 		FieldDefinition definition = crate.definition;
-
 		auto data = policy.serializer.normalise("", requestJson(request), definition);
 		checkRelationships(data, definition);
 		checkFields(data, definition);
 
-		try {
-			data = IdCreator(data, definition).toJson;
-			data = IdRemover(data.deserializeJson!Type.serializeToJson, definition).toJson;
-		} catch (JSONException e) {
-			throw new CrateValidationException(e.msg);
-		}
-
 		crate.addItem(data);
 
 		Json item = policy.serializer.denormalise(data, definition);
-
 		response.headers["Location"] = (request.fullURL ~ Path(data["_id"].to!string)).to!string;
-
 		response.writeJsonBody(item, 201, policy.mime);
 	}
 
@@ -243,19 +235,17 @@ class MethodCollection(Type)
 
 					if (field.isArray)
 					{
-						foreach (jsonId; data[field.name])
-						{
-							string id = jsonId.to!string;
+						enforce!CrateValidationException(data[field.name].type == Json.Type.array,
+							"`" ~ field.name ~ "` should be an array.");
 
-							try
-							{
-								crate.getItem(id);
-							}
-							catch (CrateNotFoundException e)
-							{
-								throw new CrateRelationNotFoundException(
-										"Item with id `" ~ id ~ "` not found");
-							}
+						try
+						{
+							data[field.name] = Json((cast(Json[])data[field.name]).map!((ref id) => crate.getItem(id.to!string)).array);
+						}
+						catch (CrateNotFoundException e)
+						{
+							throw new CrateRelationNotFoundException(
+									"Can not resove array", e);
 						}
 					}
 					else
@@ -277,7 +267,6 @@ class MethodCollection(Type)
 			}
 		}
 	}
-
 }
 
 Json mix(Json data, Json newData)
