@@ -29,6 +29,10 @@ class MongoCrate(T): Crate!T
 		return _config;
 	}
 
+	Json[] get(string, string, ulong) {
+		assert(false, "not implemented");
+	}
+
 	Json[] getList()
 	{
 		Json[] list;

@@ -13,11 +13,12 @@ class CrateProxy : Crate!void
 	private
 	{
 		CrateConfig delegate() configRef;
+		Json[]delegate(string, string, ulong) getRef;
 		Json[]delegate() getListRef;
-		Json delegate(Json item) addItemRef;
-		Json delegate(string id) getItemRef;
-		void delegate(Json item) updateItemRef;
-		void delegate(string id) deleteItemRef;
+		Json delegate(Json) addItemRef;
+		Json delegate(string) getItemRef;
+		void delegate(Json) updateItemRef;
+		void delegate(string) deleteItemRef;
 
 		FieldDefinition _definition;
 	}
@@ -25,6 +26,7 @@ class CrateProxy : Crate!void
 	this(T)(ref Crate!T crate)
 	{
 		configRef = &crate.config;
+		getRef = &crate.get;
 		getListRef = &crate.getList;
 		addItemRef = &crate.addItem;
 		getItemRef = &crate.getItem;
@@ -46,6 +48,10 @@ class CrateProxy : Crate!void
 	CrateConfig config()
 	{
 		return configRef();
+	}
+
+	Json[] get(string field, string value, ulong limit) {
+		return getRef(field, value, limit);
 	}
 
 	Json[] getList()

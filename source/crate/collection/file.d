@@ -126,6 +126,10 @@ version (unittest)
 			return CrateConfig();
 		}
 
+		Json[] get(string, string, ulong) {
+			assert(false, "not implemented");
+		}
+
 		Json[] getList()
 		{
 			return [item.serializeToJson];

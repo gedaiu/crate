@@ -92,6 +92,8 @@ unittest {
 	auto router = new URLRouter();
 	auto resourceCrate = new TestCrate!ResourceModel;
 
+	resourceCrate.addItem(ResourceModel().serializeToJson);
+
 	router
 		.crateSetup
 			.add(resourceCrate)
@@ -156,6 +158,8 @@ unittest {
 	auto router = new URLRouter();
 	auto resourceCrate = new TestCrate!RelationModel;
 
+	resourceCrate.addItem(RelationModel().serializeToJson);
+
 	router
 		.crateSetup
 			.add(resourceCrate)
@@ -201,6 +205,8 @@ unittest {
 
 	auto router = new URLRouter();
 	auto resourceCrate = new TestCrate!ArrayModel;
+
+	resourceCrate.addItem(ArrayModel().serializeToJson);
 
 	router
 		.crateSetup

@@ -35,7 +35,7 @@ string basePath(T)(string name)
 		}
 	}
 
-	assert(false, "Unknown " ~ name);
+	assert(false, "Unknown policy `" ~ name ~ "`");
 }
 
 auto crateSetup(T)(URLRouter router) {
@@ -262,13 +262,7 @@ class CrateRouter(RouterPolicy) {
 				catch (Exception e)
 				{
 					Json data = e.toJson;
-
-					debug {
-						if(data["errors"][0]["status"].to!int == 500) {
-								stderr.writeln(e);
-						}
-					}
-
+					version(unittest) {} else debug stderr.writeln(e);
 					response.writeJsonBody(data, data["errors"][0]["status"].to!int, policy.mime);
 				}
 			}
@@ -284,6 +278,7 @@ version (unittest)
 	import crate.request;
 	import vibe.data.json;
 	import vibe.data.bson;
+	import crate.collection.memory;
 
 	struct TestModel
 	{
@@ -301,45 +296,9 @@ version (unittest)
 		}
 	}
 
-	class TestCrate(T) : Crate!T
+	class TestCrate(T) : MemoryCrate!T
 	{
-		T item;
-
-		CrateConfig config()
-		{
-			return CrateConfig();
-		}
-
-		void action()
-		{}
-
-		Json[] getList()
-		{
-			return [item.serializeToJson];
-		}
-
-		Json addItem(Json item)
-		{
-			item["_id"] = "1";
-			return item;
-		}
-
-		Json getItem(string)
-		{
-			return item.serializeToJson;
-		}
-
-		void updateItem(Json item)
-		{
-			static if(__traits(hasMember, T, "name")) {
-				this.item.name = item["name"].to!string;
-			}
-		}
-
-		void deleteItem(string id)
-		{
-			assert(id == "1");
-		}
+		void action() {}
 	}
 
 	struct Point
@@ -379,37 +338,42 @@ unittest
 
 	auto router = new URLRouter();
 	auto baseCrate = new TestCrate!Site;
-	auto relatedCrate = new TestCrate!Point;
 
 	router
 		.crateSetup
 			.add(baseCrate)
-				.enableAction!(TestCrate!Site, "action")
-			.add(relatedCrate);
+				.enableAction!(TestCrate!Site, "action");
 
 	Json data = `{
-		"site": {
-			"latitude": 23,
-			"longitude": 21
-		}
+			"position": {
+				"type": "Point",
+				"coordinates": [0, 0]
+			}
 	}`.parseJsonString;
+
+	baseCrate.addItem(data);
 
 	request(router)
 		.get("/sites")
-			.send(data)
-				.expectStatusCode(200)
-				.end((Response response) => {
-					assert(response.bodyJson["sites"].length > 0);
-					assert(response.bodyJson["sites"][0]["_id"] == "1");
-				});
+			.expectStatusCode(200)
+			.end((Response response) => {
+				assert(response.bodyJson["sites"].length > 0);
+				assert(response.bodyJson["sites"][0]["_id"] == "1");
+			});
 
 	request(router)
 		.get("/sites/1")
-			.send(data)
-				.expectStatusCode(200)
-				.end((Response response) => {
-					assert(response.bodyJson["site"]["_id"] == "1");
-				});
+			.expectStatusCode(200)
+			.end((Response response) => {
+				assert(response.bodyJson["site"]["_id"] == "1");
+			});
+
+	data = `{
+		"site": {
+			"latitude": "0",
+			"longitude": "0"
+		}
+	}`.parseJsonString;
 
 	request(router)
 		.post("/sites")
@@ -433,7 +397,7 @@ unittest
 			.send(data)
 				.expectStatusCode(201)
 				.end((Response response) => {
-					assert(response.bodyJson["site"]["_id"] == "1");
+					assert(response.bodyJson["site"]["_id"] == "2");
 				});
 
 	data = `{

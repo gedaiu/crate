@@ -3,6 +3,7 @@ module crate.base;
 import vibe.data.json, vibe.http.common;
 
 import std.string, std.traits, std.conv;
+import std.algorithm, std.range;
 
 import swaggerize.definitions;
 
@@ -60,6 +61,11 @@ struct FieldDefinition
 	string plural;
 }
 
+FieldDefinition idField(FieldDefinition field) pure
+{
+	return field.fields.filter!(a => a.isId).takeExactly(1).front;
+}
+
 string idOriginalName(const FieldDefinition definition) pure {
 	foreach(field; definition.fields) {
 		if(field.isId) {
@@ -79,6 +85,8 @@ struct ModelDefinition
 interface Crate(Type)
 {
 	CrateConfig config();
+
+	Json[] get(string field, string value, ulong limit);
 
 	Json[] getList();
 

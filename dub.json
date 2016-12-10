@@ -8,7 +8,8 @@
 
   "dependencies": {
     "swaggerize": "*",
-    "vibe-d": "*"
+    "vibe-d": "*",
+    "vibe-auth": {"version": ">=0.1.0", "path": "../vibe.auth"}
   },
 
   "_configurations": [
