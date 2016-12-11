@@ -13,7 +13,7 @@ class CrateProxy : Crate!void
 	private
 	{
 		CrateConfig delegate() configRef;
-		Json[]delegate(string, string, ulong) getRef;
+		ICrateSelector delegate() getRef;
 		Json[]delegate() getListRef;
 		Json delegate(Json) addItemRef;
 		Json delegate(string) getItemRef;
@@ -50,8 +50,8 @@ class CrateProxy : Crate!void
 		return configRef();
 	}
 
-	Json[] get(string field, string value, ulong limit) {
-		return getRef(field, value, limit);
+	ICrateSelector get() {
+		return getRef();
 	}
 
 	Json[] getList()

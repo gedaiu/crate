@@ -31,8 +31,8 @@ class MemoryCrate(T) : Crate!T
 		return _config;
 	}
 
-  Json[] get(string field, string value, ulong limit) {
-    return list.filter!(a => a[field] == value).take(limit).array;
+  ICrateSelector get() {
+    return new CrateRange(list);
   }
 
   Json[] getList()
@@ -51,7 +51,7 @@ class MemoryCrate(T) : Crate!T
 
   Json getItem(string id)
   {
-    auto result = get("_id", id, 1);
+    auto result = get.where("_id", id).limit(1).exec;
 
     enforce!CrateNotFoundException(result.length > 0, "No item found.");
 

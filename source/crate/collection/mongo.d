@@ -10,7 +10,7 @@ import vibe.data.json;
 import vibe.db.mongo.collection;
 
 import std.conv, std.stdio, std.array;
-import std.algorithm, std.typecons;
+import std.algorithm, std.typecons, std.exception;
 
 class MongoCrate(T): Crate!T
 {
@@ -29,7 +29,7 @@ class MongoCrate(T): Crate!T
 		return _config;
 	}
 
-	Json[] get(string, string, ulong) {
+	ICrateSelector get() {
 		assert(false, "not implemented");
 	}
 

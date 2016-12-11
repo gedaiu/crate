@@ -25,7 +25,7 @@ class UserCrateCollection: ICollection!User
 	}
 
   private Json getUserData(string email) {
-      auto users = crate.get("email", email, 1);
+      auto users = crate.get.where("email", email).limit(1).exec;
       enforce!CrateNotFoundException(users.length == 1, "The user does not exist.");
 
       return users[0];
@@ -64,8 +64,21 @@ class UserCrateCollection: ICollection!User
     crate.updateItem(user);
   }
 
+  string createToken(string email) {
+    auto user = opIndex(email);
+    auto token = user.createToken();
+
+    crate.updateItem(user.toJson());
+
+    return token;
+  }
+
 	User byToken(string token) {
-		assert(false, "not implemented");
+    auto users = crate.get.whereArrayContains("tokens", token).limit(1).exec;
+
+    enforce!CrateNotFoundException(users.length == 1, "Invalid token.");
+
+    return new User(users[0].deserializeJson!UserData);
 	}
 
   bool contains(string email) {
@@ -96,8 +109,8 @@ class UserCrateCollection: ICollection!User
     assert(false, "not implemented");
   }
 
-  Collection!(User) save() {
-    assert(false, "not implemented");
+  ICollection!User save() {
+    return this;
   }
 }
 
@@ -145,8 +158,8 @@ unittest
   auto collection = new UserCrateCollection(["access1"], crate);
   collection.empower("test@asd.asd", "access1");
 
-  assert(crate.get("email", "test@asd.asd", 1)[0]["scopes"].length == 2);
-  assert(crate.get("email", "test@asd.asd", 1)[0]["scopes"][1] == "access1");
+  assert(crate.get.where("email", "test@asd.asd").limit(1).exec[0]["scopes"].length == 2);
+  assert(crate.get.where("email", "test@asd.asd").limit(1).exec[0]["scopes"][1] == "access1");
 
   bool found = true;
   try {
@@ -167,7 +180,6 @@ unittest
   assert(!found, "It should not add the the same access twice");
 }
 
-
 @("it should disempower an user")
 unittest
 {
@@ -178,7 +190,7 @@ unittest
   auto collection = new UserCrateCollection(["scopes"], crate);
   collection.disempower("test@asd.asd", "scopes");
 
-  assert(crate.get("email", "test@asd.asd", 1)[0]["scopes"].length == 0);
+  assert(crate.get.where("email", "test@asd.asd").limit(1).exec[0]["scopes"].length == 0);
 
   bool found = true;
   try {
@@ -187,5 +199,42 @@ unittest
     found = false;
   }
 
-  assert(!found, "It should not remoce missing access");
+  assert(!found, "It should not remove missing access");
+}
+
+@("it should generate user tokens")
+unittest
+{
+  auto user = User.fromJson(userJson.parseJsonString);
+  auto crate = new MemoryCrate!UserData;
+  crate.addItem(userJson.parseJsonString);
+
+  auto collection = new UserCrateCollection(["scopes"], crate);
+  auto token = collection.createToken("test@asd.asd");
+
+  assert(crate.get.where("email", "test@asd.asd").limit(1).exec[0]["tokens"].length == 2);
+  assert(crate.get.where("email", "test@asd.asd").limit(1).exec[0]["tokens"][1] == token);
+}
+
+@("it should find user by token")
+unittest
+{
+  auto userJson2 = `{
+    "id": 1,
+    "email": "test2@asd.asd",
+    "password": "password",
+    "salt": "salt",
+    "scopes": ["scopes"],
+    "tokens": ["token2"],
+  }`;
+
+  auto user = User.fromJson(userJson.parseJsonString);
+  auto crate = new MemoryCrate!UserData;
+
+  crate.addItem(userJson2.parseJsonString);
+  crate.addItem(userJson.parseJsonString);
+
+  auto collection = new UserCrateCollection(["scopes"], crate);
+
+  assert(collection.byToken("token2").email == "test2@asd.asd");
 }

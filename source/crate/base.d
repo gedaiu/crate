@@ -3,7 +3,7 @@ module crate.base;
 import vibe.data.json, vibe.http.common;
 
 import std.string, std.traits, std.conv;
-import std.algorithm, std.range;
+import std.algorithm, std.range, std.string;
 
 import swaggerize.definitions;
 
@@ -17,6 +17,47 @@ enum CrateOperation
 	replaceItem,
 	otherItem,
 	other
+}
+
+abstract class ICrateSelector
+{
+	ICrateSelector where(string field, string value);
+	ICrateSelector whereArrayContains(string field, string value);
+	ICrateSelector limit(ulong nr);
+
+	Json[] exec();
+}
+
+class CrateRange : ICrateSelector
+{
+	private {
+		InputRange!Json data;
+	}
+
+	this(Json[] data) {
+		this.data = inputRangeObject(data);
+	}
+
+	override {
+		ICrateSelector where(string field, string value) {
+			data = inputRangeObject(data.filter!(a => a[field].to!string == value));
+			return this;
+		}
+
+		ICrateSelector whereArrayContains(string field, string value) {
+			data = inputRangeObject(data.filter!(a => (cast(Json[])a[field]).canFind(Json(value))));
+			return this;
+		}
+
+		ICrateSelector limit(ulong nr) {
+			data = inputRangeObject(data.take(nr));
+			return this;
+		}
+
+		Json[] exec() {
+			return data.array;
+		}
+	}
 }
 
 struct CrateConfig
@@ -86,7 +127,7 @@ interface Crate(Type)
 {
 	CrateConfig config();
 
-	Json[] get(string field, string value, ulong limit);
+	ICrateSelector get();
 
 	Json[] getList();
 

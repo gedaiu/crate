@@ -126,6 +126,10 @@ version (unittest)
 			return CrateConfig();
 		}
 
+		ICrateSelector get() {
+			assert(false, "not implemented");
+		}
+
 		Json[] get(string, string, ulong) {
 			assert(false, "not implemented");
 		}
