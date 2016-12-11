@@ -3,6 +3,7 @@ module crate.auth.usercollection;
 import std.exception;
 import std.algorithm;
 import std.stdio;
+import std.array;
 
 import crate.base;
 import crate.error;
@@ -38,12 +39,27 @@ class UserCrateCollection: ICollection!User
     auto user = getUserData(email);
 
     enforce!CrateValidationException(accessList.canFind(access), "Unknown access");
-
     enforce!CrateValidationException(
       !canFind(cast(Json[])(user["scopes"]), Json(access)),
       "The user already has this access");
 
     user["scopes"] ~= Json(access);
+
+    crate.updateItem(user);
+  }
+
+  void disempower(string email, string access) {
+    auto user = getUserData(email);
+
+    enforce!CrateValidationException(accessList.canFind(access), "Unknown access");
+
+    auto scopes = cast(Json[])(user["scopes"]);
+
+    enforce!CrateValidationException(
+      canFind(scopes, Json(access)),
+      "The user already has this access");
+
+    user["scopes"] = Json(scopes.filter!(a => a != access).array);
 
     crate.updateItem(user);
   }
@@ -149,4 +165,27 @@ unittest
   }
 
   assert(!found, "It should not add the the same access twice");
+}
+
+
+@("it should disempower an user")
+unittest
+{
+  auto user = User.fromJson(userJson.parseJsonString);
+  auto crate = new MemoryCrate!UserData;
+  crate.addItem(userJson.parseJsonString);
+
+  auto collection = new UserCrateCollection(["scopes"], crate);
+  collection.disempower("test@asd.asd", "scopes");
+
+  assert(crate.get("email", "test@asd.asd", 1)[0]["scopes"].length == 0);
+
+  bool found = true;
+  try {
+    collection.disempower("test@asd.asd", "invalid_access");
+  } catch(CrateValidationException e) {
+    found = false;
+  }
+
+  assert(!found, "It should not remoce missing access");
 }
