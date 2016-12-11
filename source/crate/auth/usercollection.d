@@ -23,16 +23,29 @@ class UserCrateCollection: ICollection!User
     this.crate = crate;
 	}
 
+  private Json getUserData(string email) {
+      auto users = crate.get("email", email, 1);
+      enforce!CrateNotFoundException(users.length == 1, "The user does not exist.");
+
+      return users[0];
+  }
+
   User opIndex(string email) {
-    auto users = crate.get("email", email, 1);
-
-    enforce!CrateNotFoundException(users.length == 1, "The user does not exist.");
-
-    return User.fromJson(users[0]);
+    return User.fromJson(getUserData(email));
 	}
 
   void empower(string email, string access) {
-    assert(false, "not implemented");
+    auto user = getUserData(email);
+
+    enforce!CrateValidationException(accessList.canFind(access), "Unknown access");
+
+    enforce!CrateValidationException(
+      !canFind(cast(Json[])(user["scopes"]), Json(access)),
+      "The user already has this access");
+
+    user["scopes"] ~= Json(access);
+
+    crate.updateItem(user);
   }
 
 	User byToken(string token) {
@@ -104,4 +117,36 @@ unittest
   }
 
   assert(!found);
+}
+
+@("it should empower an user")
+unittest
+{
+  auto user = User.fromJson(userJson.parseJsonString);
+  auto crate = new MemoryCrate!UserData;
+  crate.addItem(userJson.parseJsonString);
+
+  auto collection = new UserCrateCollection(["access1"], crate);
+  collection.empower("test@asd.asd", "access1");
+
+  assert(crate.get("email", "test@asd.asd", 1)[0]["scopes"].length == 2);
+  assert(crate.get("email", "test@asd.asd", 1)[0]["scopes"][1] == "access1");
+
+  bool found = true;
+  try {
+    collection.empower("test@asd.asd", "invalid_access");
+  } catch(CrateValidationException e) {
+    found = false;
+  }
+
+  assert(!found, "It should not add the access");
+
+  found = true;
+  try {
+    collection.empower("test@asd.asd", "access1");
+  } catch(CrateValidationException e) {
+    found = false;
+  }
+
+  assert(!found, "It should not add the the same access twice");
 }
