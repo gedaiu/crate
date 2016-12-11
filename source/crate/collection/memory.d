@@ -43,7 +43,7 @@ class MemoryCrate(T) : Crate!T
   Json addItem(Json item)
   {
     lastId++;
-    item["_id"] = lastId.to!string;
+    item[idField] = lastId.to!string;
     list ~= item;
 
     return item;
@@ -51,7 +51,7 @@ class MemoryCrate(T) : Crate!T
 
   Json getItem(string id)
   {
-    auto result = get.where("_id", id).limit(1).exec;
+    auto result = get.where(idField, id).limit(1).exec;
 
     enforce!CrateNotFoundException(result.length > 0, "No item found.");
 
@@ -70,6 +70,6 @@ class MemoryCrate(T) : Crate!T
 
   void deleteItem(string id)
   {
-    list = list.filter!(a => a[idField].to!string == id).array;
+    list = list.filter!(a => a[idField].to!string != id).array;
   }
 }

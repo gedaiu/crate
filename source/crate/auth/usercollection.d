@@ -82,15 +82,15 @@ class UserCrateCollection: ICollection!User
 	}
 
   bool contains(string email) {
-		assert(false, "not implemented");
+    return crate.get.where("email", email).limit(1).exec.length == 1;
   }
 
   void add(User item) {
-    assert(false, "not implemented");
+    crate.addItem(item.toJson);
   }
 
-  void remove(const(ulong) id) {
-    assert(false, "not implemented");
+  void remove(const(string) id) {
+    crate.deleteItem(id);
   }
 
   ulong length() {
@@ -110,7 +110,7 @@ class UserCrateCollection: ICollection!User
   }
 
   ICollection!User save() {
-    return this;
+    assert(false, "not implemented");
   }
 }
 
@@ -118,7 +118,7 @@ version(unittest) {
   import crate.collection.memory;
 
   auto userJson = `{
-    "id": 1,
+    "id": "1",
     "email": "test@asd.asd",
     "password": "password",
     "salt": "salt",
@@ -130,7 +130,6 @@ version(unittest) {
 @("it should find the users")
 unittest
 {
-  auto user = User.fromJson(userJson.parseJsonString);
   auto crate = new MemoryCrate!UserData;
   crate.addItem(userJson.parseJsonString);
 
@@ -151,7 +150,6 @@ unittest
 @("it should empower an user")
 unittest
 {
-  auto user = User.fromJson(userJson.parseJsonString);
   auto crate = new MemoryCrate!UserData;
   crate.addItem(userJson.parseJsonString);
 
@@ -183,7 +181,6 @@ unittest
 @("it should disempower an user")
 unittest
 {
-  auto user = User.fromJson(userJson.parseJsonString);
   auto crate = new MemoryCrate!UserData;
   crate.addItem(userJson.parseJsonString);
 
@@ -205,7 +202,6 @@ unittest
 @("it should generate user tokens")
 unittest
 {
-  auto user = User.fromJson(userJson.parseJsonString);
   auto crate = new MemoryCrate!UserData;
   crate.addItem(userJson.parseJsonString);
 
@@ -228,7 +224,6 @@ unittest
     "tokens": ["token2"],
   }`;
 
-  auto user = User.fromJson(userJson.parseJsonString);
   auto crate = new MemoryCrate!UserData;
 
   crate.addItem(userJson2.parseJsonString);
@@ -237,4 +232,41 @@ unittest
   auto collection = new UserCrateCollection(["scopes"], crate);
 
   assert(collection.byToken("token2").email == "test2@asd.asd");
+}
+
+@("it should check if contains user")
+unittest
+{
+  auto crate = new MemoryCrate!UserData;
+
+  crate.addItem(userJson.parseJsonString);
+
+  auto collection = new UserCrateCollection(["scopes"], crate);
+
+  assert(collection.contains("test@asd.asd"));
+  assert(!collection.contains("other@asd.asd"));
+}
+
+@("it should add an user")
+unittest
+{
+  auto user = User.fromJson(userJson.parseJsonString);
+  auto crate = new MemoryCrate!UserData;
+  auto collection = new UserCrateCollection(["scopes"], crate);
+
+  assert(!collection.contains("test@asd.asd"));
+  collection.add(user);
+  assert(collection.contains("test@asd.asd"));
+}
+
+@("it should delete an user")
+unittest
+{
+  auto crate = new MemoryCrate!UserData;
+  crate.addItem(userJson.parseJsonString);
+  auto collection = new UserCrateCollection(["scopes"], crate);
+
+  assert(collection.contains("test@asd.asd"));
+  collection.remove("1");
+  assert(!collection.contains("test@asd.asd"));
 }
