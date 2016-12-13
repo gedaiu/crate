@@ -1,4 +1,4 @@
-module crate.auth.usercollection;
+module crate.auth.UserMemmoryCollection;
 
 import std.exception;
 import std.algorithm;
@@ -13,7 +13,7 @@ import vibe.data.json;
 import vibeauth.users;
 import vibeauth.collection;
 
-class UserCrateCollection: ICollection!User
+class UserCrateCollection: UserCollection
 {
   immutable(string[]) accessList;
 
@@ -29,23 +29,6 @@ class UserCrateCollection: ICollection!User
       enforce!CrateNotFoundException(users.length == 1, "The user does not exist.");
 
       return users[0];
-  }
-
-  User opIndex(string email) {
-    return User.fromJson(getUserData(email));
-	}
-
-  void empower(string email, string access) {
-    auto user = getUserData(email);
-
-    enforce!CrateValidationException(accessList.canFind(access), "Unknown access");
-    enforce!CrateValidationException(
-      !canFind(cast(Json[])(user["scopes"]), Json(access)),
-      "The user already has this access");
-
-    user["scopes"] ~= Json(access);
-
-    crate.updateItem(user);
   }
 
   void disempower(string email, string access) {
@@ -73,44 +56,63 @@ class UserCrateCollection: ICollection!User
     return token;
   }
 
-	User byToken(string token) {
-    auto users = crate.get.whereArrayContains("tokens", token).limit(1).exec;
+  override {
+    User opIndex(string email) {
+      return User.fromJson(getUserData(email));
+  	}
 
-    enforce!CrateNotFoundException(users.length == 1, "Invalid token.");
+    void empower(string email, string access) {
+      auto user = getUserData(email);
 
-    return new User(users[0].deserializeJson!UserData);
-	}
+      enforce!CrateValidationException(accessList.canFind(access), "Unknown access");
+      enforce!CrateValidationException(
+        !canFind(cast(Json[])(user["scopes"]), Json(access)),
+        "The user already has this access");
 
-  bool contains(string email) {
-    return crate.get.where("email", email).limit(1).exec.length == 1;
-  }
+      user["scopes"] ~= Json(access);
 
-  void add(User item) {
-    crate.addItem(item.toJson);
-  }
+      crate.updateItem(user);
+    }
 
-  void remove(const(string) id) {
-    crate.deleteItem(id);
-  }
+  	User byToken(string token) {
+      auto users = crate.get.whereArrayContains("tokens", token).limit(1).exec;
 
-  ulong length() {
-    assert(false, "not implemented");
-  }
+      enforce!CrateNotFoundException(users.length == 1, "Invalid token.");
 
-  int opApply(int delegate(User) dg) {
-    assert(false, "not implemented");
-  }
+      return new User(users[0].deserializeJson!UserData);
+  	}
 
-  int opApply(int delegate(ulong, User) dg) {
-    assert(false, "not implemented");
-  }
+    bool contains(string email) {
+      return crate.get.where("email", email).limit(1).exec.length == 1;
+    }
 
-  bool empty() @property {
-    assert(false, "not implemented");
-  }
+    void add(User item) {
+      crate.addItem(item.toJson);
+    }
 
-  ICollection!User save() {
-    assert(false, "not implemented");
+    void remove(const(string) id) {
+      crate.deleteItem(id);
+    }
+
+    ulong length() {
+      assert(false, "not implemented");
+    }
+
+    int opApply(int delegate(User) dg) {
+      assert(false, "not implemented");
+    }
+
+    int opApply(int delegate(ulong, User) dg) {
+      assert(false, "not implemented");
+    }
+
+    bool empty() @property {
+      assert(false, "not implemented");
+    }
+
+    ICollection!User save() {
+      assert(false, "not implemented");
+    }
   }
 }
 
@@ -118,7 +120,7 @@ version(unittest) {
   import crate.collection.memory;
 
   auto userJson = `{
-    "id": "1",
+    "_id": "1",
     "email": "test@asd.asd",
     "password": "password",
     "salt": "salt",
@@ -216,7 +218,7 @@ unittest
 unittest
 {
   auto userJson2 = `{
-    "id": 1,
+    "_id": 1,
     "email": "test2@asd.asd",
     "password": "password",
     "salt": "salt",

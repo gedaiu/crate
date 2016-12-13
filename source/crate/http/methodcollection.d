@@ -9,6 +9,7 @@ import crate.error;
 import crate.collection.proxy;
 import crate.collection.idremover;
 import crate.collection.idcreator;
+import crate.http.headers;
 
 import std.conv;
 import std.exception;
@@ -164,50 +165,50 @@ class MethodCollection(Type)
 	{
 		void addListCORS(HTTPServerResponse response)
 		{
-			string methods = "OPTIONS";
+			string[] methods = [ "OPTIONS" ];
 
 			if (config.getList)
 			{
-				methods ~= ", GET";
+				methods ~= "GET";
 			}
 
 			if (config.addItem)
 			{
-				methods ~= ", POST";
+				methods ~= "POST";
 			}
 
-			response.headers["Access-Control-Allow-Origin"] = "*";
-			response.headers["Access-Control-Allow-Methods"] = methods;
-			response.headers["Access-Control-Allow-Headers"] = "Content-Type";
+			response.addHeaderValues("Access-Control-Allow-Origin", [ "*" ]);
+			response.addHeaderValues("Access-Control-Allow-Methods", methods);
+			response.addHeaderValues("Access-Control-Allow-Headers", [ "Content-Type" ]);
 		}
 
 		void addItemCORS(HTTPServerResponse response)
 		{
-			string methods = "OPTIONS";
+			string[] methods = [ "OPTIONS" ];
 
 			if (config.getList)
 			{
-				methods ~= ", GET";
+				methods ~= "GET";
 			}
 
 			if (config.updateItem)
 			{
-				methods ~= ", PATCH";
+				methods ~= "PATCH";
 			}
 
 			if (config.replaceItem)
 			{
-				methods ~= ", PUT";
+				methods ~= "PUT";
 			}
 
 			if (config.deleteItem)
 			{
-				methods ~= ", DELETE";
+				methods ~= "DELETE";
 			}
 
-			response.headers["Access-Control-Allow-Origin"] = "*";
-			response.headers["Access-Control-Allow-Methods"] = methods;
-			response.headers["Access-Control-Allow-Headers"] = "Content-Type";
+			response.addHeaderValues("Access-Control-Allow-Origin", [ "*" ]);
+			response.addHeaderValues("Access-Control-Allow-Methods", methods);
+			response.addHeaderValues("Access-Control-Allow-Headers", [ "Content-Type" ]);
 		}
 	}
 

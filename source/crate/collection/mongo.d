@@ -8,9 +8,61 @@ import vibe.inet.url;
 import vibe.http.router;
 import vibe.data.json;
 import vibe.db.mongo.collection;
+import vibe.db.mongo.mongo;
 
 import std.conv, std.stdio, std.array;
 import std.algorithm, std.typecons, std.exception;
+
+class MongoCrateRange : ICrateSelector
+{
+	private {
+		MongoCollection collection;
+		Json query;
+		size_t resultCount;
+	}
+
+	this(MongoCollection collection) {
+		this.collection = collection;
+		this.query = Json.emptyObject;
+	}
+
+	override {
+		ICrateSelector where(string field, string value) {
+			query[field] = value;
+
+			return this;
+		}
+
+		ICrateSelector whereArrayContains(string field, string value) {
+			query[field] = Json.emptyObject;
+			query[field]["$elemMatch"] = Json.emptyObject;
+			query[field]["$eq"] = value;
+
+			return this;
+		}
+
+		ICrateSelector limit(ulong nr) {
+			resultCount = nr;
+
+			return this;
+		}
+
+		Json[] exec() {
+			Json[] list;
+
+			auto cursor = collection.find!Json(query).limit(resultCount);
+
+			foreach (item; cursor)
+			{
+				list ~= item;
+			}
+
+			return list;
+		}
+	}
+}
+
+
 
 class MongoCrate(T): Crate!T
 {
@@ -25,13 +77,18 @@ class MongoCrate(T): Crate!T
 		this._config = config;
 	}
 
+	this(MongoClient client, string collection, CrateConfig config = CrateConfig()) {
+		this.collection = client.getCollection(collection);
+		this._config = config;
+	}
+
 	CrateConfig config() {
 		return _config;
 	}
 
 	ICrateSelector get() {
-		assert(false, "not implemented");
-	}
+    return new MongoCrateRange(collection);
+  }
 
 	Json[] getList()
 	{
@@ -49,6 +106,7 @@ class MongoCrate(T): Crate!T
 	Json addItem(Json item)
 	{
 		item["_id"] = BsonObjectID.generate().to!string;
+
 		collection.insert(toBson!T(item));
 
 		return item;

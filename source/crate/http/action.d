@@ -10,6 +10,7 @@ import vibe.data.json;
 
 import crate.base;
 import crate.collection.proxy;
+import crate.http.headers;
 
 class Action(T, string actionName)
 {
@@ -83,9 +84,9 @@ class Action(T, string actionName)
 	{
 		void addItemCORS(CrateConfig config, HTTPServerResponse response)
 		{
-			response.headers["Access-Control-Allow-Origin"] = "*";
-			response.headers["Access-Control-Allow-Methods"] = "OPTIONS, GET, POST";
-			response.headers["Access-Control-Allow-Headers"] = "Content-Type";
+			response.addHeaderValues("Access-Control-Allow-Origin", [ "*" ]);
+			response.addHeaderValues("Access-Control-Allow-Methods", [ "OPTIONS", "GET", "POST" ]);
+			response.addHeaderValues("Access-Control-Allow-Headers", [ "Content-Type" ]);
 		}
 	}
 }

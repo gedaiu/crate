@@ -14,6 +14,7 @@ import crate.base;
 import crate.error;
 import crate.resource;
 import crate.collection.proxy;
+import crate.http.headers;
 
 private string createResourceAccess(string resourcePath) {
 	auto parts = resourcePath.split("/");
@@ -90,9 +91,9 @@ class Resource(T, string resourcePath)
 	{
 		void addItemCORS(CrateConfig config, HTTPServerResponse response)
 		{
-			response.headers["Access-Control-Allow-Origin"] = "*";
-			response.headers["Access-Control-Allow-Methods"] = "OPTIONS, GET, POST";
-			response.headers["Access-Control-Allow-Headers"] = "Content-Type";
+			response.addHeaderValues("Access-Control-Allow-Origin", [ "*" ]);
+			response.addHeaderValues("Access-Control-Allow-Methods", [ "OPTIONS", "GET", "POST" ]);
+			response.addHeaderValues("Access-Control-Allow-Headers", [ "Content-Type" ]);
 		}
 	}
 }
