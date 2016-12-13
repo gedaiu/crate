@@ -189,7 +189,7 @@ private Schema[string] errorDefinitions()
 
 version (unittest)
 {
-	import crate.request;
+	import should.request;
 	import vibe.data.serialization;
 	import vibe.data.json;
 

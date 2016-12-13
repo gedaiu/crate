@@ -157,7 +157,7 @@ class MongoCrate(T): Crate!T
 version (unittest)
 {
 	import crate.http.router;
-	import crate.request;
+	import should.request;
 	import vibe.data.serialization;
 
 	bool isTestActionCalled;

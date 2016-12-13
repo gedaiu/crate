@@ -110,7 +110,7 @@ class CrateFile : CrateResource {
 version (unittest)
 {
 	import crate.base;
-	import crate.request;
+	import should.request;
 	import crate.http.router;
 
 	import vibe.data.json;
