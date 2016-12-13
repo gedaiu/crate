@@ -265,6 +265,7 @@ class CrateRouter(RouterPolicy) {
 					version(unittest) {} else debug stderr.writeln(e);
 					response.writeJsonBody(data, data["errors"][0]["status"].to!int, policy.mime);
 				}
+
 			}
 
 			return &check;

@@ -36,7 +36,7 @@ class MongoCrateRange : ICrateSelector
 		ICrateSelector whereArrayContains(string field, string value) {
 			query[field] = Json.emptyObject;
 			query[field]["$elemMatch"] = Json.emptyObject;
-			query[field]["$eq"] = value;
+			query[field]["$elemMatch"]["$eq"] = value;
 
 			return this;
 		}

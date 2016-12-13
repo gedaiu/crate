@@ -1,4 +1,4 @@
-module crate.auth.UserMemmoryCollection;
+module crate.auth.usercollection;
 
 import std.exception;
 import std.algorithm;
@@ -51,7 +51,7 @@ class UserCrateCollection: UserCollection
     auto user = opIndex(email);
     auto token = user.createToken();
 
-    crate.updateItem(user.toJson());
+    crate.updateItem(user.toJson);
 
     return token;
   }

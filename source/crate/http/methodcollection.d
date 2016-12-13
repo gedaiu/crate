@@ -124,7 +124,6 @@ class MethodCollection(Type)
 
 	void getList(HTTPServerRequest request, HTTPServerResponse response)
 	{
-		import std.stdio;
 		auto crate = collection.getByPath(request.path);
 
 		addListCORS(response);
@@ -132,7 +131,6 @@ class MethodCollection(Type)
 		FieldDefinition definition = crate.definition;
 
 		auto data = policy.serializer.denormalise(crate.getList, definition);
-
 		response.writeJsonBody(data, 200, policy.mime);
 	}
 
