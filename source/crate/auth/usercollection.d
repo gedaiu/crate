@@ -4,6 +4,7 @@ import std.exception;
 import std.algorithm;
 import std.stdio;
 import std.array;
+import std.datetime;
 
 import crate.base;
 import crate.error;
@@ -12,6 +13,7 @@ import vibe.data.json;
 
 import vibeauth.users;
 import vibeauth.collection;
+import vibeauth.token;
 
 class UserCrateCollection: UserCollection
 {
@@ -47,16 +49,16 @@ class UserCrateCollection: UserCollection
     crate.updateItem(user);
   }
 
-  string createToken(string email) {
-    auto user = opIndex(email);
-    auto token = user.createToken();
-
-    crate.updateItem(user.toJson);
-
-    return token;
-  }
-
   override {
+    Token createToken(string email, SysTime expire, string[] scopes = [], string type = "Bearer") {
+      auto user = opIndex(email);
+      auto token = user.createToken(expire, scopes, type);
+
+      crate.updateItem(user.toJson);
+
+      return token;
+    }
+
     User opIndex(string email) {
       return User.fromJson(getUserData(email));
   	}
@@ -75,7 +77,7 @@ class UserCrateCollection: UserCollection
     }
 
   	User byToken(string token) {
-      auto users = crate.get.whereArrayContains("tokens", token).limit(1).exec;
+      auto users = crate.get.whereArrayFieldContains("tokens", "name", token).limit(1).exec;
 
       enforce!CrateNotFoundException(users.length == 1, "Invalid token.");
 
@@ -125,7 +127,7 @@ version(unittest) {
     "password": "password",
     "salt": "salt",
     "scopes": ["scopes"],
-    "tokens": ["token"],
+    "tokens": [ { "name": "token", "expire": "2100-01-01T00:00:00", "type": "Bearer", "scopes": [] } ],
   }`;
 }
 
@@ -208,10 +210,10 @@ unittest
   crate.addItem(userJson.parseJsonString);
 
   auto collection = new UserCrateCollection(["scopes"], crate);
-  auto token = collection.createToken("test@asd.asd");
+  auto token = collection.createToken("test@asd.asd", Clock.currTime + 3600.seconds);
 
   assert(crate.get.where("email", "test@asd.asd").limit(1).exec[0]["tokens"].length == 2);
-  assert(crate.get.where("email", "test@asd.asd").limit(1).exec[0]["tokens"][1] == token);
+  assert(crate.get.where("email", "test@asd.asd").limit(1).exec[0]["tokens"][1]["name"] == token.name);
 }
 
 @("it should find user by token")
@@ -223,7 +225,7 @@ unittest
     "password": "password",
     "salt": "salt",
     "scopes": ["scopes"],
-    "tokens": ["token2"],
+    "tokens": [{ "name": "token2", "expire": "2100-01-01T00:00:00", "type": "Bearer", "scopes": [] }],
   }`;
 
   auto crate = new MemoryCrate!UserData;

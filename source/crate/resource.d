@@ -20,7 +20,7 @@ interface CrateResource {
 }
 
 version(unittest) {
-	import should.request;
+	import http.request;
 
 	class TestResource : CrateResource {
 		static string lastRead;

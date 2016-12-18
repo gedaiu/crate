@@ -23,6 +23,7 @@ abstract class ICrateSelector
 {
 	ICrateSelector where(string field, string value);
 	ICrateSelector whereArrayContains(string field, string value);
+	ICrateSelector whereArrayFieldContains(string arrayField, string field, string value);
 	ICrateSelector limit(ulong nr);
 
 	Json[] exec();
@@ -46,6 +47,13 @@ class CrateRange : ICrateSelector
 
 		ICrateSelector whereArrayContains(string field, string value) {
 			data = inputRangeObject(data.filter!(a => (cast(Json[])a[field]).canFind(Json(value))));
+			return this;
+		}
+
+		ICrateSelector whereArrayFieldContains(string arrayField, string field, string value) {
+			data = inputRangeObject(data.filter!(a => (cast(Json[])a[arrayField])
+								.map!(a => a[field])
+								.canFind(Json(value))));
 			return this;
 		}
 

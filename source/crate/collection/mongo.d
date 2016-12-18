@@ -41,6 +41,14 @@ class MongoCrateRange : ICrateSelector
 			return this;
 		}
 
+		ICrateSelector whereArrayFieldContains(string arrayField, string field, string value) {
+			query[arrayField] = Json.emptyObject;
+			query[arrayField]["$elemMatch"] = Json.emptyObject;
+			query[arrayField]["$elemMatch"][field] = value;
+
+			return this;
+		}
+
 		ICrateSelector limit(ulong nr) {
 			resultCount = nr;
 
@@ -157,7 +165,7 @@ class MongoCrate(T): Crate!T
 version (unittest)
 {
 	import crate.http.router;
-	import should.request;
+	import http.request;
 	import vibe.data.serialization;
 
 	bool isTestActionCalled;
