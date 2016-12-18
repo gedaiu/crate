@@ -59,6 +59,13 @@ class UserCrateCollection: UserCollection
       return token;
     }
 
+    void revoke(string token) {
+      auto user = byToken(token);
+      user.revoke(token);
+
+      crate.updateItem(user.toJson);
+    }
+
     User opIndex(string email) {
       return User.fromJson(getUserData(email));
   	}
