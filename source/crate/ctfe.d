@@ -256,7 +256,6 @@ template getFields(Prototype)
 	 */
 	template ItemFields(FIELDS...)
 	{
-
 		static if (FIELDS.length > 1)
 		{
 			alias ItemFields = AliasSeq!(ItemFields!(FIELDS[0 .. $ / 2]),
@@ -264,7 +263,6 @@ template getFields(Prototype)
 		}
 		else static if (FIELDS.length == 1 && FIELDS[0] != "Monitor" && FIELDS[0] != "factory")
 		{
-
 			static if (ItemProperty!(Prototype, FIELDS[0]).length == 1)
 			{
 				enum attributes = [StringOfSeq!(GetAttributes!(FIELDS[0], Prototype))];
@@ -296,12 +294,19 @@ template getFields(Prototype)
 						enum singular = "";
 						enum plural = "";
 					}
+					else static if( isArray!Type ) {
+						enum fields = [];
+						enum singular = "";
+						enum plural = "";
+					}
 					else
 					{
 						enum fields = getFields!Type.fields;
 						enum singular = Singular!Type;
 						enum plural = Plural!Type;
 					}
+
+					pragma(msg, "?", fieldName, " ", fields);
 
 					alias ItemFields = AliasSeq!([FieldDefinition(fieldName,
 							FIELDS[0], attributes, Type.stringof, T.stringof, IsBasicType!T,
@@ -317,6 +322,8 @@ template getFields(Prototype)
 		else
 			alias ItemFields = AliasSeq!();
 	}
+
+	pragma(msg, Prototype);
 
 	mixin("enum list = [ " ~ Join!(ItemFields!(__traits(allMembers, Prototype))) ~ " ];");
 
@@ -420,4 +427,22 @@ unittest {
 	assert(def.fields[1].originalName == "str");
 	assert(def.fields[1].originalType == "StringSerializable");
 	assert(def.fields[1].type == "string");
+}
+
+
+unittest {
+	struct NestedArrays {
+		double[2][] coordinates;
+	}
+
+	import std.stdio;
+
+	pragma(msg, "=========================");
+	enum def = getFields!NestedArrays;
+
+	def.serializeToJson.toPrettyString.writeln;
+
+	assert(def.fields[0].originalName == "str");
+	assert(def.fields[0].originalType == "StringSerializable");
+	assert(def.fields[0].type == "string");
 }
