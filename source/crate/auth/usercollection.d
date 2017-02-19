@@ -95,6 +95,15 @@ class UserCrateCollection: UserCollection
       return crate.get.where("email", email).limit(1).exec.length == 1;
     }
 
+    bool createUser(UserData data, string password) {
+      auto user = new User(data);
+      user.setPassword(password);
+
+      add(user);
+
+      return true;
+    }
+
     void add(User item) {
       crate.addItem(item.toJson);
     }
@@ -131,7 +140,10 @@ version(unittest) {
   auto userJson = `{
     "_id": "1",
     "email": "test@asd.asd",
+    "name": "John",
+    "username": "test",
     "password": "password",
+    "isActive": true,
     "salt": "salt",
     "scopes": ["scopes"],
     "tokens": [ { "name": "token", "expire": "2100-01-01T00:00:00", "type": "Bearer", "scopes": [] } ],
@@ -229,6 +241,9 @@ unittest
   auto userJson2 = `{
     "_id": 1,
     "email": "test2@asd.asd",
+    "name": "test",
+    "username": "test",
+    "isActive": true,
     "password": "password",
     "salt": "salt",
     "scopes": ["scopes"],

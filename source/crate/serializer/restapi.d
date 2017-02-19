@@ -36,7 +36,10 @@ class CrateRestApiSerializer : CrateSerializer
 		Json result = data;
 
 		if(data.type == Json.Type.array && !definition.isBasicType) {
-			return Json((cast(Json[]) data).map!(a => extractFields(a, definition)).array);
+			return Json((cast(Json[]) data)
+				.map!(a => extractFields(a, definition))
+				.filter!(a => a.type != Json.Type.undefined)
+				.array);
 		}
 
 		foreach(field; definition.fields) {
@@ -51,12 +54,13 @@ class CrateRestApiSerializer : CrateSerializer
 			string id = field.idOriginalName;
 
 			if(id !is null)  {
-				if(data[field.name].type == Json.Type.array) {
-					result[field.name] = Json(data[field.name][0..$].map!(a => a.type == Json.Type.object ? a[id] : a).array);
-				} else {
-					result[field.name] = data[field.name][id];
-				}
-
+					if(data[field.name].type == Json.Type.array) {
+						result[field.name] = Json(data[field.name][0..$].map!(a => a.type == Json.Type.object ? a[id] : a).array);
+					} else if(result[field.name].type == Json.Type.object) {
+						result[field.name] = data[field.name][id];
+					} else {
+						result[field.name] = data[field.name];
+					}
 			} else {
 				result[field.name] = extractFields(data[field.name], field);
 			}
