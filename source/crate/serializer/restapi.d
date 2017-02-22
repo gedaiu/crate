@@ -36,8 +36,6 @@ class CrateRestApiSerializer : CrateSerializer
 		Json result = data;
 
 		if(data.type == Json.Type.array) {
-			enforce!CrateValidationException(definition.isArray, "Expected the provided data to match the mdoel definition.");
-
 			return Json((cast(Json[]) data)
 				.map!(a => extractFields(a, definition.fields[0]))
 				.filter!(a => a.type != Json.Type.undefined)
