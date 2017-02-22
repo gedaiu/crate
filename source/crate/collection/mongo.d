@@ -70,8 +70,6 @@ class MongoCrateRange : ICrateSelector
 	}
 }
 
-
-
 class MongoCrate(T): Crate!T
 {
 	private {
@@ -233,7 +231,7 @@ Bson toBson(FieldDefinition definition, Json model, string parent = "unknown mod
 		auto tmpField = definition;
 		tmpField.isArray = false;
 
-		auto r = (cast(Json[])model).map!(item => toBson(tmpField, item));
+		auto r = (cast(Json[])model).map!(item => toBson(tmpField.fields[0], item));
 		return Bson(r.array);
 	}
 
@@ -244,7 +242,7 @@ Bson toBson(FieldDefinition definition, Json model, string parent = "unknown mod
 			}
 		}
 
-		throw new CrateValidationException("No `id` field for `" ~ definition.name ~ "` inside `" ~ definition.type ~ "`");
+		enforce!CrateValidationException(false, "No `id` field for `" ~ definition.name ~ "` inside `" ~ definition.type ~ "`");
 	}
 
 	if(!definition.isBasicType && model.type == Json.Type.object) {

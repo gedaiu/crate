@@ -280,6 +280,7 @@ version (unittest)
 	import vibe.data.json;
 	import vibe.data.bson;
 	import crate.collection.memory;
+	import bdd.base;
 
 	struct TestModel
 	{
@@ -358,8 +359,8 @@ unittest
 		.get("/sites")
 			.expectStatusCode(200)
 			.end((Response response) => {
-				assert(response.bodyJson["sites"].length > 0);
-				assert(response.bodyJson["sites"][0]["_id"] == "1");
+				response.bodyJson["sites"].length.should.be.graterThan(0);
+				response.bodyJson["sites"][0]["_id"].to!string.should.equal("1");
 			});
 
 	request(router)

@@ -19,7 +19,7 @@ class CrateRestApiSerializer : CrateSerializer
 	Json denormalise(Json[] data, ref const FieldDefinition definition) inout {
 		Json result = Json.emptyObject;
 
-		result[plural(definition)] = extractFields(Json(data), definition);
+		result[plural(definition)] = data.map!(a => extractFields(a, definition)).array;
 
 		return result;
 	}
@@ -35,15 +35,17 @@ class CrateRestApiSerializer : CrateSerializer
 	private Json extractFields(Json data, ref const FieldDefinition definition) inout {
 		Json result = data;
 
-		if(data.type == Json.Type.array && !definition.isBasicType) {
+		if(data.type == Json.Type.array) {
+			enforce!CrateValidationException(definition.isArray, "Expected the provided data to match the mdoel definition.");
+
 			return Json((cast(Json[]) data)
-				.map!(a => extractFields(a, definition))
+				.map!(a => extractFields(a, definition.fields[0]))
 				.filter!(a => a.type != Json.Type.undefined)
 				.array);
 		}
 
 		foreach(field; definition.fields) {
-			if(data[field.name].type == Json.Type.undefined && !field.isOptional) {
+			if(data[field.name].type == Json.Type.undefined && !field.isOptional && field.name != "") {
 				throw new CrateValidationException("Missing `" ~ field.name ~ "` value.");
 			}
 
@@ -53,14 +55,19 @@ class CrateRestApiSerializer : CrateSerializer
 
 			string id = field.idOriginalName;
 
+			if(definition.isRelation && field.isId) {
+				result = data[field.name];
+				break;
+			}
+
 			if(id !is null)  {
-					if(data[field.name].type == Json.Type.array) {
-						result[field.name] = Json(data[field.name][0..$].map!(a => a.type == Json.Type.object ? a[id] : a).array);
-					} else if(result[field.name].type == Json.Type.object) {
-						result[field.name] = data[field.name][id];
-					} else {
-						result[field.name] = data[field.name];
-					}
+				if(data[field.name].type == Json.Type.array) {
+					result[field.name] = Json(data[field.name][0..$].map!(a => a.type == Json.Type.object ? a[id] : a).array);
+				} else if(result[field.name].type == Json.Type.object) {
+					result[field.name] = data[field.name][id];
+				} else {
+					result[field.name] = data[field.name];
+				}
 			} else {
 				result[field.name] = extractFields(data[field.name], field);
 			}
@@ -92,6 +99,10 @@ class CrateRestApiSerializer : CrateSerializer
 			return definition.plural[0..1].toLower ~ definition.plural[1..$];
 		}
 	}
+}
+
+version(unittest) {
+	import bdd.base;
 }
 
 @("Serialize/deserialize a simple struct")
@@ -234,10 +245,9 @@ unittest
 
 	auto value = const serializer.denormalise(test.serializeToJson, fields);
 
-	assert(value["testModel"]["child"][0].type == Json.Type.string);
-	assert(value["testModel"]["child"][0] == "id2");
+	value["testModel"]["child"][0].type.should.equal(Json.Type.string);
+	value["testModel"]["child"][0].to!string.should.equal("id2");
 }
-
 
 @("Check denormalised nested relations")
 unittest
@@ -273,4 +283,27 @@ unittest
 	assert(value["testModel"]["child"]["relation"] == "id2");
 	assert(value["testModel"]["childs"].length == 1);
 	assert(value["testModel"]["childs"][0]["relation"] == "id3");
+}
+
+@("Check denormalised static arrays")
+unittest
+{
+	struct TestModel
+	{
+		string _id;
+		double[2][] child;
+	}
+
+	auto fields = getFields!TestModel;
+
+	TestModel test = TestModel("id1");
+
+	test.child = [[1, 2]];
+
+	auto serializer = new const CrateRestApiSerializer;
+	auto value = const serializer.denormalise(test.serializeToJson, fields);
+
+	value["testModel"]["child"].length.should.equal(1);
+	value["testModel"]["child"][0][0].to!string.should.equal("1");
+	value["testModel"]["child"][0][1].to!string.should.equal("2");
 }

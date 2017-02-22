@@ -141,7 +141,7 @@ private
 					data[fields[0].type] = Json.emptyObject;
 					data[fields[0].type]["type"] = "string";
 				}
-				else static if (!fields[0].isBasicType)
+				else static if (!fields[0].isBasicType && fields[0].originalName != "")
 				{
 					alias Type = FieldType!(__traits(getMember, T, fields[0].originalName));
 
@@ -264,7 +264,7 @@ private
 			}
 		}
 
-		enum FieldDefinition[] fields = getFields!T.fields;
+		enum FieldDefinition[] fields = Describe!T.fields;
 		describeFields!(fields);
 	}
 

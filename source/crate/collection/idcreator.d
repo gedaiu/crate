@@ -31,7 +31,7 @@ struct IdCreator {
       } else if(data[field.name].type == Json.Type.object) {
         newData[field.name] = IdCreator(data[field.name], field).toJson;
       } else if(data[field.name].type == Json.Type.array) {
-        newData[field.name] = Json(data[field.name].opCast!(Json[]).map!(a => IdCreator(a, field).toJson).array);
+        newData[field.name] = Json(data[field.name].opCast!(Json[]).map!(a => IdCreator(a, field.fields[0]).toJson).array);
       }
     }
 

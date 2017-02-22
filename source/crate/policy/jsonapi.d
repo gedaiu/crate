@@ -206,7 +206,7 @@ private
 	Json schemaAttributes(T)()
 	{
 		Json attributes = Json.emptyObject;
-		auto model = definition!(T);
+		auto model = definition!T;
 		attributes["type"] = "object";
 		attributes["properties"] = Json.emptyObject;
 
@@ -223,15 +223,15 @@ private
 				attributes["properties"][field.name]["type"] = "array";
 				attributes["properties"][field.name]["items"] = Json.emptyObject;
 
-				if (field.isBasicType)
+				if (field.fields[0].isBasicType)
 				{
-					attributes["properties"][field.name]["items"]["type"] = field
+					attributes["properties"][field.name]["items"]["type"] = field.fields[0]
 						.type.asOpenApiType;
 				}
 				else
 				{
 					attributes["properties"][field.name]["items"]["$ref"] = "#/definitions/"
-						~ field.type ~ "Model";
+						~ field.fields[0].type ~ "Model";
 				}
 			}
 
@@ -346,7 +346,7 @@ private
 					schema["properties"][key] = Json.emptyObject;
 					schema["properties"][key]["type"] = asOpenApiType(fields[0].type);
 				}
-				else static if (!fields[0].isRelation && !fields[0].isBasicType)
+				else static if (!fields[0].isRelation && !fields[0].isBasicType && fields[0].originalName != "")
 				{
 					alias Type = FieldType!(__traits(getMember, U, fields[0].originalName));
 					enum name = fields[0].type ~ "Model";
@@ -375,7 +375,25 @@ private
 		{
 			static if (fields.length == 1)
 			{
-				static if (!fields[0].isRelation && !fields[0].isBasicType)
+				static if (fields[0].isArray && !fields[0].fields[0].isBasicType) {
+					alias Type = ArrayType!(FieldType!(__traits(getMember, T, fields[0].originalName)));
+					enum key = fields[0].fields[0].type ~ "Model";
+
+					schemaList[key] = Json.emptyObject;
+
+					static if (fields[0].type == "BsonObjectID")
+					{
+						schemaList[key]["type"] = "string";
+					}
+					else
+					{
+						pragma(msg, "TT ", Type);
+						schemaList[key]["type"] = "object";
+						enum fields = Describe!Type.fields;
+						describe!(fields, Type)(schemaList[key]);
+					}
+				}
+				else static if (!fields[0].isRelation && !fields[0].isBasicType && !fields[0].isArray)
 				{
 					alias Type = FieldType!(__traits(getMember, T, fields[0].originalName));
 					enum key = fields[0].type ~ "Model";
@@ -388,8 +406,9 @@ private
 					}
 					else
 					{
+						pragma(msg, "TT ", Type);
 						schemaList[key]["type"] = "object";
-						enum fields = getFields!Type.fields;
+						enum fields = Describe!Type.fields;
 						describe!(fields, Type)(schemaList[key]);
 					}
 				}
@@ -405,11 +424,6 @@ private
 		addComposed!(fields);
 	}
 }
-
-
-
-
-
 
 version (unittest)
 {

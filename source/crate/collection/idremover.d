@@ -32,7 +32,7 @@ struct IdRemover {
         if(data[field.name].type == Json.Type.object) {
           newData[field.name] = IdRemover(data[field.name], field).toJson;
         } else if(data[field.name].type == Json.Type.array) {
-          newData[field.name] = Json(data[field.name].opCast!(Json[]).map!(a => IdRemover(a, field).toJson).array);
+          newData[field.name] = Json(data[field.name].opCast!(Json[]).map!(a => IdRemover(a, field.fields[0]).toJson).array);
         } else {
           newData[field.name] = data[field.name];
         }

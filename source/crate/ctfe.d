@@ -7,12 +7,12 @@ import vibe.data.serialization;
 import std.algorithm.searching;
 
 import std.traits, std.meta;
+import std.typetuple;
 
 template OriginalFieldType(alias F)
 {
 	static if (is(FunctionTypeOf!F == function))
 	{
-
 		static if (is(ReturnType!(F) == void) && arity!(F) == 1)
 		{
 			alias OriginalFieldType = Unqual!(ParameterTypeTuple!F);
@@ -35,12 +35,11 @@ template ArrayType(T : T[])
 
 template FieldType(alias F)
 {
-
 	alias FT = OriginalFieldType!F;
 
 	static if (!isSomeString!(FT) && isArray!(FT))
 	{
-		alias FieldType = ArrayType!(FT);
+		alias FieldType = Unqual!(FT);
 	}
 	else static if (isAssociativeArray!(FT))
 	{
@@ -249,7 +248,136 @@ template FieldName(string property, Prototype)
 	alias FieldName = fieldName;
 }
 
-template getFields(Prototype)
+template DescribeBasicType(Prototype, alias FIELD, alias attributes) {
+	alias T = FieldType!(ItemProperty!(Prototype, FIELD));
+
+	static if (isStringSerializable!T) {
+		alias Type = string;
+	} else {
+		alias Type = T;
+	}
+
+	alias OriginalType = OriginalFieldType!(ItemProperty!(Prototype, FIELD));
+
+	enum DescribeBasicType = FieldDefinition(
+		FieldName!(FIELD, Prototype), //name
+		FIELD,                        //originalName
+		attributes,                   //attributes
+		Type.stringof,                //type
+		OriginalType.stringof,        //originalType
+		true,                         //isBasicType
+		false,                        //isRelation
+		IsId!FIELD,                   //isId
+		IsOptional!(FIELD, Prototype),//isOptional
+		false,                        //isArray
+		[],                           //fields
+		"",                           //singular
+		""                            //plural
+	);
+}
+
+template Describe(T, alias name = "") {
+	static if (isStringSerializable!T) {
+		alias Type = string;
+	} else {
+		alias Type = T;
+	}
+
+	static if (IsBasicType!Type || isStringSerializable!Type)
+	{
+		enum Describe = FieldDefinition(
+			name,          //name
+			name,          //originalName
+			[],            //attributes
+			Type.stringof, //type
+			T.stringof,    //originalType
+			true,          //isBasicType
+			false,         //isRelation
+			false,         //isId
+			false,         //isOptional
+			false,         //isArray
+			[],            //fields
+			"",            //singular
+			""             //plural
+		);
+	}
+	else static if( isArray!Type )
+	{
+		enum Describe = DescribeArrayField!(Type, name);
+	}
+	else
+	{
+		alias Describe = getFields!(Type, name, true);
+	}
+}
+
+template DescribeArrayField(Prototype, alias name = "") {
+	alias ValueType = ArrayType!Prototype;
+
+	enum DescribeArrayField = FieldDefinition(
+		name,                            //name
+		name,                            //originalName
+		[],                            //attributes
+		Prototype.stringof,            //type
+		Prototype.stringof,            //originalType
+		false,                         //isBasicType
+		false,                         //isRelation
+		false,                         //isId
+		false,                         //isOptional
+		true,                          //isArray
+		[ Describe!ValueType ],        //fields
+		"",                            //singular
+		""                             //plural
+	);
+}
+
+template DescribeArrayField(Prototype, alias FIELD, alias attributes) {
+	alias Type = FieldType!(ItemProperty!(Prototype, FIELD));
+
+	alias OriginalType = OriginalFieldType!(ItemProperty!(Prototype, FIELD));
+	alias ValueType = ArrayType!OriginalType;
+
+	enum DescribeArrayField = FieldDefinition(
+		FieldName!(FIELD, Prototype),  //name
+		FIELD,                         //originalName
+		attributes,                    //attributes
+		Type.stringof,                 //type
+		OriginalType.stringof,         //originalType
+		false,                         //isBasicType
+		false,                         //isRelation
+		false,                         //isId
+		IsOptional!(FIELD, Prototype), //isOptional
+		true,                          //isArray
+		[ Describe!ValueType ],        //fields
+		"",                            //singular
+		""                             //plural
+	);
+}
+
+template Describe(Prototype, alias FIELD, alias attributes) {
+	alias T = FieldType!(ItemProperty!(Prototype, FIELD));
+
+	static if (isStringSerializable!T) {
+		alias Type = string;
+	} else {
+		alias Type = T;
+	}
+
+	static if (IsBasicType!Type || isStringSerializable!Type)
+	{
+		alias Describe = DescribeBasicType!(Prototype, FIELD, attributes);
+	}
+	else static if( isArray!Type )
+	{
+		alias Describe = DescribeArrayField!(Prototype, FIELD, attributes);
+	}
+	else
+	{
+		alias Describe = getFields!(Type, FieldName!(FIELD, Prototype), true);
+	}
+}
+
+template getFields(Prototype, alias name = "", alias isNested = false) if(isAggregateType!Prototype)
 {
 	/**
 	 * Get all the metods
@@ -274,63 +402,40 @@ template getFields(Prototype)
 				}
 				else
 				{
-					alias T = FieldType!(ItemProperty!(Prototype, FIELDS[0]));
-
-					static if (isStringSerializable!T) {
-						alias Type = string;
-					} else {
-						alias Type = T;
-					}
-
-					alias OriginalType = OriginalFieldType!(ItemProperty!(Prototype, FIELDS[0]));
-
-					enum fieldName = FieldName!(FIELDS[0], Prototype);
-					enum isId = IsId!(FIELDS[0]);
-					enum isOptional = IsOptional!(FIELDS[0], Prototype);
-
-					static if (IsBasicType!Type || isStringSerializable!Type)
-					{
-						enum fields = [];
-						enum singular = "";
-						enum plural = "";
-					}
-					else static if( isArray!Type ) {
-						enum fields = [];
-						enum singular = "";
-						enum plural = "";
-					}
-					else
-					{
-						enum fields = getFields!Type.fields;
-						enum singular = Singular!Type;
-						enum plural = Plural!Type;
-					}
-
-					pragma(msg, "?", fieldName, " ", fields);
-
-					alias ItemFields = AliasSeq!([FieldDefinition(fieldName,
-							FIELDS[0], attributes, Type.stringof, T.stringof, IsBasicType!T,
-							IsRelation!T, isId, isOptional, isArray!OriginalType
-							&& !is(OriginalType == string), fields, singular, plural)]);
+					alias ItemFields = Describe!(Prototype, FIELDS[0], attributes);
 				}
 			}
 			else
 			{
-				alias ItemFields = AliasSeq!();
+				alias ItemFields =  AliasSeq!();
 			}
 		}
 		else
-			alias ItemFields = AliasSeq!();
+			alias ItemFields =  AliasSeq!();
 	}
 
-	pragma(msg, Prototype);
+	enum fields = [ ItemFields!(__traits(allMembers, Prototype)) ];
 
-	mixin("enum list = [ " ~ Join!(ItemFields!(__traits(allMembers, Prototype))) ~ " ];");
+	static if(isNested) {
+		alias isRelation = IsRelation!Prototype;
+	} else {
+		enum isRelation = false;
+	}
 
-	enum fieldDefinition = FieldDefinition("", "", [], Prototype.stringof, Prototype.stringof, false,
-				false, false, false, false, list, Singular!Prototype, Plural!Prototype);
-
-	alias getFields = fieldDefinition;
+	enum getFields = FieldDefinition(
+		name,                //name
+		name,                //originalName
+		[],                  //attributes
+		Prototype.stringof,  //type
+		Prototype.stringof,  //originalType
+		false,               //isBasicType
+		isRelation,          //isRelation
+		false,               //isId
+		false,               //isOptional
+		false,               //isArray
+		fields,              //fields
+		Singular!Prototype,  //singular
+		Plural!Prototype);   //plural
 }
 
 private string prefixedAttribute(string prefix, string defaultValue, attributes...)()
@@ -379,8 +484,10 @@ template Singular(Type)
 	alias Singular = singular;
 }
 
-version (unittest)
+version(unittest)
 {
+	import bdd.base;
+
 	struct ActionModel
 	{
 		string _id;
@@ -420,8 +527,6 @@ unittest {
 		StringSerializable str;
 	}
 
-	import std.stdio;
-
 	enum def = getFields!Model;
 
 	assert(def.fields[1].originalName == "str");
@@ -429,20 +534,23 @@ unittest {
 	assert(def.fields[1].type == "string");
 }
 
-
+@("Describe nested arrays")
 unittest {
 	struct NestedArrays {
 		double[2][] coordinates;
 	}
 
-	import std.stdio;
-
-	pragma(msg, "=========================");
 	enum def = getFields!NestedArrays;
 
-	def.serializeToJson.toPrettyString.writeln;
+	def.fields[0].name.should.equal("coordinates");
+	def.fields[0].isArray.should.equal(true);
+	def.fields[0].originalType.should.equal("double[2][]");
 
-	assert(def.fields[0].originalName == "str");
-	assert(def.fields[0].originalType == "StringSerializable");
-	assert(def.fields[0].type == "string");
+	def.fields[0].fields[0].isArray.should.equal(true);
+	def.fields[0].fields[0].originalType.should.equal("double[2]");
+	def.fields[0].fields[0].isBasicType.should.equal(false);
+
+	def.fields[0].fields[0].fields[0].isArray.should.equal(false);
+	def.fields[0].fields[0].fields[0].originalType.should.equal("double");
+	def.fields[0].fields[0].fields[0].isBasicType.should.equal(true);
 }

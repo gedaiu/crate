@@ -187,8 +187,9 @@ private Schema[string] errorDefinitions()
 	return errors;
 }
 
-version (unittest)
+version(unittest)
 {
+	import bdd.base;
 	import http.request;
 	import vibe.data.serialization;
 	import vibe.data.json;
@@ -312,18 +313,17 @@ unittest
 
 	auto api = crateRouter.toOpenApi.serializeToJson;
 
-	assert(
-			api["definitions"]["TestModelAttributes"]["properties"]["tags"]["type"].to!string
-			== "array");
-	assert(
-			api["definitions"]["TestModelAttributes"]["properties"]["tags"]["items"]["type"].to!string
-			== "string");
+	api["definitions"]["TestModelAttributes"]["properties"]["tags"]["type"].to!string
+		.should.equal("array");
 
-	assert(
-			api["definitions"]["TestModelAttributes"]["properties"]["list"]["type"].to!string
-			== "array");
-	assert(api["definitions"]["TestModelAttributes"]["properties"]["list"]["items"]["$ref"].to!string
-			== "#/definitions/NestedModel");
+	api["definitions"]["TestModelAttributes"]["properties"]["tags"]["items"]["type"].to!string
+		.should.equal("string");
+
+	api["definitions"]["TestModelAttributes"]["properties"]["list"]["type"].to!string
+		.should.equal("array");
+
+	api["definitions"]["TestModelAttributes"]["properties"]["list"]["items"]["$ref"].to!string
+		.should.equal("#/definitions/NestedModel");
 }
 
 @("Check if the nested property has the right definition")
@@ -336,9 +336,9 @@ unittest
 
 	auto api = crateRouter.toOpenApi.serializeToJson;
 
-	assert(api["definitions"]["NestedModel"]["properties"]["name"]["type"].to!string == "string");
-	assert(api["definitions"]["NestedModel"]["properties"]["other"]["$ref"].to!string
-			== "#/definitions/OtherNestedModel");
+	api["definitions"]["NestedModel"]["properties"]["name"]["type"].to!string.should.equal("string");
+	api["definitions"]["NestedModel"]["properties"]["other"]["$ref"].to!string
+		.should.equal("#/definitions/OtherNestedModel");
 }
 
 string asOpenApiType(string dType)

@@ -52,39 +52,41 @@ class CrateJsonApiSerializer : CrateSerializer
 		{
 			foreach(field; fields)
 			{
+				if (field.isArray && field.fields[0].isRelation)
+				{
+					auto key = field.name;
+					auto idField = id(field.fields[0].fields);
+
+					serialized["data"]["relationships"][key] = Json.emptyObject;
+					serialized["data"]["relationships"][key]["data"] = Json.emptyArray;
+
+					foreach(item; data[field.originalName]) {
+						auto obj = Json.emptyObject;
+
+						obj["type"] = field.fields[0].plural.toLower;
+
+						if(item.type == Json.Type.object) {
+							obj["id"] = item[idField];
+						} else {
+							obj["id"] = item;
+						}
+
+						serialized["data"]["relationships"][key]["data"] ~= obj;
+					}
+				}
+
 				if(field.isRelation && !field.isId && field.type != "void") {
 					auto key = field.name;
 					auto idField = id(field.fields);
 
 					serialized["data"]["relationships"][key] = Json.emptyObject;
+					serialized["data"]["relationships"][key]["data"] = Json.emptyObject;
+					serialized["data"]["relationships"][key]["data"]["type"] = field.plural.toLower;
 
-					if (field.isArray)
-					{
-						serialized["data"]["relationships"][key]["data"] = Json.emptyArray;
-
-						foreach(item; data[field.originalName]) {
-							auto obj = Json.emptyObject;
-
-							obj["type"] = field.plural.toLower;
-
-							if(item.type == Json.Type.object) {
-								obj["id"] = item[idField];
-							} else {
-								obj["id"] = item;
-							}
-
-							serialized["data"]["relationships"][key]["data"] ~= obj;
-						}
-					}
-					else
-					{
-						serialized["data"]["relationships"][key]["data"] = Json.emptyObject;
-						serialized["data"]["relationships"][key]["data"]["type"] = field.plural.toLower;
-						if(data[field.originalName].type == Json.Type.object) {
-							serialized["data"]["relationships"][key]["data"]["id"] = data[field.originalName][idField];
-						} else {
-							serialized["data"]["relationships"][key]["data"]["id"] = data[field.originalName];
-						}
+					if(data[field.originalName].type == Json.Type.object) {
+						serialized["data"]["relationships"][key]["data"]["id"] = data[field.originalName][idField];
+					} else {
+						serialized["data"]["relationships"][key]["data"]["id"] = data[field.originalName];
 					}
 				}
 			}
@@ -119,7 +121,7 @@ class CrateJsonApiSerializer : CrateSerializer
 				{
 					normalised[field.originalName] = data["data"]["id"];
 				}
-				else if (field.isArray && field.isRelation)
+				else if (field.isArray && field.fields[0].isRelation)
 				{
 					normalised[field.originalName] = Json.emptyArray;
 
@@ -154,6 +156,10 @@ class CrateJsonApiSerializer : CrateSerializer
 			return definition.plural.toLower;
 		}
 	}
+}
+
+version(unittest) {
+	import bdd.base;
 }
 
 unittest
@@ -462,20 +468,21 @@ unittest
 	value.child ~= TestModel("2");
 
 	auto fields = getFields!ComposedModel;
+
 	auto apiValue = serializer.denormalise(value.serializeToJson, fields);
 
-	assert(apiValue["data"]["relationships"]["child"]["data"].type == Json.Type.array);
-	assert(apiValue["data"]["relationships"]["child"]["data"].length == 2);
-	assert(apiValue["data"]["relationships"]["child"]["data"][0]["id"] == "1");
-	assert(apiValue["data"]["relationships"]["child"]["data"][0]["type"] == "testmodels");
-	assert(apiValue["data"]["relationships"]["child"]["data"][1]["id"] == "2");
+	apiValue["data"]["relationships"]["child"]["data"].type.should.equal(Json.Type.array);
+	apiValue["data"]["relationships"]["child"]["data"].length.should.equal(2);
+	apiValue["data"]["relationships"]["child"]["data"][0]["id"].to!string.should.equal("1");
+	apiValue["data"]["relationships"]["child"]["data"][0]["type"].to!string.should.equal("testmodels");
+	apiValue["data"]["relationships"]["child"]["data"][1]["id"].to!string.should.equal("2");
 
 	auto normalisedValue = serializer.normalise("", apiValue, fields);
 
-	assert(normalisedValue["child"].type == Json.Type.array);
-	assert(normalisedValue["child"].length == 2);
-	assert(normalisedValue["child"][0] == "1");
-	assert(normalisedValue["child"][1] == "2");
+	normalisedValue["child"].type.should.equal(Json.Type.array);
+	normalisedValue["child"].length.should.equal(2);
+	normalisedValue["child"][0].to!string.should.equal("1");
+	normalisedValue["child"][1].to!string.should.equal("2");
 }
 
 

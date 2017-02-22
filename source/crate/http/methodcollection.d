@@ -216,7 +216,7 @@ class MethodCollection(Type)
 		{
 			foreach (field; definition.fields)
 			{
-				bool canCheck = !field.isId && !field.isOptional;
+				bool canCheck = !field.isId && !field.isOptional && field.name != "";
 				bool isSet = data[field.name].type !is Json.Type.undefined;
 
 				enforce!CrateValidationException(!canCheck || isSet,
@@ -228,7 +228,7 @@ class MethodCollection(Type)
 		{
 			foreach (field; definition.fields)
 			{
-				if(!field.isOptional && data[field.name].type == Json.Type.undefined) {
+				if(!field.isOptional && field.name != "" && data[field.name].type == Json.Type.undefined) {
 					throw new CrateValidationException("`" ~ field.name ~ "` is missing");
 				}
 
