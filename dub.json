@@ -9,8 +9,8 @@
   "dependencies": {
     "swaggerize": "*",
     "vibe-d": "*",
-    "vibe-auth": {"version": ">=0.1.0", "path": "../vibe.auth"},
-    "should": {"version": ">=0.1.0", "path": "../should"}
+    "vibe-auth": "~>0.1.0",
+    "should": "~>0.1.0",
   },
 
   "_configurations": [

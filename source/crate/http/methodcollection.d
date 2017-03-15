@@ -58,7 +58,7 @@ class MethodCollection(Type)
 		response.writeBody("", 200);
 	}
 
-	void optionsList(HTTPServerRequest request, HTTPServerResponse response)
+	void optionsList(HTTPServerRequest, HTTPServerResponse response)
 	{
 		addListCORS(response);
 		response.writeBody("", 200);
@@ -69,7 +69,6 @@ class MethodCollection(Type)
 		auto crate = collection.getByPath(request.path);
 		addItemCORS(response);
 		auto data = crate.getItem(request.params["id"]);
-
 
 		FieldDefinition definition = crate.definition;
 		auto denormalised = policy.serializer.denormalise(data, definition);

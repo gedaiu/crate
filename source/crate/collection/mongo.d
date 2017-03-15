@@ -223,6 +223,9 @@ auto toId(string id, string type = "") {
 }
 
 Bson toBson(FieldDefinition definition, Json model, string parent = "unknown model") {
+	model.toPrettyString.writeln;
+	definition.serializeToJson.toPrettyString.writeln;
+
 	if(definition.isId) {
 		return Bson(model.to!string.toId(parent));
 	}

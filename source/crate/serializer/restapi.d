@@ -35,6 +35,10 @@ class CrateRestApiSerializer : CrateSerializer
 	private Json extractFields(Json data, ref const FieldDefinition definition) inout {
 		Json result = data;
 
+		if(data.type != Json.Type.array && data.type != Json.Type.object) {
+			return result;
+		}
+
 		if(data.type == Json.Type.array) {
 			enforce!CrateValidationException(definition.isArray, "Expected the provided data to match the model definition.");
 
