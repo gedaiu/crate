@@ -89,7 +89,7 @@ class Resource(T, string resourcePath)
 
 	private
 	{
-		void addItemCORS(CrateConfig config, HTTPServerResponse response)
+		void addItemCORS(T)(CrateConfig!T config, HTTPServerResponse response)
 		{
 			response.addHeaderValues("Access-Control-Allow-Origin", [ "*" ]);
 			response.addHeaderValues("Access-Control-Allow-Methods", [ "OPTIONS", "GET", "POST" ]);

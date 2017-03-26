@@ -74,21 +74,21 @@ class MongoCrate(T): Crate!T
 {
 	private {
 		MongoCollection collection;
-		CrateConfig _config;
+		CrateConfig!T _config;
 	}
 
-	this(MongoCollection collection, CrateConfig config = CrateConfig())
+	this(MongoCollection collection, CrateConfig!T config = CrateConfig!T())
 	{
 		this.collection = collection;
 		this._config = config;
 	}
 
-	this(MongoClient client, string collection, CrateConfig config = CrateConfig()) {
+	this(MongoClient client, string collection, CrateConfig!T config = CrateConfig!T()) {
 		this.collection = client.getCollection(collection);
 		this._config = config;
 	}
 
-	CrateConfig config() {
+	CrateConfig!T config() {
 		return _config;
 	}
 

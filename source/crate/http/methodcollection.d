@@ -22,12 +22,12 @@ class MethodCollection(Type)
 {
 	private
 	{
-		immutable CrateConfig config;
+		immutable CrateConfig!Type config;
 		CrateCollection collection;
 		const CratePolicy policy;
 	}
 
-	this(const CratePolicy policy, CrateCollection collection, CrateConfig config)
+	this(const CratePolicy policy, CrateCollection collection, CrateConfig!Type config)
 	{
 		this.policy = policy;
 		this.collection = collection;

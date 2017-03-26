@@ -33,7 +33,7 @@ class CrateJsonApiPolicy : CratePolicy
 	}
 }
 
-CrateRoutes defineRoutes(T)(const CrateJsonApiPolicy, const CrateConfig config)
+CrateRoutes defineRoutes(T)(const CrateJsonApiPolicy, const CrateConfig!T config)
 {
 	CrateRoutes definedRoutes;
 
@@ -73,7 +73,7 @@ ModelDefinition definition(T)() pure
 
 private
 {
-	PathDefinition[uint][HTTPMethod][string] paths(T)(const CrateConfig config)
+	PathDefinition[uint][HTTPMethod][string] paths(T)(const CrateConfig!T config)
 	{
 		PathDefinition[uint][HTTPMethod][string] selectedPaths;
 

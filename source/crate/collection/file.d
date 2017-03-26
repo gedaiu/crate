@@ -121,9 +121,9 @@ version (unittest)
 	{
 		Item item;
 
-		CrateConfig config()
+		CrateConfig!T config()
 		{
-			return CrateConfig();
+			return CrateConfig!T();
 		}
 
 		ICrateSelector get() {

@@ -18,16 +18,16 @@ class MemoryCrate(T) : Crate!T
   private {
     ulong lastId;
 		Json[] list;
-		CrateConfig _config;
+		CrateConfig!T _config;
 		enum string idField = getFields!T.idField.name;
 	}
 
-	this(CrateConfig config = CrateConfig())
+	this(CrateConfig!T config = CrateConfig!T())
 	{
 		this._config = config;
 	}
 
-	CrateConfig config() {
+	CrateConfig!T config() {
 		return _config;
 	}
 

@@ -5,6 +5,8 @@ import vibe.data.json, vibe.http.common;
 import std.string, std.traits, std.conv;
 import std.algorithm, std.range, std.string;
 
+import crate.ctfe;
+
 import swaggerize.definitions;
 
 enum CrateOperation
@@ -68,7 +70,7 @@ class CrateRange : ICrateSelector
 	}
 }
 
-struct CrateConfig
+struct CrateConfig(T)
 {
 	bool getList = true;
 	bool getItem = true;
@@ -76,6 +78,14 @@ struct CrateConfig
 	bool deleteItem = true;
 	bool replaceItem = true;
 	bool updateItem = true;
+
+	static if(is(T == void)) {
+		string singular;
+		string plural;
+	} else {
+		string singular = Singular!T;
+		string plural = Plural!T;
+	}
 }
 
 struct PathDefinition
@@ -133,7 +143,7 @@ struct ModelDefinition
 
 interface Crate(Type)
 {
-	CrateConfig config();
+	CrateConfig!Type config();
 
 	ICrateSelector get();
 

@@ -12,7 +12,8 @@ class CrateProxy : Crate!void
 
 	private
 	{
-		CrateConfig delegate() configRef;
+		CrateConfig!void configProxy;
+
 		ICrateSelector delegate() getRef;
 		Json[]delegate() getListRef;
 		Json delegate(Json) addItemRef;
@@ -25,7 +26,8 @@ class CrateProxy : Crate!void
 
 	this(T)(ref Crate!T crate)
 	{
-		configRef = &crate.config;
+		set(crate.config);
+
 		getRef = &crate.get;
 		getListRef = &crate.getList;
 		addItemRef = &crate.addItem;
@@ -40,14 +42,26 @@ class CrateProxy : Crate!void
 		}
 	}
 
+	private void set(T)(CrateConfig!T crate) {
+		configProxy.getList = crate.getList;
+		configProxy.getItem = crate.getItem;
+		configProxy.addItem = crate.addItem;
+		configProxy.deleteItem = crate.deleteItem;
+		configProxy.replaceItem = crate.replaceItem;
+		configProxy.updateItem = crate.updateItem;
+
+		configProxy.singular = crate.singular;
+		configProxy.plural = crate.plural;
+	}
+
 	FieldDefinition definition()
 	{
 		return _definition;
 	}
 
-	CrateConfig config()
+	CrateConfig!void config()
 	{
-		return configRef();
+		return configProxy;
 	}
 
 	ICrateSelector get() {

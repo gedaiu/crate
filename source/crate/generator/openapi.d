@@ -235,8 +235,8 @@ version(unittest)
 	{
 		TestModel item;
 
-		CrateConfig config() {
-			return CrateConfig();
+		CrateConfig!T config() {
+			return CrateConfig!T();
 		}
 
 		ICrateSelector get() {
