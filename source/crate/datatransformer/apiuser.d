@@ -8,7 +8,7 @@ import vibe.data.json;
 import vibeauth.users;
 
 import crate.collection.memory;
-/*
+
 @("The user data transformer should hide the sensible fields")
 unittest
 {
@@ -47,7 +47,7 @@ unittest
 	userCrate.addItem(userJson.parseJsonString);
 
 	request(router)
-		.get("/userdatas")
+		.get("/users")
 			.expectStatusCode(200)
 			.end((Response response) => {
 				writeln("users", response.bodyJson.toPrettyString);
@@ -56,4 +56,3 @@ unittest
 				//response.bodyJson["users"].keys.not.contain(["isActive", "password", "salt", "scopes", "tokens"]);
 			});
 }
-*/

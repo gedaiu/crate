@@ -22,18 +22,18 @@ import std.stdio;
 
 alias DefaultPolicy = crate.policy.restapi.CrateRestApiPolicy;
 
-string basePath(T)(string name)
+string basePath(T)(string name, const CrateConfig!T config)
 {
-	static if (isAggregateType!T)
+	static if (isAggregateType!T || is(T == void))
 	{
 		if (name == "Json API")
 		{
-			return crate.policy.jsonapi.basePath!T;
+			return crate.policy.jsonapi.basePath(config);
 		}
 
 		if (name == "Rest API")
 		{
-			return crate.policy.restapi.basePath!T;
+			return crate.policy.restapi.basePath(config);
 		}
 	}
 
@@ -77,8 +77,9 @@ class CrateRouter(RouterPolicy) {
 	CrateRouter enableResource(T, string resourcePath, Policy)()
 	{
 		auto const policy = new Policy;
+		auto config = proxyCollection[router].getByType(T.stringof).config;
 
-		auto path = basePath!T(policy.name) ~ "/:id/" ~ resourcePath;
+		auto path = basePath(policy.name, config) ~ "/:id/" ~ resourcePath;
 		auto resource = new Resource!(T, resourcePath)(proxyCollection[router]);
 
 		router.get(path, checkError(policy, &resource.get));
@@ -96,7 +97,8 @@ class CrateRouter(RouterPolicy) {
 	{
 		auto const policy = new Policy;
 		auto action = new ModelAction!(T, actionName)(proxyCollection[router]);
-		auto path = basePath!U(policy.name) ~ "/:id/" ~ actionName;
+		auto config = proxyCollection[router].getByType(U.stringof).config;
+		auto path = basePath(policy.name, config) ~ "/:id/" ~ actionName;
 
 		definedRoutes.paths[path][action.method][200] = PathDefinition(action.returnType, "", CrateOperation.otherItem);
 
@@ -114,7 +116,8 @@ class CrateRouter(RouterPolicy) {
 	{
 		auto const policy = new Policy;
 		auto action = new CrateAction!(T, actionName)(crate);
-		auto path = basePath!U(policy.name) ~ "/:id/" ~ actionName;
+		auto config = proxyCollection[router].getByType(U.stringof).config;
+		auto path = basePath(policy.name, config) ~ "/:id/" ~ actionName;
 
 		definedRoutes.paths[path][action.method][200] = PathDefinition(action.returnType, "", CrateOperation.otherItem);
 
@@ -154,7 +157,7 @@ class CrateRouter(RouterPolicy) {
 
 		bindRoutes(tmpRoutes, policy, crate);
 
-		proxyCollection[router].addByPath(basePath!T(policy.name), crate);
+		proxyCollection[router].addByPath(basePath(policy.name, crate.config), crate);
 
 		return this;
 	}
@@ -172,13 +175,13 @@ class CrateRouter(RouterPolicy) {
 
 			if (crate.config.getList || crate.config.addItem)
 			{
-				router.match(HTTPMethod.OPTIONS, basePath!T(policy.name),
+				router.match(HTTPMethod.OPTIONS, basePath(policy.name, crate.config),
 						checkError(policy, &methodCollection.optionsList));
 			}
 
 			if (crate.config.getItem || crate.config.updateItem || crate.config.deleteItem)
 			{
-				router.match(HTTPMethod.OPTIONS, basePath!T(policy.name) ~ "/:id",
+				router.match(HTTPMethod.OPTIONS, basePath(policy.name, crate.config) ~ "/:id",
 						checkError(policy, &methodCollection.optionsItem));
 			}
 

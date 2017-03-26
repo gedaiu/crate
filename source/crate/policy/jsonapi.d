@@ -43,9 +43,9 @@ CrateRoutes defineRoutes(T)(const CrateJsonApiPolicy, const CrateConfig!T config
 	return definedRoutes;
 }
 
-string basePath(T)() pure
+string basePath(T)(const CrateConfig!T config) pure
 {
-	return "/" ~ Plural!T.toLower;
+	return "/" ~ config.plural.toLower;
 }
 
 ModelDefinition definition(T)() pure
@@ -79,31 +79,31 @@ private
 
 		if (config.getList)
 		{
-			selectedPaths[basePath!T][HTTPMethod.GET][200] = PathDefinition(T.stringof ~ "List",
+			selectedPaths[config.basePath][HTTPMethod.GET][200] = PathDefinition(T.stringof ~ "List",
 					"", CrateOperation.getList);
 		}
 
 		if (config.addItem)
 		{
-			selectedPaths[basePath!T][HTTPMethod.POST][200] = PathDefinition(T.stringof ~ "Response",
+			selectedPaths[config.basePath][HTTPMethod.POST][200] = PathDefinition(T.stringof ~ "Response",
 					T.stringof ~ "Request", CrateOperation.addItem);
 		}
 
 		if (config.getItem)
 		{
-			selectedPaths[basePath!T ~ "/:id"][HTTPMethod.GET][200] = PathDefinition(T.stringof ~ "Response",
+			selectedPaths[config.basePath ~ "/:id"][HTTPMethod.GET][200] = PathDefinition(T.stringof ~ "Response",
 					"", CrateOperation.getItem);
 		}
 
 		if (config.updateItem)
 		{
-			selectedPaths[basePath!T ~ "/:id"][HTTPMethod.PATCH][200] = PathDefinition(T.stringof ~ "Response",
+			selectedPaths[config.basePath ~ "/:id"][HTTPMethod.PATCH][200] = PathDefinition(T.stringof ~ "Response",
 					T.stringof ~ "Request", CrateOperation.updateItem);
 		}
 
 		if (config.deleteItem)
 		{
-			selectedPaths[basePath!T ~ "/:id"][HTTPMethod.DELETE][201] = PathDefinition("",
+			selectedPaths[config.basePath ~ "/:id"][HTTPMethod.DELETE][201] = PathDefinition("",
 					"", CrateOperation.deleteItem);
 		}
 
