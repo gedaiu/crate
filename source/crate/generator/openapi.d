@@ -285,8 +285,8 @@ unittest
 	auto crateRouter = router
 											.crateSetup
 												.add(crate)
-												.enableAction!(TestModel, "action")
-												.enableAction!(TestModel, "actionResponse");
+												.enableAction!(TestCrate!TestModel, "action")
+												.enableAction!(TestCrate!TestModel, "actionResponse");
 
 	auto api = crateRouter.toOpenApi;
 

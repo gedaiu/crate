@@ -5,7 +5,10 @@ import crate.base;
 import crate.ctfe;
 import crate.collection.proxy;
 import crate.http.methodcollection;
-import crate.http.action;
+import crate.http.action.action;
+import crate.http.action.model;
+import crate.http.action.crate;
+
 import crate.http.resource;
 
 import crate.policy.jsonapi;
@@ -85,66 +88,38 @@ class CrateRouter(RouterPolicy) {
 		return this;
 	}
 
-	CrateRouter enableAction(T, string actionName)()
+	CrateRouter enableAction(T: Crate!U, string actionName, U)()
 	{
 		return enableAction!(T, actionName, RouterPolicy);
 	}
 
-	CrateRouter enableAction(T, string actionName, Policy)()
+	CrateRouter enableAction(T: Crate!U, string actionName, Policy, U)()
 	{
 		auto const policy = new Policy;
+		auto action = new ModelAction!(T, actionName)(proxyCollection[router]);
+		auto path = basePath!U(policy.name) ~ "/:id/" ~ actionName;
 
-		auto action = new Action!(T, actionName)(proxyCollection[router]);
+		definedRoutes.paths[path][action.method][200] = PathDefinition(action.returnType, "", CrateOperation.otherItem);
 
-		static if (__traits(hasMember, T, actionName))
-		{
-			alias Param = Parameters!(__traits(getMember, T, actionName));
-			alias RType = ReturnType!(__traits(getMember, T, actionName));
+		router.match(action.method, path, checkError(policy, &action.handler));
 
-			auto path = basePath!T(policy.name) ~ "/:id/" ~ actionName;
+		return this;
+	}
 
-			static if (is(RType == void))
-			{
-				string returnType = "";
-			}
-			else
-			{
-				string returnType = "StringResponse";
-			}
+	CrateRouter enableCrateAction(T: Crate!U, string actionName, U)(T crate)
+	{
+		return enableCrateAction!(T, actionName, RouterPolicy)(crate);
+	}
 
-			static if (Param.length == 0)
-			{
-				HTTPMethod method = HTTPMethod.GET;
-			}
-			else
-			{
-				HTTPMethod method = HTTPMethod.POST;
-			}
+	CrateRouter enableCrateAction(T: Crate!U, string actionName, Policy, U)(T crate)
+	{
+		auto const policy = new Policy;
+		auto action = new CrateAction!(T, actionName)(crate);
+		auto path = basePath!U(policy.name) ~ "/:id/" ~ actionName;
 
-			definedRoutes.paths[path][method][200] = PathDefinition(returnType,
-					"", CrateOperation.otherItem);
+		definedRoutes.paths[path][action.method][200] = PathDefinition(action.returnType, "", CrateOperation.otherItem);
 
-			static if (Param.length == 0)
-			{
-				auto func = &action.call;
-
-				router.get(path, checkError(policy, func));
-			}
-			else static if (Param.length == 1)
-			{
-				auto func = &action.call;
-
-				router.post(path, checkError(policy, func));
-			}
-			else
-			{
-				pragma(msg, "There is no action named `" ~ actionName ~ "`");
-			}
-		}
-		else
-		{
-			static assert(false, T.stringof ~ " has no `" ~ actionName ~ "` member.");
-		}
+		router.match(action.method, path, checkError(policy, &action.handler));
 
 		return this;
 	}
@@ -344,7 +319,7 @@ unittest
 	router
 		.crateSetup
 			.add(baseCrate)
-				.enableAction!(TestCrate!Site, "action");
+				.enableCrateAction!(TestCrate!Site, "action")(baseCrate);
 
 	Json data = `{
 			"position": {

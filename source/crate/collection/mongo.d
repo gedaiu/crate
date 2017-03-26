@@ -223,9 +223,6 @@ auto toId(string id, string type = "") {
 }
 
 Bson toBson(FieldDefinition definition, Json model, string parent = "unknown model") {
-	model.toPrettyString.writeln;
-	definition.serializeToJson.toPrettyString.writeln;
-
 	if(definition.isId) {
 		return Bson(model.to!string.toId(parent));
 	}
@@ -429,7 +426,7 @@ unittest
 
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
-	router.crateSetup!CrateJsonApiPolicy.add(crate).enableAction!(TestModel, "action");
+	router.crateSetup!CrateJsonApiPolicy.add(crate).enableAction!(MongoCrate!TestModel, "action");
 
 	request(router).get("/testmodels/573cbc2fc3b7025427000000/action").expectStatusCode(200).end((Response response) => {
 		assert(response.bodyString == "");
@@ -452,7 +449,7 @@ unittest
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
 
-	router.crateSetup!CrateJsonApiPolicy.add(crate).enableAction!(TestModel, "actionResponse");
+	router.crateSetup!CrateJsonApiPolicy.add(crate).enableAction!(MongoCrate!TestModel, "actionResponse");
 
 	request(router).get("/testmodels/573cbc2fc3b7025427000000/actionResponse").expectStatusCode(200)
 		.end((Response response) => {

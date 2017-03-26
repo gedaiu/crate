@@ -1,4 +1,4 @@
-module crate.http.action;
+module crate.http.action.action;
 
 import std.traits;
 import std.string;
