@@ -4,6 +4,7 @@ import std.algorithm;
 import std.array;
 import std.stdio;
 import std.conv;
+import std.exception;
 
 import vibe.inet.url;
 import vibe.http.router;
@@ -14,8 +15,9 @@ import vibeauth.users;
 
 import crate.collection.memory;
 import crate.base;
+import crate.ctfe;
 import crate.collection.proxy;
-
+import crate.error;
 
 private {
 	Json fromCrate(const Json data) {
@@ -29,8 +31,21 @@ private {
 		return result;
 	}
 
-	UserData toCrate(const User data) {
-		return UserData();
+	Json toCrate(const Json data, const Json userData) {
+		Json result = Json.emptyObject;
+
+		result["_id"] = data["_id"];
+		result["name"] = data["name"];
+		result["username"] = data["username"];
+		result["email"] = data["email"];
+
+		result["isActive"] = userData["isActive"];
+		result["password"] = userData["password"];
+		result["salt"] = userData["salt"];
+		result["scopes"] = userData["scopes"];
+		result["tokens"] = userData["tokens"];
+
+		return result;
 	}
 }
 
@@ -51,14 +66,18 @@ class ApiUserSelector: ProxySelector {
 
 	override
 	Json[] exec() {
-		"exec!".writeln;
 		return super.exec.map!(a => a.fromCrate).array;
 	}
 }
 
 class ApiUserTransformer: Crate!User {
 
-	private Crate!UserData crate;
+	private {
+		Crate!UserData crate;
+
+		static immutable defaultSingular = Singular!UserData;
+		static immutable defaultPlural = Plural!UserData;
+	}
 
 	this(Crate!UserData crate) {
 		this.crate = crate;
@@ -73,14 +92,15 @@ class ApiUserTransformer: Crate!User {
 		config.deleteItem = crate.config.deleteItem;
 		config.replaceItem = crate.config.replaceItem;
 		config.updateItem = crate.config.updateItem;
-		config.singular = crate.config.singular;
-		config.plural = crate.config.plural;
+
+		config.singular = crate.config.singular == defaultSingular ? "user" : crate.config.singular;
+		config.plural = crate.config.plural == defaultPlural ? "users" : crate.config.plural;
 
 		return config;
 	}
 
 	ICrateSelector get() {
-		return new ApiUserSelector(crate.get());
+		return new ApiUserSelector(crate.get);
 	}
 
 	Json[] getList() {
@@ -88,6 +108,8 @@ class ApiUserTransformer: Crate!User {
 	}
 
 	Json addItem(Json item) {
+		validateFields(item);
+
 		return crate.addItem(item);
 	}
 
@@ -96,50 +118,91 @@ class ApiUserTransformer: Crate!User {
 	}
 
 	void updateItem(Json item) {
-		crate.updateItem(item);
+		validateFields(item);
+
+		crate.updateItem(item.toCrate(crate.getItem(item["_id"].to!string)));
 	}
 
 	void deleteItem(string id) {
 		crate.deleteItem(id);
 	}
+
+	private void validateFields(Json data) {
+		static immutable forbiddenFields = ["isActive", "password", "salt", "scopes", "tokens"];
+
+		foreach(field; forbiddenFields) {
+			enforce!CrateValidationException(data[field].type == Json.Type.undefined, "`" ~ field ~ "` must not be present.");
+		}
+	}
 }
 
-
-@("The user data transformer should hide the sensible fields on GET")
-unittest
-{
+version(unittest) {
 	import http.request;
 	import http.json;
 	import bdd.base;
 	import crate.http.router;
 	import crate.policy.restapi;
 	import crate.base;
-	import std.stdio;
 
+	ApiUserTransformer userCrate;
+	MemoryCrate!UserData userDataCrate;
+
+	auto getTestRoute() {
+		CrateConfig!UserData config;
+		auto router = new URLRouter();
+		userDataCrate = new MemoryCrate!UserData(config);
+		userCrate = new ApiUserTransformer(userDataCrate);
+
+		router.crateSetup.add(userCrate);
+
+		return router;
+	}
+
+	auto userJson = `{
+			"_id": 1,
+			"email": "test2@asd.asd",
+			"name": "test",
+			"username": "test_user",
+			"isActive": true,
+			"password": "password",
+			"salt": "salt",
+			"scopes": ["scopes"],
+			"tokens": [{ "name": "token2", "expire": "2100-01-01T00:00:00", "type": "Bearer", "scopes": [] }],
+		}`;
+}
+
+
+@("it should replace the default names")
+unittest
+{
 	CrateConfig!UserData config;
-	config.singular = "user";
-	config.plural = "users";
 
 	auto router = new URLRouter();
 	auto userCrate = new ApiUserTransformer(new MemoryCrate!UserData(config));
 
-	router
-		.crateSetup
-			.add(userCrate);
+	userCrate.config.singular.should.equal("user");
+	userCrate.config.plural.should.equal("users");
+}
 
-	auto userJson = `{
-		"_id": 1,
-		"email": "test2@asd.asd",
-		"name": "test",
-		"username": "test_user",
-		"isActive": true,
-		"password": "password",
-		"salt": "salt",
-		"scopes": ["scopes"],
-		"tokens": [{ "name": "token2", "expire": "2100-01-01T00:00:00", "type": "Bearer", "scopes": [] }],
-	}`;
+@("it should use custom names")
+unittest
+{
+	CrateConfig!UserData config;
+	config.singular = "person";
+	config.plural = "persons";
 
-	userCrate.addItem(userJson.parseJsonString);
+	auto router = new URLRouter;
+	auto userCrate = new ApiUserTransformer(new MemoryCrate!UserData(config));
+
+	userCrate.config.singular.should.equal("person");
+	userCrate.config.plural.should.equal("persons");
+}
+
+@("it should hide the sensible fields on GET")
+unittest
+{
+	auto router = getTestRoute;
+	userDataCrate.addItem(userJson.parseJsonString);
 
 	request(router)
 		.get("/users")
@@ -169,4 +232,83 @@ unittest
 				user["name"].to!string.should.equal("test");
 				user["username"].to!string.should.equal("test_user");
 			});
+}
+
+@("it should not accept hidden fields on POST")
+unittest
+{
+	auto router = getTestRoute;
+	auto data = Json.emptyObject;
+	data["user"] = userJson.parseJsonString;
+
+	request(router)
+		.post("/users")
+			.send(data)
+			.expectStatusCode(201)
+			.end((Response response) => {
+				auto user = response.bodyJson["user"];
+				user.keys.should.contain(["_id", "email", "name", "username"]);
+				user.keys.should.not.contain(["isActive", "password", "salt", "scopes", "tokens"]);
+
+				user["_id"].to!string.should.equal("1");
+				user["email"].to!string.should.equal("test2@asd.asd");
+				user["name"].to!string.should.equal("test");
+				user["username"].to!string.should.equal("test_user");
+
+				auto userData = userDataCrate.getItem("1");
+				userData.keys.should.contain(["_id", "email", "name", "username"]);
+				userData.keys.should.not.contain(["isActive", "password", "salt", "scopes", "tokens"]);
+			});
+}
+
+@("it should not accept hidden fields on PUT")
+unittest
+{
+	auto router = getTestRoute;
+	auto data = Json.emptyObject;
+
+	userDataCrate.addItem(userJson.parseJsonString);
+
+	data["user"] = userJson.parseJsonString;
+
+	request(router)
+		.put("/users/1")
+			.send(data)
+			.expectStatusCode(403)
+			.end((Response response) => {
+				auto userData = userDataCrate.getItem("1");
+				userData["_id"].to!string.should.equal("1");
+				userData["email"].to!string.should.equal("test2@asd.asd");
+				userData["name"].to!string.should.equal("test");
+				userData["username"].to!string.should.equal("test_user");
+				userData["isActive"].to!string.should.equal("true");
+				userData["password"].to!string.should.equal("password");
+				userData["salt"].to!string.should.equal("salt");
+
+				userData["scopes"][0].to!string.should.equal("scopes");
+				userData["tokens"].length.should.equal(1);
+			});
+
+			data["user"] = Json.emptyObject;
+			data["user"]["email"] = "test@asd.asd";
+			data["user"]["name"] = "test2";
+			data["user"]["username"] = "test_user2";
+
+			request(router)
+				.put("/users/1")
+					.send(data)
+					.expectStatusCode(200)
+					.end((Response response) => {
+						auto userData = userDataCrate.getItem("1");
+						userData["_id"].to!string.should.equal("1");
+						userData["email"].to!string.should.equal("test@asd.asd");
+						userData["name"].to!string.should.equal("test2");
+						userData["username"].to!string.should.equal("test_user2");
+						userData["isActive"].to!string.should.equal("true");
+						userData["password"].to!string.should.equal("password");
+						userData["salt"].to!string.should.equal("salt");
+
+						userData["scopes"][0].to!string.should.equal("scopes");
+						userData["tokens"].length.should.equal(1);
+					});
 }
