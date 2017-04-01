@@ -7,7 +7,7 @@ import vibe.data.json;
 import std.traits;
 import std.stdio, std.string;
 
-class CrateProxy : Crate!void
+class CrateProxy: Crate!void
 {
 
 	private
@@ -37,6 +37,8 @@ class CrateProxy : Crate!void
 
 		static if(isAggregateType!T) {
 			_definition = getFields!T;
+			_definition.singular = crate.config.singular;
+			_definition.plural = crate.config.plural;
 		} else {
 			_definition = FieldDefinition();
 		}
@@ -134,5 +136,47 @@ class CrateCollection
 		}
 
 		assert(false, "Crate not found");
+	}
+}
+
+
+class ProxySelector: ICrateSelector {
+
+	protected {
+		ICrateSelector selector;
+	}
+
+	this(ICrateSelector selector) {
+		this.selector = selector;
+	}
+
+	override {
+		ICrateSelector where(string field, string value) {
+			this.selector.where(field, value);
+
+			return this;
+		}
+
+		ICrateSelector whereArrayContains(string field, string value) {
+			this.selector.whereArrayContains(field, value);
+
+			return this;
+		}
+
+		ICrateSelector whereArrayFieldContains(string arrayField, string field, string value) {
+			this.selector.whereArrayFieldContains(arrayField, field, value);
+
+			return this;
+		}
+
+		ICrateSelector limit(ulong nr) {
+			this.selector.limit(nr);
+
+			return this;
+		}
+
+		Json[] exec() {
+			return this.selector.exec;
+		}
 	}
 }

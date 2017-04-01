@@ -88,6 +88,10 @@ class CrateRouter(RouterPolicy) {
 		return this;
 	}
 
+	CrateRouter dataTransformer(T)(T user) {
+		return this;
+	}
+
 	CrateRouter enableAction(T: Crate!U, string actionName, U)()
 	{
 		return enableAction!(T, actionName, RouterPolicy);

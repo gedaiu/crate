@@ -70,7 +70,6 @@ ModelDefinition definition(T)() pure
 	return model;
 }
 
-
 private
 {
 	PathDefinition[uint][HTTPMethod][string] paths(T)(const CrateConfig!T config)
