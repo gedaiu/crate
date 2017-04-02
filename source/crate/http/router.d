@@ -313,6 +313,42 @@ version (unittest)
 	}
 }
 
+@("REST API query test")
+unittest
+{
+	auto router = new URLRouter();
+	auto baseCrate = new TestCrate!Site;
+
+	router
+		.crateSetup
+			.add(baseCrate);
+
+	Json data1 = `{
+			"position": {
+				"type": "Point",
+				"coordinates": [0, 0]
+			}
+	}`.parseJsonString;
+
+	Json data2 = `{
+			"position": {
+				"type": "Dot",
+				"coordinates": [1, 1]
+			}
+	}`.parseJsonString;
+
+	baseCrate.addItem(data2);
+	baseCrate.addItem(data1);
+
+	request(router)
+		.get("/sites?type=Point")
+			.expectStatusCode(200)
+			.end((Response response) => {
+				response.bodyJson["sites"].length.should.equal(1);
+				response.bodyJson["sites"][0]["_id"].to!string.should.equal("1");
+			});
+}
+
 @("REST API tests")
 unittest
 {

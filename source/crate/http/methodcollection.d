@@ -35,7 +35,6 @@ class MethodCollection(Type)
 	}
 
 	private Json requestJson(HTTPServerRequest request) {
-		import std.stdio;
 		Json data = request.json;
 
 		if(data.type == Json.Type.undefined) {
@@ -129,7 +128,9 @@ class MethodCollection(Type)
 
 		FieldDefinition definition = crate.definition;
 
-		auto data = policy.serializer.denormalise(crate.getList, definition);
+		string[string] parameters;
+
+		auto data = policy.serializer.denormalise(crate.getList(parameters), definition);
 		response.writeJsonBody(data, 200, policy.mime);
 	}
 
@@ -207,10 +208,7 @@ class MethodCollection(Type)
 			response.addHeaderValues("Access-Control-Allow-Methods", methods);
 			response.addHeaderValues("Access-Control-Allow-Headers", [ "Content-Type" ]);
 		}
-	}
 
-	private
-	{
 		void checkFields(Json data, FieldDefinition definition)
 		{
 			foreach (field; definition.fields)

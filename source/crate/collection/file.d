@@ -134,7 +134,7 @@ version (unittest)
 			assert(false, "not implemented");
 		}
 
-		Json[] getList()
+		Json[] getList(string[string])
 		{
 			return [item.serializeToJson];
 		}

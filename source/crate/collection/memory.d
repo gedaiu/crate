@@ -35,7 +35,7 @@ class MemoryCrate(T) : Crate!T
     return new CrateRange(list);
   }
 
-  Json[] getList()
+  Json[] getList(string[string])
   {
     return list;
   }

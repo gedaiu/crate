@@ -103,8 +103,8 @@ class ApiUserTransformer: Crate!User {
 		return new ApiUserSelector(crate.get);
 	}
 
-	Json[] getList() {
-		return crate.getList().map!(a => a.fromCrate).array;
+	Json[] getList(string[string] parameters) {
+		return crate.getList(parameters).map!(a => a.fromCrate).array;
 	}
 
 	Json addItem(Json item) {

@@ -96,7 +96,7 @@ class MongoCrate(T): Crate!T
     return new MongoCrateRange(collection);
   }
 
-	Json[] getList()
+	Json[] getList(string[string])
 	{
 		Json[] list;
 		auto cursor = collection.find!Json();

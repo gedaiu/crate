@@ -15,7 +15,7 @@ class CrateProxy: Crate!void
 		CrateConfig!void configProxy;
 
 		ICrateSelector delegate() getRef;
-		Json[]delegate() getListRef;
+		Json[]delegate(string[string]) getListRef;
 		Json delegate(Json) addItemRef;
 		Json delegate(string) getItemRef;
 		void delegate(Json) updateItemRef;
@@ -70,9 +70,9 @@ class CrateProxy: Crate!void
 		return getRef();
 	}
 
-	Json[] getList()
+	Json[] getList(string[string] parameters)
 	{
-		return getListRef();
+		return getListRef(parameters);
 	}
 
 	Json addItem(Json item)
@@ -138,7 +138,6 @@ class CrateCollection
 		assert(false, "Crate not found");
 	}
 }
-
 
 class ProxySelector: ICrateSelector {
 
