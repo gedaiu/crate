@@ -130,6 +130,10 @@ class MethodCollection(Type)
 
 		string[string] parameters;
 
+		foreach(string key, value; request.query) {
+			parameters[key] = value;
+		}
+
 		auto data = policy.serializer.denormalise(crate.getList(parameters), definition);
 		response.writeJsonBody(data, 200, policy.mime);
 	}

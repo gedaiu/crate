@@ -261,6 +261,8 @@ version (unittest)
 	import vibe.data.json;
 	import vibe.data.bson;
 	import crate.collection.memory;
+	import std.algorithm;
+	import std.array;
 	import bdd.base;
 
 	struct TestModel
@@ -282,6 +284,17 @@ version (unittest)
 	class TestCrate(T) : MemoryCrate!T
 	{
 		void action() {}
+
+		override
+		Json[] getList(string[string] parameters) {
+
+			if("type" in parameters) {
+				return std.array.array(super.getList(parameters)
+					.filter!(a => a["position"]["type"].to!string == parameters["type"]));
+			}
+
+			return super.getList(parameters);
+		}
 	}
 
 	struct Point
@@ -337,8 +350,8 @@ unittest
 			}
 	}`.parseJsonString;
 
-	baseCrate.addItem(data2);
 	baseCrate.addItem(data1);
+	baseCrate.addItem(data2);
 
 	request(router)
 		.get("/sites?type=Point")
