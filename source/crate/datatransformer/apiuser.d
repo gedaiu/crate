@@ -3,6 +3,7 @@ module crate.datatransformer.apiuser;
 import std.algorithm;
 import std.array;
 import std.stdio;
+import std.string;
 import std.conv;
 import std.exception;
 
@@ -104,7 +105,15 @@ class ApiUserTransformer: Crate!User {
 	}
 
 	Json[] getList(string[string] parameters) {
-		return crate.getList(parameters).map!(a => a.fromCrate).array;
+		auto data = crate.getList(parameters).map!(a => a.fromCrate).array;
+
+		if("term" in parameters) {
+			string term = parameters["term"];
+
+			data = data.filter!(a => a["email"].to!string.indexOf(term) >= 0).array;
+		}
+
+		return data.array;
 	}
 
 	Json addItem(Json item) {
@@ -311,4 +320,33 @@ unittest
 						userData["scopes"][0].to!string.should.equal("scopes");
 						userData["tokens"].length.should.equal(1);
 					});
+}
+
+@("it should search users by a term")
+unittest
+{
+	auto router = getTestRoute;
+	userDataCrate.addItem(userJson.parseJsonString);
+
+	request(router)
+		.get("/users?term=john")
+			.expectStatusCode(200)
+			.end((Response response) => {
+				response.bodyJson["users"].length.should.equal(0);
+			});
+
+	request(router)
+		.get("/users?term=test")
+			.expectStatusCode(200)
+			.end((Response response) => {
+				response.bodyJson["users"].length.should.equal(1);
+
+				auto user = response.bodyJson["users"][0];
+				user.keys.should.contain(["_id", "email", "name", "username"]);
+				user.keys.should.not.contain(["isActive", "password", "salt", "scopes", "tokens"]);
+				user["_id"].to!string.should.equal("1");
+				user["email"].to!string.should.equal("test2@asd.asd");
+				user["name"].to!string.should.equal("test");
+				user["username"].to!string.should.equal("test_user");
+			});
 }
