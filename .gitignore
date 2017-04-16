@@ -14,3 +14,5 @@ ut.d
 examples/testJsonApiModel/ember
 examples/testRestApiModel/ember
 ./files
+.vscode
+generated.d

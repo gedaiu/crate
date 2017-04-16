@@ -106,7 +106,7 @@ class CrateRestApiSerializer : CrateSerializer
 }
 
 version(unittest) {
-	import bdd.base;
+	import fluent.asserts;
 }
 
 @("Serialize/deserialize a simple struct")

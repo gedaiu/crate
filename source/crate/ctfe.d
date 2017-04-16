@@ -486,7 +486,7 @@ template Singular(Type)
 
 version(unittest)
 {
-	import bdd.base;
+	import fluent.asserts;
 
 	struct ActionModel
 	{

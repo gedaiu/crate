@@ -159,7 +159,7 @@ class CrateJsonApiSerializer : CrateSerializer
 }
 
 version(unittest) {
-	import bdd.base;
+	import fluent.asserts;
 }
 
 unittest

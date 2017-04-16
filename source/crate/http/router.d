@@ -263,7 +263,7 @@ version (unittest)
 	import crate.collection.memory;
 	import std.algorithm;
 	import std.array;
-	import bdd.base;
+	import fluent.asserts;
 
 	struct TestModel
 	{
@@ -389,7 +389,7 @@ unittest
 		.get("/sites")
 			.expectStatusCode(200)
 			.end((Response response) => {
-				response.bodyJson["sites"].length.should.be.graterThan(0);
+				response.bodyJson["sites"].length.should.be.greaterThan(0);
 				response.bodyJson["sites"][0]["_id"].to!string.should.equal("1");
 			});
 

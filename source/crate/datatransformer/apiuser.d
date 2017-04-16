@@ -148,7 +148,7 @@ class ApiUserTransformer: Crate!User {
 version(unittest) {
 	import http.request;
 	import http.json;
-	import bdd.base;
+	import fluent.asserts;
 	import crate.http.router;
 	import crate.policy.restapi;
 	import crate.base;
@@ -217,7 +217,7 @@ unittest
 		.get("/users")
 			.expectStatusCode(200)
 			.end((Response response) => {
-				response.bodyJson["users"].length.should.be.graterThan(0);
+				response.bodyJson["users"].length.should.be.greaterThan(0);
 
 				auto user = response.bodyJson["users"][0];
 				user.keys.should.contain(["_id", "email", "name", "username"]);
