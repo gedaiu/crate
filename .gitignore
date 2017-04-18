@@ -15,4 +15,6 @@ examples/testJsonApiModel/ember
 examples/testRestApiModel/ember
 ./files
 .vscode
-generated.d
+/generated.d
+/crate-test-library
+/trial.json

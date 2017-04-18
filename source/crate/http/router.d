@@ -257,7 +257,7 @@ class CrateRouter(RouterPolicy) {
 version (unittest)
 {
 	import crate.base;
-	import http.request;
+	import fluentasserts.vibe.request;
 	import vibe.data.json;
 	import vibe.data.bson;
 	import crate.collection.memory;

@@ -190,7 +190,7 @@ private Schema[string] errorDefinitions()
 version(unittest)
 {
 	import fluent.asserts;
-	import http.request;
+	import fluentasserts.vibe.request;
 	import vibe.data.serialization;
 	import vibe.data.json;
 

@@ -20,7 +20,7 @@ interface CrateResource {
 }
 
 version(unittest) {
-	import http.request;
+	import fluentasserts.vibe.request;
 
 	class TestResource : CrateResource {
 		static string lastRead;

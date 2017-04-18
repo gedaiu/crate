@@ -146,8 +146,8 @@ class ApiUserTransformer: Crate!User {
 }
 
 version(unittest) {
-	import http.request;
-	import http.json;
+	import fluentasserts.vibe.request;
+	import fluentasserts.vibe.json;
 	import fluent.asserts;
 	import crate.http.router;
 	import crate.policy.restapi;

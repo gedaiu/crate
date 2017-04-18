@@ -9,7 +9,8 @@
   "dependencies": {
     "swaggerize": "*",
     "vibe-d": "*",
-    "vibe-auth": "~>0.1.0",
+    "vibe-auth": "~>0.1.1",
     "fluent-asserts": "~>0.3.0",
+    "fluent-asserts:vibe": "~>0.3.0"
   }
 }
