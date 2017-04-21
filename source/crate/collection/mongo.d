@@ -263,6 +263,10 @@ Bson toBson(T)(Json model) {
 	return toBson(getFields!T, model);
 }
 
+version(unittest) {
+	import fluent.asserts;
+}
+
 @("Check model to bson conversion")
 unittest {
 	RelationModel model;
@@ -318,7 +322,10 @@ unittest
 
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
-	collection.drop;
+
+	try {
+		collection.drop;
+	} catch(Exception) {}
 	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
 	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000001")));
 
@@ -342,7 +349,11 @@ unittest
 
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
-	collection.drop;
+
+	try {
+		collection.drop;
+	} catch(Exception) {}
+
 	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
 
 	auto router = new URLRouter();
@@ -359,6 +370,7 @@ unittest
 		});
 }
 
+@("It should return existing resources")
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
@@ -366,7 +378,11 @@ unittest
 
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
-	collection.drop;
+
+	try {
+		collection.drop;
+	} catch(Exception) {}
+
 	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000"), "", "testName"));
 
 	auto router = new URLRouter();
@@ -390,6 +406,7 @@ unittest
 		});
 }
 
+@("It should get a 404 error on missing resources")
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
@@ -399,7 +416,10 @@ unittest
 
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
-	collection.drop;
+
+	try {
+		collection.drop;
+	} catch (Exception) {}
 
 	auto router = new URLRouter();
 	auto crate = new MongoCrate!TestModel(collection);
@@ -422,6 +442,7 @@ unittest
 
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
+	collection.drop;
 	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
 
 	auto router = new URLRouter();
@@ -429,8 +450,8 @@ unittest
 	router.crateSetup!CrateJsonApiPolicy.add(crate).enableAction!(MongoCrate!TestModel, "action");
 
 	request(router).get("/testmodels/573cbc2fc3b7025427000000/action").expectStatusCode(200).end((Response response) => {
-		assert(response.bodyString == "");
-		assert(isTestActionCalled);
+		response.bodyString.should.equal("");
+		isTestActionCalled.should.equal(true);
 	});
 }
 
@@ -458,6 +479,7 @@ unittest
 		});
 }
 
+@("it should add the access control headers")
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
@@ -467,7 +489,11 @@ unittest
 
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
-	collection.drop;
+
+	try {
+		collection.drop;
+	} catch(Exception) { }
+
 	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
 
 	auto router = new URLRouter();
@@ -476,5 +502,6 @@ unittest
 	router.crateSetup.add(crate);
 
 	request(router).get("/testmodels")
-		.expectHeader("Access-Control-Allow-Origin", "*").end((Response response) => { });
+		.expectHeader("Access-Control-Allow-Origin", "*")
+		.end();
 }
