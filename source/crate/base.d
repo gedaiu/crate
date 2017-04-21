@@ -42,6 +42,10 @@ class CrateRange : ICrateSelector
 		this.data = inputRangeObject(data);
 	}
 
+	this(T)(T data) {
+		this.data = inputRangeObject(data);
+	}
+
 	override {
 		ICrateSelector where(string field, string value) {
 			data = inputRangeObject(data.filter!(a => a[field].to!string == value));

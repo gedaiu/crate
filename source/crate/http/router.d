@@ -284,6 +284,17 @@ version (unittest)
 	class TestCrate(T) : MemoryCrate!T
 	{
 		void action() {}
+
+		override
+		ICrateSelector getList(string[string] parameters) {
+
+			if("type" in parameters) {
+				return new CrateRange(super.getList(parameters).exec
+					.filter!(a => a["position"]["type"].to!string == parameters["type"]));
+			}
+
+			return super.getList(parameters);
+		}
 	}
 
 	struct Point

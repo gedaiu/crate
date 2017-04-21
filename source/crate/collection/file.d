@@ -111,6 +111,7 @@ version (unittest)
 {
 	import crate.base;
 	import fluentasserts.vibe.request;
+	import fluent.asserts;
 	import crate.http.router;
 	import crate.collection.memory;
 
@@ -197,7 +198,9 @@ unittest {
 	item.file = new CrateFile("files/item.txt");
 	item.child.file = new CrateFile("files/child.txt");
 
-	baseCrate.addItem(item.serializeToJson);
+	auto jsonItem = item.serializeToJson;
+	baseCrate.addItem(jsonItem);
+
 	auto router = new URLRouter();
 
 	router
@@ -207,17 +210,17 @@ unittest {
 				.enableResource!(Item, "child/file");
 
 	request(router)
-		.get("/items/0/file")
+		.get("/items/1/file")
 			.expectStatusCode(200)
 			.end((Response response) => {
-				assert(response.bodyString == "this is the item");
+				response.bodyString.should.equal("this is the item");
 			});
 
 	request(router)
-		.get("/items/0/child/file")
+		.get("/items/1/child/file")
 			.expectStatusCode(200)
 			.end((Response response) => {
-				assert(response.bodyString == "this is the child");
+				response.bodyString.should.equal("this is the child");
 			});
 
 	string data = "-----------------------------9855312492823326321373169801\r\n";
@@ -228,13 +231,13 @@ unittest {
 
 	request(router)
 		.header("Content-Type", "multipart/form-data; boundary=---------------------------9855312492823326321373169801")
-		.post("/items/0/file")
+		.post("/items/1/file")
 			.send(data)
 			.expectStatusCode(201)
 			.end((Response response) => { });
 
 	request(router)
-		.get("/items/0/file")
+		.get("/items/1/file")
 			.expectStatusCode(200)
 			.end((Response response) => {
 				assert(response.bodyString == "new file");
