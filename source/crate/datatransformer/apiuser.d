@@ -6,6 +6,7 @@ import std.stdio;
 import std.string;
 import std.conv;
 import std.exception;
+import std.range.interfaces;
 
 import vibe.inet.url;
 import vibe.http.router;
@@ -65,9 +66,8 @@ class ApiUserSelector: ProxySelector {
 		super(selector);
 	}
 
-	override
-	Json[] exec() {
-		return super.exec.map!(a => a.fromCrate).array;
+	override InputRange!Json exec() {
+		return super.exec.map!(a => a.fromCrate).inputRangeObject;
 	}
 }
 

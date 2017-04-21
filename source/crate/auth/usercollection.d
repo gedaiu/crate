@@ -28,9 +28,9 @@ class UserCrateCollection: UserCollection
 
   private Json getUserData(string email) {
       auto users = crate.get.where("email", email).limit(1).exec;
-      enforce!CrateNotFoundException(users.length == 1, "The user does not exist.");
+      enforce!CrateNotFoundException(!users.empty, "The user does not exist.");
 
-      return users[0];
+      return users.front;
   }
 
   void disempower(string email, string access) {
@@ -86,13 +86,13 @@ class UserCrateCollection: UserCollection
   	User byToken(string token) {
       auto users = crate.get.whereArrayFieldContains("tokens", "name", token).limit(1).exec;
 
-      enforce!CrateNotFoundException(users.length == 1, "Invalid token.");
+      enforce!CrateNotFoundException(!users.empty, "Invalid token.");
 
-      return new User(users[0].deserializeJson!UserData);
+      return new User(users.front.deserializeJson!UserData);
   	}
 
     bool contains(string email) {
-      return crate.get.where("email", email).limit(1).exec.length == 1;
+      return !crate.get.where("email", email).limit(1).exec.empty;
     }
 
     bool createUser(UserData data, string password) {
@@ -179,8 +179,10 @@ unittest
   auto collection = new UserCrateCollection(["access1"], crate);
   collection.empower("test@asd.asd", "access1");
 
-  assert(crate.get.where("email", "test@asd.asd").limit(1).exec[0]["scopes"].length == 2);
-  assert(crate.get.where("email", "test@asd.asd").limit(1).exec[0]["scopes"][1] == "access1");
+  auto result = crate.get.where("email", "test@asd.asd").limit(1).exec.front;
+
+  assert(result["scopes"].length == 2);
+  assert(result["scopes"][1] == "access1");
 
   bool found = true;
   try {
@@ -210,7 +212,8 @@ unittest
   auto collection = new UserCrateCollection(["scopes"], crate);
   collection.disempower("test@asd.asd", "scopes");
 
-  assert(crate.get.where("email", "test@asd.asd").limit(1).exec[0]["scopes"].length == 0);
+  auto result = crate.get.where("email", "test@asd.asd").limit(1).exec.front;
+  assert(result["scopes"].length == 0);
 
   bool found = true;
   try {
@@ -231,8 +234,9 @@ unittest
   auto collection = new UserCrateCollection(["scopes"], crate);
   auto token = collection.createToken("test@asd.asd", Clock.currTime + 3600.seconds);
 
-  assert(crate.get.where("email", "test@asd.asd").limit(1).exec[0]["tokens"].length == 2);
-  assert(crate.get.where("email", "test@asd.asd").limit(1).exec[0]["tokens"][1]["name"] == token.name);
+  auto result = crate.get.where("email", "test@asd.asd").limit(1).exec.front;
+  assert(result["tokens"].length == 2);
+  assert(result["tokens"][1]["name"] == token.name);
 }
 
 @("it should find user by token")

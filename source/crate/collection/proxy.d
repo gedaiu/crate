@@ -6,6 +6,7 @@ import vibe.data.json;
 
 import std.traits;
 import std.stdio, std.string;
+import std.range.interfaces;
 
 class CrateProxy: Crate!void
 {
@@ -174,7 +175,7 @@ class ProxySelector: ICrateSelector {
 			return this;
 		}
 
-		Json[] exec() {
+		InputRange!Json exec() {
 			return this.selector.exec;
 		}
 	}

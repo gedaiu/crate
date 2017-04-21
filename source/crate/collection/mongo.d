@@ -10,7 +10,7 @@ import vibe.data.json;
 import vibe.db.mongo.collection;
 import vibe.db.mongo.mongo;
 
-import std.conv, std.stdio, std.array;
+import std.conv, std.stdio, std.array, std.range.interfaces;
 import std.algorithm, std.typecons, std.exception;
 
 class MongoCrateRange : ICrateSelector
@@ -55,17 +55,54 @@ class MongoCrateRange : ICrateSelector
 			return this;
 		}
 
-		Json[] exec() {
-			Json[] list;
+		InputRange!Json exec() {
+			class MongoRange : InputRange!Json {
+				alias Cursor = MongoCursor!(Json, Json, typeof(null));
+				Cursor cursor;
 
-			auto cursor = collection.find!Json(query).limit(resultCount);
+				this(Cursor cursor) {
+					this.cursor = cursor;
+				}
 
-			foreach (item; cursor)
-			{
-				list ~= item;
+				@property {
+					Json front() {
+						return cursor.front;
+					}
+
+					Json moveFront() {
+						auto data = cursor.front;
+						cursor.popFront;
+
+						return data;
+					}
+
+					bool empty() {
+						return cursor.empty;
+					}
+				}
+
+				void popFront() {
+					cursor.popFront;
+				}
+
+				int opApply(scope int delegate(Json) d) {
+					int d2(ref Json data) {
+						return d(data);
+					}
+
+					return cursor.opApply(&d2);
+				}
+
+				int opApply(scope int delegate(size_t, Json) d) {
+					int d2(ref ulong idx, ref Json data) {
+						return d(idx, data);
+					}
+
+					return cursor.opApply(&d2);
+				}
 			}
 
-			return list;
+			return new MongoRange(collection.find!Json(query).limit(resultCount));
 		}
 	}
 }

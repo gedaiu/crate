@@ -67,10 +67,6 @@ class MethodCollection(Type)
 	{
 		auto crate = collection.getByPath(request.path);
 		addItemCORS(response);
-		/*auto data = crate.get
-			.where("_id", request.params["id"])
-			.limit(1).exec;// .getItem(request.params["id"]);
-*/
 		auto data = crate.getItem(request.params["id"]);
 
 		FieldDefinition definition = crate.definition;

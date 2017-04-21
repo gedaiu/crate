@@ -4,6 +4,7 @@ import vibe.data.json, vibe.http.common;
 
 import std.string, std.traits, std.conv;
 import std.algorithm, std.range, std.string;
+import std.range.interfaces;
 
 import crate.ctfe;
 
@@ -28,7 +29,7 @@ abstract class ICrateSelector
 	ICrateSelector whereArrayFieldContains(string arrayField, string field, string value);
 	ICrateSelector limit(ulong nr);
 
-	Json[] exec();
+	InputRange!Json exec();
 }
 
 class CrateRange : ICrateSelector
@@ -64,8 +65,8 @@ class CrateRange : ICrateSelector
 			return this;
 		}
 
-		Json[] exec() {
-			return data.array;
+		InputRange!Json exec() {
+			return data;
 		}
 	}
 }

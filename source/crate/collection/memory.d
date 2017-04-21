@@ -53,9 +53,9 @@ class MemoryCrate(T) : Crate!T
   {
     auto result = get.where(idField, id).limit(1).exec;
 
-    enforce!CrateNotFoundException(result.length > 0, "No item found.");
+    enforce!CrateNotFoundException(!result.empty, "No item found.");
 
-    return result[0];
+    return result.front;
   }
 
   void updateItem(Json item)
