@@ -11,10 +11,11 @@ import swaggerize.definitions;
 import std.meta, std.conv, std.exception;
 import std.algorithm.searching, std.algorithm.iteration;
 import std.traits, std.stdio, std.string;
+import std.range.interfaces;
 
 class CrateJsonApiSerializer : CrateSerializer
 {
-	Json denormalise(Json[] data, ref const FieldDefinition definition) inout {
+	Json denormalise(InputRange!Json data, ref const FieldDefinition definition) inout {
 		Json value = Json.emptyObject;
 
 		value["data"] = Json.emptyArray;

@@ -133,17 +133,9 @@ class MongoCrate(T): Crate!T
     return new MongoCrateRange(collection);
   }
 
-	Json[] getList(string[string])
+	ICrateSelector getList(string[string])
 	{
-		Json[] list;
-		auto cursor = collection.find!Json();
-
-		foreach (item; cursor)
-		{
-			list ~= item;
-		}
-
-		return list;
+		return get();
 	}
 
 	Json addItem(Json item)

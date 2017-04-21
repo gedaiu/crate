@@ -112,54 +112,11 @@ version (unittest)
 	import crate.base;
 	import fluentasserts.vibe.request;
 	import crate.http.router;
+	import crate.collection.memory;
 
 	import vibe.data.json;
 	import vibe.data.bson;
 	import vibe.http.router;
-
-	class TestCrate(T) : Crate!T
-	{
-		Item item;
-
-		CrateConfig!T config()
-		{
-			return CrateConfig!T();
-		}
-
-		ICrateSelector get() {
-			assert(false, "not implemented");
-		}
-
-		Json[] get(string, string, ulong) {
-			assert(false, "not implemented");
-		}
-
-		Json[] getList(string[string])
-		{
-			return [item.serializeToJson];
-		}
-
-		Json addItem(Json item)
-		{
-			item["_id"] = "item_id";
-
-			return item;
-		}
-
-		Json getItem(string)
-		{
-			return item.serializeToJson;
-		}
-
-		void updateItem(Json item)
-		{
-			this.item = item.deserializeJson!Item;
-		}
-
-		void deleteItem(string id)
-		{
-		}
-	}
 
 	struct Item {
 		string _id = "item_id";
@@ -179,7 +136,7 @@ unittest {
 	import std.stdio;
 
 	auto router = new URLRouter();
-	auto baseCrate = new TestCrate!Item;
+	auto baseCrate = new MemoryCrate!Item;
 
 	router
 		.crateSetup
@@ -234,12 +191,14 @@ unittest {
 
 	scope(exit) "files/".rmdirRecurse;
 
-	auto item = new TestCrate!Item;
-	item.item.file = new CrateFile("files/item.txt");
-	item.item.child.file = new CrateFile("files/child.txt");
+	auto baseCrate = new MemoryCrate!Item;
+	auto item = Item();
 
+	item.file = new CrateFile("files/item.txt");
+	item.child.file = new CrateFile("files/child.txt");
+
+	baseCrate.addItem(item.serializeToJson);
 	auto router = new URLRouter();
-	auto baseCrate = item;
 
 	router
 		.crateSetup

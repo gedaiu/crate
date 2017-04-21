@@ -35,9 +35,9 @@ class MemoryCrate(T) : Crate!T
     return new CrateRange(list);
   }
 
-  Json[] getList(string[string])
+  ICrateSelector getList(string[string])
   {
-    return list;
+    return get();
   }
 
   Json addItem(Json item)

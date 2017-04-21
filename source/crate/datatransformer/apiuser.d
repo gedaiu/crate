@@ -104,8 +104,8 @@ class ApiUserTransformer: Crate!User {
 		return new ApiUserSelector(crate.get);
 	}
 
-	Json[] getList(string[string] parameters) {
-		auto data = crate.getList(parameters).map!(a => a.fromCrate).array;
+	ICrateSelector getList(string[string] parameters) {
+		auto data = crate.getList(parameters).exec.map!(a => a.fromCrate).array;
 
 		if("term" in parameters) {
 			string term = parameters["term"];
@@ -113,7 +113,7 @@ class ApiUserTransformer: Crate!User {
 			data = data.filter!(a => a["email"].to!string.indexOf(term) >= 0).array;
 		}
 
-		return data.array;
+		return new CrateRange(data.array);
 	}
 
 	Json addItem(Json item) {

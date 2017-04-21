@@ -193,6 +193,7 @@ version(unittest)
 	import fluentasserts.vibe.request;
 	import vibe.data.serialization;
 	import vibe.data.json;
+	import crate.collection.memory;
 
 	bool isTestActionCalled;
 
@@ -230,63 +231,19 @@ version(unittest)
 			return "ok.";
 		}
 	}
-
-	class TestCrate(T) : Crate!T
-	{
-		TestModel item;
-
-		CrateConfig!T config() {
-			return CrateConfig!T();
-		}
-
-		ICrateSelector get() {
-			assert(false, "not implemented");
-		}
-
-		Json[] getList(string[string])
-		{
-			return [item.serializeToJson];
-		}
-
-		Json addItem(Json)
-		{
-			throw new Exception("addItem not implemented");
-		}
-
-		Json getItem(string)
-		{
-			return item.serializeToJson;
-		}
-
-		Json editItem(string, Json fields)
-		{
-			item.name = fields["name"].to!string;
-			return item.serializeToJson;
-		}
-
-		void updateItem(Json)
-		{
-
-		}
-
-		void deleteItem(string)
-		{
-			throw new Exception("deleteItem not implemented");
-		}
-	}
 }
 
 @("Check if all the routes are defined")
 unittest
 {
 	auto router = new URLRouter();
-	auto crate = new TestCrate!TestModel;
+	auto crate = new MemoryCrate!TestModel;
 
 	auto crateRouter = router
 											.crateSetup
 												.add(crate)
-												.enableAction!(TestCrate!TestModel, "action")
-												.enableAction!(TestCrate!TestModel, "actionResponse");
+												.enableAction!(MemoryCrate!TestModel, "action")
+												.enableAction!(MemoryCrate!TestModel, "actionResponse");
 
 	auto api = crateRouter.toOpenApi;
 
@@ -307,7 +264,7 @@ unittest
 unittest
 {
 	auto router = new URLRouter();
-	auto crate = new TestCrate!TestModel;
+	auto crate = new MemoryCrate!TestModel;
 
 	auto crateRouter = router.crateSetup!CrateJsonApiPolicy.add(crate);
 
@@ -330,7 +287,7 @@ unittest
 unittest
 {
 	auto router = new URLRouter();
-	auto crate = new TestCrate!TestModel;
+	auto crate = new MemoryCrate!TestModel;
 
 	auto crateRouter = router.crateSetup!CrateJsonApiPolicy.add(crate);
 

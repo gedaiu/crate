@@ -284,17 +284,6 @@ version (unittest)
 	class TestCrate(T) : MemoryCrate!T
 	{
 		void action() {}
-
-		override
-		Json[] getList(string[string] parameters) {
-
-			if("type" in parameters) {
-				return std.array.array(super.getList(parameters)
-					.filter!(a => a["position"]["type"].to!string == parameters["type"]));
-			}
-
-			return super.getList(parameters);
-		}
 	}
 
 	struct Point

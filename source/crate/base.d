@@ -148,7 +148,7 @@ interface Crate(Type)
 
 	ICrateSelector get();
 
-	Json[] getList(string[string] parameters);
+	ICrateSelector getList(string[string] parameters);
 
 	Json addItem(Json item);
 	Json getItem(string id);
@@ -160,7 +160,7 @@ interface CrateSerializer
 {
 	inout
 	{
-		Json denormalise(Json[] data, ref const FieldDefinition definition);
+		Json denormalise(InputRange!Json data, ref const FieldDefinition definition);
 		Json denormalise(Json data, ref const FieldDefinition definition);
 
 		Json normalise(string id, Json data, ref const FieldDefinition definition);

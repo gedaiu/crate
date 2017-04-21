@@ -10,13 +10,13 @@ import swaggerize.definitions;
 
 import std.meta, std.string, std.exception, std.array;
 import std.algorithm.searching, std.algorithm.iteration;
-
 import std.traits, std.stdio, std.meta, std.conv;
+import std.range.interfaces;
 
 class CrateRestApiSerializer : CrateSerializer
 {
 
-	Json denormalise(Json[] data, ref const FieldDefinition definition) inout {
+	Json denormalise(InputRange!Json data, ref const FieldDefinition definition) inout {
 		Json result = Json.emptyObject;
 
 		result[plural(definition)] = data.map!(a => extractFields(a, definition)).array;
@@ -157,10 +157,10 @@ unittest
 	auto fields = getFields!TestModel;
 	auto serializer = new const CrateRestApiSerializer;
 
-	Json[] data = [
+	auto data = [
 		TestModel("ID1", "Ember Hamster", 5).serializeToJson,
 		TestModel("ID2", "Ember Hamster2", 6).serializeToJson
-	];
+	].inputRangeObject;
 
 	//test the serialize method
 	auto value = serializer.denormalise(data, fields);
@@ -189,7 +189,7 @@ unittest
 	auto fields = getFields!TestModel;
 	auto serializer = new const CrateRestApiSerializer;
 	auto valueSingular = const serializer.denormalise(TestModel().serializeToJson, fields);
-	auto valuePlural = const serializer.denormalise([ TestModel().serializeToJson ], fields);
+	auto valuePlural = const serializer.denormalise([ TestModel().serializeToJson ].inputRangeObject, fields);
 
 	assert("singularModel" in valueSingular);
 	assert("pluralModel" in valuePlural);
@@ -222,7 +222,7 @@ unittest
 	assert(value["testModel"]["child"].type == Json.Type.string);
 	assert(value["testModel"]["child"] == "id2");
 
-	value = const serializer.denormalise([test.serializeToJson], fields);
+	value = const serializer.denormalise([test.serializeToJson].inputRangeObject, fields);
 
 	assert(value["testModels"][0]["child"].type == Json.Type.string);
 	assert(value["testModels"][0]["child"] == "id2");

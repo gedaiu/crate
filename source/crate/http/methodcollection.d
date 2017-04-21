@@ -134,7 +134,8 @@ class MethodCollection(Type)
 			parameters[key] = value;
 		}
 
-		auto data = policy.serializer.denormalise(crate.getList(parameters), definition);
+		auto list = crate.getList(parameters).exec;
+		auto data = policy.serializer.denormalise(list, definition);
 		response.writeJsonBody(data, 200, policy.mime);
 	}
 
