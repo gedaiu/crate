@@ -25,13 +25,15 @@ class MethodCollection(Type)
 		immutable CrateConfig!Type config;
 		CrateCollection collection;
 		const CratePolicy policy;
+		ICrateFilter[] filters;
 	}
 
-	this(const CratePolicy policy, CrateCollection collection, CrateConfig!Type config)
+	this(const CratePolicy policy, CrateCollection collection, CrateConfig!Type config, ICrateFilter[] filters)
 	{
 		this.policy = policy;
 		this.collection = collection;
 		this.config = config;
+		this.filters = filters;
 	}
 
 	private Json requestJson(HTTPServerRequest request) {

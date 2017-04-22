@@ -140,7 +140,7 @@ class CrateRouter(RouterPolicy) {
 		return mimeList.keys;
 	}
 
-	CrateRouter add(Policy, T)(Crate!T crate)
+	CrateRouter add(Policy, T)(Crate!T crate, ICrateFilter[] filters ...)
 	{
 		const policy = new const Policy;
 
@@ -154,28 +154,33 @@ class CrateRouter(RouterPolicy) {
 		}
 
 		foreach (string path, methods; tmpRoutes.paths)
+		{
 			foreach (method, responses; methods)
-				foreach (response, pathDefinition; responses) {
+			{
+				foreach (response, pathDefinition; responses)
+				{
 					definedRoutes.paths[path][method][response] = pathDefinition;
 				}
+			}
+		}
 
-		bindRoutes(tmpRoutes, policy, crate);
+		bindRoutes(tmpRoutes, policy, crate, filters);
 
 		proxyCollection[router].addByPath(basePath(policy.name, crate.config), crate);
 
 		return this;
 	}
 
-	CrateRouter add(T)(Crate!T crate)
+	CrateRouter add(T)(Crate!T crate, ICrateFilter[] filters ...)
 	{
-		return add!RouterPolicy(crate);
+		return add!RouterPolicy(crate, filters);
 	}
 
 	private
 	{
-		void bindRoutes(T)(CrateRoutes routes, const CratePolicy policy, Crate!T crate)
+		void bindRoutes(T)(CrateRoutes routes, const CratePolicy policy, Crate!T crate, ICrateFilter[] filters)
 		{
-			auto methodCollection = new MethodCollection!T(policy, proxyCollection[router], crate.config);
+			auto methodCollection = new MethodCollection!T(policy, proxyCollection[router], crate.config, filters);
 
 			if (crate.config.getList || crate.config.addItem)
 			{
@@ -363,7 +368,6 @@ unittest
 			});
 }
 
-
 version(unittest) {
 	import crate.policy.restapi;
 	import std.stdio;
@@ -483,5 +487,57 @@ unittest
 	testRouter
 		.delete_("/sites/1")
 			.expectStatusCode(204)
+			.end();
+}
+
+@("Request query alteration")
+unittest {
+	auto router = new URLRouter();
+	auto baseCrate = new TestCrate!Site;
+
+	class BaseCrateFilter : ICrateFilter {
+
+	}
+
+	router
+		.crateSetup
+			.add(baseCrate, new BaseCrateFilter);
+
+	Json data1 = `{
+			"position": {
+				"type": "Point",
+				"coordinates": [0, 0]
+			}
+	}`.parseJsonString;
+
+	Json data2 = `{
+			"position": {
+				"type": "Dot",
+				"coordinates": [1, 1]
+			}
+	}`.parseJsonString;
+
+	baseCrate.addItem(data1);
+	baseCrate.addItem(data2);
+
+
+	request(router)
+		.get("/sites")
+			.expectStatusCode(200)
+			.end((Response response) => {
+				writeln(response.bodyJson);
+				response.bodyJson["sites"].length.should.equal(1);
+			});
+
+	request(router)
+		.get("/sites/1")
+			.expectStatusCode(200)
+			.end((Response response) => {
+				response.bodyJson["site"][0]["_id"].to!string.should.equal("1");
+			});
+
+	request(router)
+		.get("/sites/2")
+			.expectStatusCode(404)
 			.end();
 }

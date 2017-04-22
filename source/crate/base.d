@@ -22,7 +22,13 @@ enum CrateOperation
 	other
 }
 
-abstract class ICrateSelector
+
+interface ICrateFilter
+{
+
+}
+
+interface ICrateSelector
 {
 	ICrateSelector where(string field, string value);
 	ICrateSelector whereArrayContains(string field, string value);
@@ -153,9 +159,9 @@ interface Crate(Type)
 	ICrateSelector get();
 
 	ICrateSelector getList(string[string] parameters);
+	ICrateSelector getItem(string id);
 
 	Json addItem(Json item);
-	ICrateSelector getItem(string id);
 	void updateItem(Json item);
 	void deleteItem(string id);
 }
