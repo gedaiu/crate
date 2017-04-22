@@ -70,7 +70,7 @@ class MethodCollection(Type)
 		auto data = crate.getItem(request.params["id"]);
 
 		FieldDefinition definition = crate.definition;
-		auto denormalised = policy.serializer.denormalise(data, definition);
+		auto denormalised = policy.serializer.denormalise(data.exec, definition);
 
 		response.writeJsonBody(denormalised, 200, policy.mime);
 	}
@@ -81,7 +81,7 @@ class MethodCollection(Type)
 		addItemCORS(response);
 
 		FieldDefinition definition = crate.definition;
-		auto item = crate.getItem(request.params["id"]);
+		auto item = crate.getItem(request.params["id"]).exec.front;
 
 		auto newData = policy.serializer.normalise(request.params["id"], requestJson(request), definition);
 		auto mixedData = mix(item, newData);
@@ -249,7 +249,8 @@ class MethodCollection(Type)
 
 						try
 						{
-							data[field.name] = Json((cast(Json[])data[field.name]).map!((ref id) => crate.getItem(id.to!string)).array);
+							auto relations = (cast(Json[])data[field.name]).map!((ref id) => crate.getItem(id.to!string).exec.front).array;
+							data[field.name] = relations;
 						}
 						catch (CrateNotFoundException e)
 						{
@@ -263,7 +264,7 @@ class MethodCollection(Type)
 
 						try
 						{
-							data[field.name] = crate.getItem(id);
+							data[field.name] = crate.getItem(id).exec.front;
 						}
 						catch (CrateNotFoundException e)
 						{

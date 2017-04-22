@@ -122,14 +122,16 @@ class ApiUserTransformer: Crate!User {
 		return crate.addItem(item);
 	}
 
-	Json getItem(string id) {
-		return crate.getItem(id).fromCrate;
+	ICrateSelector getItem(string id) {
+		return new CrateRange(crate.getItem(id).exec.map!(a => a.fromCrate));
 	}
 
 	void updateItem(Json item) {
 		validateFields(item);
 
-		crate.updateItem(item.toCrate(crate.getItem(item["_id"].to!string)));
+		auto dbItem = crate.getItem(item["_id"].to!string).exec.front;
+
+		crate.updateItem(item.toCrate(dbItem));
 	}
 
 	void deleteItem(string id) {
@@ -264,7 +266,7 @@ unittest
 				user["name"].to!string.should.equal("test");
 				user["username"].to!string.should.equal("test_user");
 
-				auto userData = userDataCrate.getItem("1");
+				auto userData = userDataCrate.getItem("1").exec.front;
 				userData.keys.should.contain(["_id", "email", "name", "username"]);
 				userData.keys.should.not.contain(["isActive", "password", "salt", "scopes", "tokens"]);
 			});
@@ -285,7 +287,8 @@ unittest
 			.send(data)
 			.expectStatusCode(403)
 			.end((Response response) => {
-				auto userData = userDataCrate.getItem("1");
+				auto userData = userDataCrate.getItem("1").exec.front;
+
 				userData["_id"].to!string.should.equal("1");
 				userData["email"].to!string.should.equal("test2@asd.asd");
 				userData["name"].to!string.should.equal("test");
@@ -308,7 +311,7 @@ unittest
 					.send(data)
 					.expectStatusCode(200)
 					.end((Response response) => {
-						auto userData = userDataCrate.getItem("1");
+						auto userData = userDataCrate.getItem("1").exec.front;
 						userData["_id"].to!string.should.equal("1");
 						userData["email"].to!string.should.equal("test@asd.asd");
 						userData["name"].to!string.should.equal("test2");

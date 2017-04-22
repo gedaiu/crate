@@ -43,29 +43,29 @@ class CrateRange : ICrateSelector
 	}
 
 	this(T)(T data) {
-		this.data = inputRangeObject(data);
+		this.data = data.inputRangeObject;
 	}
 
 	override {
 		ICrateSelector where(string field, string value) {
-			data = inputRangeObject(data.filter!(a => a[field].to!string == value));
+			data = data.filter!(a => a[field].to!string == value).inputRangeObject;
 			return this;
 		}
 
 		ICrateSelector whereArrayContains(string field, string value) {
-			data = inputRangeObject(data.filter!(a => (cast(Json[])a[field]).canFind(Json(value))));
+			data = data.filter!(a => (cast(Json[])a[field]).canFind(Json(value))).inputRangeObject;
 			return this;
 		}
 
 		ICrateSelector whereArrayFieldContains(string arrayField, string field, string value) {
-			data = inputRangeObject(data.filter!(a => (cast(Json[])a[arrayField])
+			data = data.filter!(a => (cast(Json[])a[arrayField])
 								.map!(a => a[field])
-								.canFind(Json(value))));
+								.canFind(Json(value))).inputRangeObject;
 			return this;
 		}
 
 		ICrateSelector limit(ulong nr) {
-			data = inputRangeObject(data.take(nr));
+			data = data.take(nr).inputRangeObject;
 			return this;
 		}
 
@@ -155,7 +155,7 @@ interface Crate(Type)
 	ICrateSelector getList(string[string] parameters);
 
 	Json addItem(Json item);
-	Json getItem(string id);
+	ICrateSelector getItem(string id);
 	void updateItem(Json item);
 	void deleteItem(string id);
 }

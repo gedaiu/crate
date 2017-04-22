@@ -18,7 +18,7 @@ class CrateProxy: Crate!void
 		ICrateSelector delegate() getRef;
 		ICrateSelector delegate(string[string]) getListRef;
 		Json delegate(Json) addItemRef;
-		Json delegate(string) getItemRef;
+		ICrateSelector delegate(string) getItemRef;
 		void delegate(Json) updateItemRef;
 		void delegate(string) deleteItemRef;
 
@@ -81,7 +81,7 @@ class CrateProxy: Crate!void
 		return addItemRef(item);
 	}
 
-	Json getItem(string id)
+	ICrateSelector getItem(string id)
 	{
 		return getItemRef(id);
 	}

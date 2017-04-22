@@ -49,13 +49,9 @@ class MemoryCrate(T) : Crate!T
     return item;
   }
 
-  Json getItem(string id)
+  ICrateSelector getItem(string id)
   {
-    auto result = get.where(idField, id).limit(1).exec;
-
-    enforce!CrateNotFoundException(!result.empty, "No item found.");
-
-    return result.front;
+    return get.where(idField, id).limit(1);
   }
 
   void updateItem(Json item)

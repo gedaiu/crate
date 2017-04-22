@@ -30,7 +30,7 @@ class ModelAction(T: Crate!U, string actionName, U) : BaseAction!(U, actionName)
 		auto crate = collection.getByPath(request.path);
 
 		addItemCORS(response);
-		auto item = crate.getItem(request.params["id"]).deserializeJson!U;
+		auto item = crate.getItem(request.params["id"]).exec.front.deserializeJson!U;
 
 		auto func = &__traits(getMember, item, actionName);
 

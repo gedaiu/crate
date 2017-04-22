@@ -130,8 +130,8 @@ class MongoCrate(T): Crate!T
 	}
 
 	ICrateSelector get() {
-    return new MongoCrateRange(collection);
-  }
+		return new MongoCrateRange(collection);
+	}
 
 	ICrateSelector getList(string[string])
 	{
@@ -147,14 +147,16 @@ class MongoCrate(T): Crate!T
 		return item;
 	}
 
-	Json getItem(string id)
+	ICrateSelector getItem(string id)
 	{
 		if (collection.count(["_id" : toId(id, collection.name)]) == 0)
 		{
 			throw new CrateNotFoundException("There is no item with id `" ~ id ~ "` inside `" ~ collection.name ~ "`");
 		}
 
-		return collection.findOne!Json(["_id" : toId(id, collection.name)]);
+		return new CrateRange([
+			collection.findOne!Json(["_id" : toId(id, collection.name)])
+		]);
 	}
 
 	Json editItem(string id, Json fields)
@@ -168,7 +170,7 @@ class MongoCrate(T): Crate!T
 
 		collection.update(["_id" : toId(id, collection.name)], data);
 
-		return getItem(id);
+		return getItem(id).exec.front;
 	}
 
 	void updateItem(Json item)
