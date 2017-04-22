@@ -473,7 +473,11 @@ unittest
 
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
-	collection.drop;
+
+	try {
+		collection.drop;
+	} catch(Exception e) {}
+
 	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
 
 	auto router = new URLRouter();
@@ -495,7 +499,10 @@ unittest
 
 	auto client = connectMongoDB("127.0.0.1");
 	auto collection = client.getCollection("test.model");
-	collection.drop;
+
+	try {
+		collection.drop;
+	} catch(Exception e) {}
 	collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
 
 	auto router = new URLRouter();

@@ -70,7 +70,7 @@ class MethodCollection(Type)
 		auto data = crate.getItem(request.params["id"]);
 
 		FieldDefinition definition = crate.definition;
-		auto denormalised = policy.serializer.denormalise(data.exec, definition);
+		auto denormalised = policy.serializer.denormalise(data.exec.front, definition);
 
 		response.writeJsonBody(denormalised, 200, policy.mime);
 	}

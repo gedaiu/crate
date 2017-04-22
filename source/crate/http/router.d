@@ -258,6 +258,7 @@ version (unittest)
 {
 	import crate.base;
 	import fluentasserts.vibe.request;
+	import fluentasserts.vibe.json;
 	import vibe.data.json;
 	import vibe.data.bson;
 	import crate.collection.memory;
@@ -362,60 +363,81 @@ unittest
 			});
 }
 
-@("REST API tests")
-unittest
-{
+
+version(unittest) {
 	import crate.policy.restapi;
 	import std.stdio;
 
-	auto router = new URLRouter();
-	auto baseCrate = new TestCrate!Site;
+	auto testRouter() {
+		auto router = new URLRouter();
+		auto baseCrate = new TestCrate!Site;
 
-	router
-		.crateSetup
-			.add(baseCrate)
-				.enableCrateAction!(TestCrate!Site, "action")(baseCrate);
+		router
+			.crateSetup
+				.add(baseCrate)
+					.enableCrateAction!(TestCrate!Site, "action")(baseCrate);
 
-	Json data = `{
-			"position": {
-				"type": "Point",
-				"coordinates": [0, 0]
-			}
-	}`.parseJsonString;
+		Json data = `{
+				"position": {
+					"type": "Point",
+					"coordinates": [0, 0]
+				}
+		}`.parseJsonString;
 
-	baseCrate.addItem(data);
+		baseCrate.addItem(data);
 
-	request(router)
+		return request(router);
+	}
+}
+
+@("GET all items using REST API")
+unittest
+{
+	testRouter
 		.get("/sites")
 			.expectStatusCode(200)
 			.end((Response response) => {
 				response.bodyJson["sites"].length.should.be.greaterThan(0);
 				response.bodyJson["sites"][0]["_id"].to!string.should.equal("1");
 			});
+}
 
-	request(router)
+@("GET one item using REST API")
+unittest
+{
+	testRouter
 		.get("/sites/1")
 			.expectStatusCode(200)
 			.end((Response response) => {
-				assert(response.bodyJson["site"]["_id"] == "1");
+				response.bodyJson.keys.should.equal(["site"]);
+				response.bodyJson["site"].keys.should.contain(["position", "_id"]);
+				response.bodyJson["site"]["_id"].to!string.should.equal("1");
 			});
+}
 
-	data = `{
+@("POST invalid item using REST API")
+unittest
+{
+	auto data = `{
 		"site": {
 			"latitude": "0",
 			"longitude": "0"
 		}
 	}`.parseJsonString;
 
-	request(router)
+	testRouter
 		.post("/sites")
 			.send(data)
 				.expectStatusCode(403)
 				.end((Response response) => {
-					assert(response.bodyJson["errors"][0]["title"] == "Validation error");
+					response.bodyJson["errors"][0]["title"].to!string.should.equal("Validation error");
 				});
+}
 
-	data = `{
+@("POST valid item using REST API")
+unittest
+{
+	auto data = `{
 		"site": {
 			"position": {
 				"type": "Point",
@@ -424,15 +446,19 @@ unittest
 		}
 	}`.parseJsonString;
 
-	request(router)
+	testRouter
 		.post("/sites")
 			.send(data)
 				.expectStatusCode(201)
 				.end((Response response) => {
-					assert(response.bodyJson["site"]["_id"] == "2");
+					response.bodyJson["site"]["_id"].to!string.should.equal("2");
 				});
+}
 
-	data = `{
+@("PUT one item using REST API")
+unittest
+{
+	auto data = `{
 		"site": {
 			"position": {
 				"type": "Point",
@@ -441,18 +467,21 @@ unittest
 		}
 	}`.parseJsonString;
 
-	request(router)
+	testRouter
 		.put("/sites/1")
 			.send(data)
 				.expectStatusCode(200)
 				.end((Response response) => {
-					assert(response.bodyJson["site"]["position"]["coordinates"][0] == 0);
-					assert(response.bodyJson["site"]["position"]["coordinates"][1] == 1);
+					response.bodyJson["site"]["position"]["coordinates"][0].to!int.should.equal(0);
+					response.bodyJson["site"]["position"]["coordinates"][1].to!int.should.equal(1);
 				});
+}
 
-	request(router)
+@("DELETE one item using REST API")
+unittest
+{
+	testRouter
 		.delete_("/sites/1")
 			.expectStatusCode(204)
-			.end((Response response) => {
-			});
+			.end();
 }
