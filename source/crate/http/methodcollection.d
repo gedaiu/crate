@@ -71,8 +71,18 @@ class MethodCollection(Type)
 		addItemCORS(response);
 		auto data = crate.getItem(request.params["id"]);
 
+		foreach(filter; filters) {
+			data = filter.apply(request, data);
+		}
+
+		auto item = data.exec;
+
+		if(item.empty) {
+			throw new CrateNotFoundException("The resource can not be found.");
+		}
+
 		FieldDefinition definition = crate.definition;
-		auto denormalised = policy.serializer.denormalise(data.exec.front, definition);
+		auto denormalised = policy.serializer.denormalise(item.front, definition);
 
 		response.writeJsonBody(denormalised, 200, policy.mime);
 	}
@@ -136,8 +146,13 @@ class MethodCollection(Type)
 			parameters[key] = value;
 		}
 
-		auto list = crate.getList(parameters).exec;
-		auto data = policy.serializer.denormalise(list, definition);
+		auto list = crate.getList(parameters);
+
+		foreach(filter; filters) {
+			list = filter.apply(request, list);
+		}
+
+		auto data = policy.serializer.denormalise(list.exec, definition);
 		response.writeJsonBody(data, 200, policy.mime);
 	}
 

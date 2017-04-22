@@ -5,6 +5,7 @@ import vibe.data.json, vibe.http.common;
 import std.string, std.traits, std.conv;
 import std.algorithm, std.range, std.string;
 import std.range.interfaces;
+import vibe.http.server;
 
 import crate.ctfe;
 
@@ -25,7 +26,7 @@ enum CrateOperation
 
 interface ICrateFilter
 {
-
+	ICrateSelector apply(HTTPServerRequest, ICrateSelector);
 }
 
 interface ICrateSelector

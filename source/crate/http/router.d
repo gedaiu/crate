@@ -496,7 +496,9 @@ unittest {
 	auto baseCrate = new TestCrate!Site;
 
 	class BaseCrateFilter : ICrateFilter {
-
+		ICrateSelector apply(HTTPServerRequest, ICrateSelector selector) {
+			return new CrateRange(selector.exec.filter!(a => a["position"]["type"] == "Point"));
+		}
 	}
 
 	router
@@ -525,7 +527,6 @@ unittest {
 		.get("/sites")
 			.expectStatusCode(200)
 			.end((Response response) => {
-				writeln(response.bodyJson);
 				response.bodyJson["sites"].length.should.equal(1);
 			});
 
@@ -533,7 +534,8 @@ unittest {
 		.get("/sites/1")
 			.expectStatusCode(200)
 			.end((Response response) => {
-				response.bodyJson["site"][0]["_id"].to!string.should.equal("1");
+				response.bodyJson.writeln;
+				response.bodyJson["site"]["_id"].to!string.should.equal("1");
 			});
 
 	request(router)
