@@ -93,7 +93,19 @@ class MethodCollection(Type)
 		addItemCORS(response);
 
 		FieldDefinition definition = crate.definition;
-		auto item = crate.getItem(request.params["id"]).exec.front;
+		auto data = crate.getItem(request.params["id"]);
+
+		foreach(filter; filters) {
+			data = filter.apply(request, data);
+		}
+
+		auto crateRange = data.exec;
+
+		if(crateRange.empty) {
+			throw new CrateNotFoundException("Can not find the resource.");
+		}
+
+		auto item = crateRange.front;
 
 		auto newData = policy.serializer.normalise(request.params["id"], requestJson(request), definition);
 		auto mixedData = mix(item, newData);
@@ -101,8 +113,8 @@ class MethodCollection(Type)
 
 		crate.updateItem(mixedData);
 
-		auto data = policy.serializer.denormalise(mixedData, definition);
-		response.writeJsonBody(data, 200, policy.mime);
+		auto serializedItem = policy.serializer.denormalise(mixedData, definition);
+		response.writeJsonBody(serializedItem, 200, policy.mime);
 	}
 
 	void replaceItem(HTTPServerRequest request, HTTPServerResponse response)
@@ -111,7 +123,15 @@ class MethodCollection(Type)
 		addItemCORS(response);
 
 		FieldDefinition definition = crate.definition;
-		auto item = crate.getItem(request.params["id"]);
+		auto data = crate.getItem(request.params["id"]);
+
+		foreach(filter; filters) {
+			data = filter.apply(request, data);
+		}
+
+		if(data.exec.empty) {
+			throw new CrateNotFoundException("Can not find the resource.");
+		}
 
 		auto newData = policy.serializer.normalise(request.params["id"], requestJson(request), definition);
 
@@ -127,6 +147,18 @@ class MethodCollection(Type)
 	{
 		auto crate = collection.getByPath(request.path);
 		addItemCORS(response);
+
+		auto data = crate.getItem(request.params["id"]);
+
+		foreach(filter; filters) {
+			data = filter.apply(request, data);
+		}
+
+		auto item = data.exec;
+
+		if(item.empty) {
+			throw new CrateNotFoundException("The resource can not be found.");
+		}
 
 		crate.deleteItem(request.params["id"]);
 		response.writeBody("", 204, policy.mime);

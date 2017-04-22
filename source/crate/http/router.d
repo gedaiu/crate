@@ -534,7 +534,6 @@ unittest {
 		.get("/sites/1")
 			.expectStatusCode(200)
 			.end((Response response) => {
-				response.bodyJson.writeln;
 				response.bodyJson["site"]["_id"].to!string.should.equal("1");
 			});
 
@@ -542,4 +541,33 @@ unittest {
 		.get("/sites/2")
 			.expectStatusCode(404)
 			.end();
+
+		Json dataUpdate = `{ "site": {
+				"position": {
+					"type": "Point",
+					"coordinates": [0, 0]
+				}
+		}}`.parseJsonString;
+
+	request(router)
+		.put("/sites/1")
+			.send(dataUpdate)
+				.expectStatusCode(200)
+				.end();
+
+	request(router)
+		.put("/sites/2")
+			.send(dataUpdate)
+				.expectStatusCode(404)
+				.end();
+
+request(router)
+	.delete_("/sites/1")
+			.expectStatusCode(204)
+			.end();
+
+	request(router)
+		.delete_("/sites/2")
+				.expectStatusCode(404)
+				.end();
 }
