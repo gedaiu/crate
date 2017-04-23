@@ -490,83 +490,113 @@ unittest
 			.end();
 }
 
-@("Request query alteration")
-unittest {
-	auto router = new URLRouter();
-	auto baseCrate = new TestCrate!Site;
-
-	class BaseCrateFilter : ICrateFilter {
-		ICrateSelector apply(HTTPServerRequest, ICrateSelector selector) {
+version(unittest) {
+	class SomeTestCrateFilter : ICrateFilter {
+		ICrateSelector apply(HTTPServerRequest request, ICrateSelector selector) {
 			return new CrateRange(selector.exec.filter!(a => a["position"]["type"] == "Point"));
 		}
 	}
 
-	router
-		.crateSetup
-			.add(baseCrate, new BaseCrateFilter);
+	auto queryRouter() {
+		auto router = new URLRouter();
+		auto baseCrate = new MemoryCrate!Site;
 
-	Json data1 = `{
-			"position": {
-				"type": "Point",
-				"coordinates": [0, 0]
-			}
-	}`.parseJsonString;
+		router
+			.crateSetup
+				.add(baseCrate, new SomeTestCrateFilter);
 
-	Json data2 = `{
-			"position": {
-				"type": "Dot",
-				"coordinates": [1, 1]
-			}
-	}`.parseJsonString;
+		Json data1 = `{
+				"position": {
+					"type": "Point",
+					"coordinates": [0, 0]
+				}
+		}`.parseJsonString;
 
-	baseCrate.addItem(data1);
-	baseCrate.addItem(data2);
+		Json data2 = `{
+				"position": {
+					"type": "Dot",
+					"coordinates": [1, 1]
+				}
+		}`.parseJsonString;
 
+		baseCrate.addItem(data1);
+		baseCrate.addItem(data2);
 
-	request(router)
+		return router;
+	}
+}
+
+@("Request all items using query alteration")
+unittest {
+	request(queryRouter)
 		.get("/sites")
 			.expectStatusCode(200)
 			.end((Response response) => {
 				response.bodyJson["sites"].length.should.equal(1);
 			});
+}
 
-	request(router)
+@("Get available items with query alteration")
+unittest {
+	request(queryRouter)
 		.get("/sites/1")
 			.expectStatusCode(200)
 			.end((Response response) => {
 				response.bodyJson["site"]["_id"].to!string.should.equal("1");
 			});
+}
 
-	request(router)
+@("Get unavailable items with query alteration")
+unittest {
+	request(queryRouter)
 		.get("/sites/2")
 			.expectStatusCode(404)
 			.end();
+}
 
-		Json dataUpdate = `{ "site": {
-				"position": {
-					"type": "Point",
-					"coordinates": [0, 0]
-				}
-		}}`.parseJsonString;
+@("Replace available items using query alteration")
+unittest {
+	Json dataUpdate = `{ "site": {
+			"position": {
+				"type": "Point",
+				"coordinates": [0, 0]
+			}
+	}}`.parseJsonString;
 
-	request(router)
+	request(queryRouter)
 		.put("/sites/1")
 			.send(dataUpdate)
 				.expectStatusCode(200)
 				.end();
+}
 
-	request(router)
+@("Replace available items using query alteration")
+unittest {
+	Json dataUpdate = `{ "site": {
+			"position": {
+				"type": "Point",
+				"coordinates": [0, 0]
+			}
+	}}`.parseJsonString;
+
+	request(queryRouter)
 		.put("/sites/2")
 			.send(dataUpdate)
 				.expectStatusCode(404)
 				.end();
+}
 
-request(router)
-	.delete_("/sites/1")
+@("Delete available items using query alteration")
+unittest {
+	request(queryRouter)
+		.delete_("/sites/1")
 			.expectStatusCode(204)
 			.end();
+}
 
-	request(router)
+@("Delete unavailable items using query alteration")
+unittest {
+	request(queryRouter)
 		.delete_("/sites/2")
 				.expectStatusCode(404)
 				.end();

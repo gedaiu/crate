@@ -33,7 +33,7 @@ class MethodCollection(Type)
 		this.policy = policy;
 		this.collection = collection;
 		this.config = config;
-		this.filters = filters;
+		this.filters = filters.dup;
 	}
 
 	private Json requestJson(HTTPServerRequest request) {
@@ -69,6 +69,7 @@ class MethodCollection(Type)
 	{
 		auto crate = collection.getByPath(request.path);
 		addItemCORS(response);
+
 		auto data = crate.getItem(request.params["id"]);
 
 		foreach(filter; filters) {
@@ -83,7 +84,6 @@ class MethodCollection(Type)
 
 		FieldDefinition definition = crate.definition;
 		auto denormalised = policy.serializer.denormalise(item.front, definition);
-
 		response.writeJsonBody(denormalised, 200, policy.mime);
 	}
 
