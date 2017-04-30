@@ -173,6 +173,23 @@ unittest {
 					assert(readText(parentFile) == "this is a text file", "The parent file contains invalid data");
 					assert(readText(childFile) == "hello world" , "The child file contains invalid data");
 				});
+
+	data = `{
+		"item": {
+			"file": "data:text/plain;base64,Y2hhbmdlMQ==",
+			"child": {
+				"file": "data:text/plain;base64,Y2hhbmdlMg=="
+			}
+		}
+	}`.parseJsonString;
+
+	request(router)
+		.put("/items/1")
+			.send(data)
+				.expectStatusCode(200)
+				.end((Response response) => {
+					response.bodyJson["item"]["file"].to!string.should.not.startWith("data:");
+				});
 }
 
 @("the user should be able to download a file")

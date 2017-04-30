@@ -58,6 +58,29 @@ struct User {
 	string name;
 	string username;
 	string email;
+
+	Json toJson() const {
+		Json result = Json.emptyObject;
+
+		result["_id"] = _id;
+		result["name"] = name;
+		result["username"] = username;
+		result["email"] = email;
+
+		return result;
+	}
+
+	static User fromJson(Json src) {
+		validateUserFields(src);
+
+		User user;
+		user._id = src["_id"].to!string;
+		user.name = src["name"].to!string;
+		user.username = src["username"].to!string;
+		user.email = src["email"].to!string;
+
+		return user;
+	}
 }
 
 class ApiUserSelector: ProxySelector {
@@ -117,7 +140,7 @@ class ApiUserTransformer: Crate!User {
 	}
 
 	Json addItem(Json item) {
-		validateFields(item);
+		validateUserFields(item);
 
 		return crate.addItem(item);
 	}
@@ -127,7 +150,7 @@ class ApiUserTransformer: Crate!User {
 	}
 
 	void updateItem(Json item) {
-		validateFields(item);
+		validateUserFields(item);
 
 		auto dbItem = crate.getItem(item["_id"].to!string).exec.front;
 
@@ -137,13 +160,13 @@ class ApiUserTransformer: Crate!User {
 	void deleteItem(string id) {
 		crate.deleteItem(id);
 	}
+}
 
-	private void validateFields(Json data) {
-		static immutable forbiddenFields = ["isActive", "password", "salt", "scopes", "tokens"];
+private void validateUserFields(Json data) {
+	static immutable forbiddenFields = ["isActive", "password", "salt", "scopes", "tokens"];
 
-		foreach(field; forbiddenFields) {
-			enforce!CrateValidationException(data[field].type == Json.Type.undefined, "`" ~ field ~ "` must not be present.");
-		}
+	foreach(field; forbiddenFields) {
+		enforce!CrateValidationException(data[field].type == Json.Type.undefined, "`" ~ field ~ "` must not be present.");
 	}
 }
 
@@ -255,20 +278,12 @@ unittest
 	request(router)
 		.post("/users")
 			.send(data)
-			.expectStatusCode(201)
+			.expectStatusCode(403)
 			.end((Response response) => {
-				auto user = response.bodyJson["user"];
-				user.keys.should.contain(["_id", "email", "name", "username"]);
-				user.keys.should.not.contain(["isActive", "password", "salt", "scopes", "tokens"]);
+				string[string] params;
 
-				user["_id"].to!string.should.equal("1");
-				user["email"].to!string.should.equal("test2@asd.asd");
-				user["name"].to!string.should.equal("test");
-				user["username"].to!string.should.equal("test_user");
-
-				auto userData = userDataCrate.getItem("1").exec.front;
-				userData.keys.should.contain(["_id", "email", "name", "username"]);
-				userData.keys.should.not.contain(["isActive", "password", "salt", "scopes", "tokens"]);
+				response.bodyJson.keys.should.equal(["errors"]);
+				userDataCrate.getList(params).exec.empty.should.equal(true);
 			});
 }
 
@@ -289,10 +304,33 @@ unittest
 			.end((Response response) => {
 				auto userData = userDataCrate.getItem("1").exec.front;
 
+				userData["_id"].should.equal("1");
+				userData["email"].should.equal("test2@asd.asd");
+				userData["name"].should.equal("test");
+				userData["username"].should.equal("test_user");
+				userData["isActive"].should.equal("true");
+				userData["password"].should.equal("password");
+				userData["salt"].should.equal("salt");
+
+				userData["scopes"][0].should.equal("scopes");
+				userData["tokens"].length.should.equal(1);
+			});
+
+	data["user"] = Json.emptyObject;
+	data["user"]["email"] = "test@asd.asd";
+	data["user"]["name"] = "test2";
+	data["user"]["username"] = "test_user2";
+
+	request(router)
+		.put("/users/1")
+			.send(data)
+			.expectStatusCode(200)
+			.end((Response response) => {
+				auto userData = userDataCrate.getItem("1").exec.front;
 				userData["_id"].to!string.should.equal("1");
-				userData["email"].to!string.should.equal("test2@asd.asd");
-				userData["name"].to!string.should.equal("test");
-				userData["username"].to!string.should.equal("test_user");
+				userData["email"].to!string.should.equal("test@asd.asd");
+				userData["name"].to!string.should.equal("test2");
+				userData["username"].to!string.should.equal("test_user2");
 				userData["isActive"].to!string.should.equal("true");
 				userData["password"].to!string.should.equal("password");
 				userData["salt"].to!string.should.equal("salt");
@@ -300,29 +338,6 @@ unittest
 				userData["scopes"][0].to!string.should.equal("scopes");
 				userData["tokens"].length.should.equal(1);
 			});
-
-			data["user"] = Json.emptyObject;
-			data["user"]["email"] = "test@asd.asd";
-			data["user"]["name"] = "test2";
-			data["user"]["username"] = "test_user2";
-
-			request(router)
-				.put("/users/1")
-					.send(data)
-					.expectStatusCode(200)
-					.end((Response response) => {
-						auto userData = userDataCrate.getItem("1").exec.front;
-						userData["_id"].to!string.should.equal("1");
-						userData["email"].to!string.should.equal("test@asd.asd");
-						userData["name"].to!string.should.equal("test2");
-						userData["username"].to!string.should.equal("test_user2");
-						userData["isActive"].to!string.should.equal("true");
-						userData["password"].to!string.should.equal("password");
-						userData["salt"].to!string.should.equal("salt");
-
-						userData["scopes"][0].to!string.should.equal("scopes");
-						userData["tokens"].length.should.equal(1);
-					});
 }
 
 @("it should search users by a term")

@@ -137,6 +137,14 @@ class MethodCollection(Type)
 
 		checkRelationships(newData, definition);
 		checkFields(newData, definition);
+
+		try {
+			newData = newData.deserializeJson!Type.serializeToJson.serializeToJson;
+		} catch (JSONException e) {
+			debug writeln(e);
+			throw new CrateValidationException(e.msg, e);
+		}
+
 		crate.updateItem(newData);
 
 		response.writeJsonBody(policy.serializer.denormalise(newData,
