@@ -7,6 +7,7 @@ import crate.ctfe;
 import vibe.inet.url;
 import vibe.http.router;
 import vibe.data.json;
+import vibe.data.serialization;
 import vibe.db.mongo.collection;
 import vibe.db.mongo.mongo;
 
@@ -86,19 +87,32 @@ class MongoCrateRange : ICrateSelector
 				}
 
 				int opApply(scope int delegate(Json) d) {
-					int d2(ref Json data) {
-						return d(data);
+					int result = 0;
+					while(!cursor.empty) {
+						result = d(cursor.front);
+						cursor.popFront;
+
+						if(result) {
+							break;
+						}
 					}
 
-					return cursor.opApply(&d2);
+					return result;
 				}
 
 				int opApply(scope int delegate(size_t, Json) d) {
-					int d2(ref ulong idx, ref Json data) {
-						return d(idx, data);
+					int result = 0;
+					size_t i;
+					while(!cursor.empty) {
+						result = d(i, cursor.front);
+						cursor.popFront;
+						i++;
+						if(result) {
+							break;
+						}
 					}
 
-					return cursor.opApply(&d2);
+					return result;
 				}
 			}
 
@@ -319,6 +333,7 @@ unittest {
 	assert(result["relations"][0].toJson.to!string == model.relations[0]._id.to!string);
 }
 
+/// It should save data to mongo db using JSON API
 unittest
 {
 	import vibe.db.mongo.mongo : connectMongoDB;
@@ -337,8 +352,12 @@ unittest
 	data["data"]["type"] = "testmodels";
 	data["data"]["attributes"] = Json.emptyObject;
 	data["data"]["attributes"]["name"] = "test name";
+	data["data"]["attributes"]["other"] = "";
 
-	request(router).post("/testmodels").send(data).expectHeader("Content-Type", "application/vnd.api+json")
+	request(router).post("/testmodels")
+		.header("Content-Type", "application/vnd.api+json")
+		.send(data)
+		.expectHeader("Content-Type", "application/vnd.api+json")
 		.expectHeaderContains("Location", "http://localhost/testmodels/").expectStatusCode(201)
 		.end((Response response) => {
 			auto id = response.bodyJson["data"]["id"].to!string;

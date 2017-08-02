@@ -42,8 +42,8 @@ class MethodCollection(Type)
 		if(data.type == Json.Type.undefined) {
 			data = Json.emptyObject;
 
-			foreach(key; request.form) {
-				data[key] = request.form[key];
+			foreach(item; request.form.byKeyValue) {
+				data[item.key] = item.value;
 			}
 		}
 
@@ -202,8 +202,11 @@ class MethodCollection(Type)
 		addListCORS(response);
 
 		FieldDefinition definition = crate.definition;
+
 		auto data = policy.serializer.normalise("", requestJson(request), definition);
+
 		checkRelationships(data, definition);
+
 		checkFields(data, definition);
 
 		try {

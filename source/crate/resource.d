@@ -20,6 +20,7 @@ interface CrateResource {
 }
 
 version(unittest) {
+	import fluent.asserts;
 	import fluentasserts.vibe.request;
 
 	class TestResource : CrateResource {
@@ -45,11 +46,11 @@ version(unittest) {
 			return "test body".length;
 		}
 
-		override string toString() const {
+		override string toString() const @safe {
 			return "test resource";
 		}
 
-		static TestResource fromString(string src) {
+		static TestResource fromString(string src) @safe {
 			return new TestResource;
 		}
 	}
@@ -184,7 +185,7 @@ unittest {
 	data ~= "Content-Disposition: form-data; name=\"resource\"; filename=\"resource.txt\"\r\n";
 	data ~= "Content-Type: text/plain\r\n\r\n";
 	data ~= "hello\r\n";
-	data ~= "-----------------------------9855312492823326321373169801--\r\n";
+	data ~= "-----------------------------9855312492823326321373169801--\r\n\r\n";
 
 	request(router)
 		.header("Content-Type", "multipart/form-data; boundary=---------------------------9855312492823326321373169801")
@@ -192,7 +193,7 @@ unittest {
 		.expectStatusCode(201)
 		.send(data)
 		.end((Response response) => {
-			assert(TestResource.lastRead == "hello");
+			TestResource.lastRead.should.equal("hello");
 		});
 }
 

@@ -54,6 +54,7 @@ class Resource(T, string resourcePath)
 
 		auto crate = collection.getByPath(request.path);
 		addItemCORS(crate.config, response);
+
 		auto item = crate.getItem(request.params["id"]).exec.front.deserializeJson!T;
 
 		mixin("CrateResource obj = item" ~ resourceAccess ~ ";");

@@ -314,7 +314,7 @@ version (unittest)
 		string _id = "1";
 		Point position;
 
-		Json toJson() const {
+		Json toJson() const @safe {
 			Json data = Json.emptyObject;
 
 			data["_id"] = _id;
@@ -323,7 +323,7 @@ version (unittest)
 			return data;
 		}
 
-		static Site fromJson(Json src) {
+		static Site fromJson(Json src) @safe {
 			return Site(
 				src["_id"].to!string,
 				Point("Point", [ src["position"]["coordinates"][0].to!int, src["position"]["coordinates"][1].to!int ])

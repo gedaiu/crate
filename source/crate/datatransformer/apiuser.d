@@ -59,7 +59,7 @@ struct User {
 	string username;
 	string email;
 
-	Json toJson() const {
+	Json toJson() const @safe {
 		Json result = Json.emptyObject;
 
 		result["_id"] = _id;
@@ -70,7 +70,7 @@ struct User {
 		return result;
 	}
 
-	static User fromJson(Json src) {
+	static User fromJson(Json src) @safe {
 		validateUserFields(src);
 
 		User user;
@@ -162,7 +162,7 @@ class ApiUserTransformer: Crate!User {
 	}
 }
 
-private void validateUserFields(Json data) {
+private void validateUserFields(Json data) @trusted {
 	static immutable forbiddenFields = ["isActive", "password", "salt", "scopes", "tokens"];
 
 	foreach(field; forbiddenFields) {

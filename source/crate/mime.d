@@ -1,6 +1,6 @@
 module crate.mime;
 
-string toExtension(string name) {
+string toExtension(string name) @safe {
   immutable auto mime = [
     "audio/basic": ".au",
     "video/avi": ".avi",
@@ -50,7 +50,7 @@ string toExtension(string name) {
   return name in mime ? mime[name] : "";
 }
 
-string toMime(string name) {
+string toMime(string name) @safe {
   immutable auto mime = [
     ".au": "audio/basic",
     ".avi": "video/avi",

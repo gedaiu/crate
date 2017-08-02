@@ -386,7 +386,6 @@ private
 					}
 					else
 					{
-						pragma(msg, "TT ", Type);
 						schemaList[key]["type"] = "object";
 						enum fields = Describe!Type.fields;
 						describe!(fields, Type)(schemaList[key]);
@@ -405,7 +404,6 @@ private
 					}
 					else
 					{
-						pragma(msg, "TT ", Type);
 						schemaList[key]["type"] = "object";
 						enum fields = Describe!Type.fields;
 						describe!(fields, Type)(schemaList[key]);
