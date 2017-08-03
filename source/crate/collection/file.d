@@ -41,7 +41,7 @@ class CrateFile : CrateResource {
 		return currentFileName;
 	}
 
-	static CrateFile fromString(string encoded) @safe {
+	static CrateFile fromString(string encoded) @trusted {
 		enum dataLength = "data:".length;
 
 		if(encoded.length > dataLength && encoded[0..dataLength] == "data:") {
@@ -51,15 +51,15 @@ class CrateFile : CrateResource {
 		return new CrateFile(encoded);
 	}
 
-	static CrateFile fromBase64(Range)(Range r) @safe if (isInputRange!(Unqual!Range)) {
+	static CrateFile fromBase64(Range)(Range r) @trusted if (isInputRange!(Unqual!Range)) {
 		return fromBase64(randomUUID.to!string.replace("-", ""), r);
 	}
 
-	static CrateFile fromBase64(Range)(string name, Range r) @safe if (isInputRange!(Unqual!Range)) {
+	static CrateFile fromBase64(Range)(string name, Range r) @trusted if (isInputRange!(Unqual!Range)) {
 		return fromBase64(defaultPath, name, r);
 	}
 
-	static CrateFile fromBase64(Range)(string path, string name, Range r) @safe if (isInputRange!(Unqual!Range)) {
+	static CrateFile fromBase64(Range)(string path, string name, Range r) @trusted if (isInputRange!(Unqual!Range)) {
 		enum dataLength = "data:".length;
 		enum base64Length = ";base64,".length;
 
