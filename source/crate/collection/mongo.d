@@ -50,7 +50,7 @@ class MongoCrateRange : ICrateSelector
 			return this;
 		}
 
-		ICrateSelector limit(ulong nr) {
+		ICrateSelector limit(size_t nr) {
 			resultCount = nr;
 
 			return this;

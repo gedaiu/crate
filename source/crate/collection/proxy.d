@@ -169,7 +169,7 @@ class ProxySelector: ICrateSelector {
 			return this;
 		}
 
-		ICrateSelector limit(ulong nr) {
+		ICrateSelector limit(size_t nr) {
 			this.selector.limit(nr);
 
 			return this;

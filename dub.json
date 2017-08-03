@@ -1,7 +1,7 @@
 {
   "name": "crate",
-  "description": "A minimal D application.",
-  "copyright": "Copyright © 2016, gedaiu",
+  "description": "The easy way for creating JSON API with D and vibe.d",
+  "copyright": "Copyright © 2017, gedaiu",
   "authors": ["gedaiu"],
   "license": "MIT",
   "targetType": "library",

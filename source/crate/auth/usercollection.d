@@ -112,7 +112,7 @@ class UserCrateCollection: UserCollection
       crate.deleteItem(id);
     }
 
-    ulong length() {
+    size_t length() {
       assert(false, "not implemented");
     }
 

@@ -34,7 +34,7 @@ interface ICrateSelector
 	ICrateSelector where(string field, string value);
 	ICrateSelector whereArrayContains(string field, string value);
 	ICrateSelector whereArrayFieldContains(string arrayField, string field, string value);
-	ICrateSelector limit(ulong nr);
+	ICrateSelector limit(size_t nr);
 
 	InputRange!Json exec();
 }
@@ -71,7 +71,7 @@ class CrateRange : ICrateSelector
 			return this;
 		}
 
-		ICrateSelector limit(ulong nr) {
+		ICrateSelector limit(size_t nr) {
 			data = data.take(nr).inputRangeObject;
 			return this;
 		}
