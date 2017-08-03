@@ -13,6 +13,6 @@
     "fluent-asserts": "~>0.6.3",
     "fluent-asserts:vibe": "~>0.6.3",
     "arsd-official:terminal": "~>1.2.2",
-    "trial": "~>1.2.2"
+    "trial": "~>0.2.3"
   }
 }
