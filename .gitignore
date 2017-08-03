@@ -18,3 +18,4 @@ examples/testRestApiModel/ember
 /generated.d
 /crate-test-library
 /trial.json
+coverage/
