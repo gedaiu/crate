@@ -8,11 +8,10 @@
 
   "dependencies": {
     "swaggerize": "~>0.2.2",
-    "vibe-d": "~>0.8.1-beta.1",
+    "vibe-d": "~>0.8.1",
     "vibe-auth": "~>0.1.2",
     "fluent-asserts": "~>0.6.5",
-    "fluent-asserts:vibe": "~>0.6.5",
-    "arsd-official:terminal": "~>1.2.2",
-    "trial": "~>0.2.3"
+    "fluent-asserts:vibe": "~>0.6.5"
   }
 }
+
