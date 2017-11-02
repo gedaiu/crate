@@ -53,7 +53,7 @@ class BaseAction(T, string actionName)
 			response.addHeaderValues("Access-Control-Allow-Headers", [ "Content-Type" ]);
 		}
 
-		auto call(F)(F func) {
+		auto call(F)(HTTPServerRequest request, F func) {
 			ActionResult result;
 
 			static if (Param.length == 0)
@@ -83,7 +83,8 @@ class BaseAction(T, string actionName)
 
 				static if (is(RType == void))
 				{
-					func(data);
+					alias PT = Parameters!func[0];
+					func(data.to!PT);
 				}
 				else
 				{

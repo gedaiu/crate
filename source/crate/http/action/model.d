@@ -34,7 +34,7 @@ class ModelAction(T: Crate!U, string actionName, U) : BaseAction!(U, actionName)
 
 		auto func = &__traits(getMember, item, actionName);
 
-		auto result = call(func);
+		auto result = call(request, func);
 
 		crate.updateItem(item.serializeToJson);
 		response.writeBody(result.data, result.code);
