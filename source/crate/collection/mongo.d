@@ -361,7 +361,7 @@ unittest
 		.expectHeaderContains("Location", "http://localhost/testmodels/").expectStatusCode(201)
 		.end((Response response) => {
 			auto id = response.bodyJson["data"]["id"].to!string;
-			assert(response.headers["Location"] == "http://localhost/testmodels/" ~ id);
+			response.headers["Location"].should.equal("http://localhost/testmodels/" ~ id);
 		});
 }
 

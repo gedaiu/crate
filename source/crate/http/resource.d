@@ -9,6 +9,7 @@ import std.exception;
 import vibe.inet.url;
 import vibe.http.router;
 import vibe.data.json;
+import vibe.internal.interfaceproxy;
 
 import crate.base;
 import crate.error;

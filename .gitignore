@@ -19,3 +19,5 @@ examples/testRestApiModel/ember
 /crate-test-library
 /trial.json
 coverage/
+trial-root
+trial_root.d

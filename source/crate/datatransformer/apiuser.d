@@ -308,7 +308,7 @@ unittest
 				userData["email"].should.equal("test2@asd.asd");
 				userData["name"].should.equal("test");
 				userData["username"].should.equal("test_user");
-				userData["isActive"].should.equal("true");
+				userData["isActive"].should.equal(true);
 				userData["password"].should.equal("password");
 				userData["salt"].should.equal("salt");
 

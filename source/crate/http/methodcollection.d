@@ -220,7 +220,15 @@ class MethodCollection(Type)
 		crate.addItem(data);
 
 		Json item = policy.serializer.denormalise(data, definition);
-		response.headers["Location"] = (request.fullURL ~ Path(data["_id"].to!string)).to!string;
+		string glue;
+		string strUrl = request.fullURL.to!string;
+
+		if(!strUrl.endsWith("/")) {
+			glue = "/";
+		}
+
+
+		response.headers["Location"] = strUrl ~ glue ~ data["_id"].to!string;
 		response.writeJsonBody(item, 201, policy.mime);
 	}
 

@@ -2,16 +2,28 @@
   "name": "crate",
   "description": "The easy way for creating JSON API with D and vibe.d",
   "copyright": "Copyright © 2017, gedaiu",
-  "authors": ["gedaiu"],
+  "authors": [
+    "gedaiu"
+  ],
   "license": "MIT",
   "targetType": "library",
-
   "dependencies": {
     "swaggerize": "~>0.2.2",
     "vibe-d": "~>0.8.1",
-    "vibe-auth": "~>0.1.2",
-    "fluent-asserts": "~>0.7.0",
-    "fluent-asserts:vibe": "~>0.7.0"
-  }
+    "vibe-auth": "~>0.1.4"
+  },
+  "configurations": [
+    {
+      "name": "trial",
+      "dependencies": {
+        "vibe-d": "*",
+        "fluent-asserts": "~>0.11.0",
+        "trial:lifecycle": "~>0.7.0-alpha.5"
+      },
+      "versions": [
+        "JsonLineNumbers",
+        "VibeJsonFieldNames"
+      ]
+    }
+  ]
 }
-

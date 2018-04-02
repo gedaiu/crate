@@ -33,7 +33,7 @@ class CrateAction(T: Crate!U, string actionName, U) : BaseAction!(T, actionName)
 		alias Param = Parameters!(__traits(getMember, T, actionName));
 		alias RType = ReturnType!(__traits(getMember, T, actionName));
 
-		auto result = call(func);
+		auto result = call(request, func);
 
 		response.writeBody(result.data, result.code);
 	}

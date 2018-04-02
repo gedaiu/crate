@@ -1,18 +1,22 @@
 module crate.resource;
 
-public import vibe.core.stream;
+import vibe.core.stream;
 
 import vibe.data.json;
-public import vibe.inet.webform;
+import vibe.inet.webform;
+import vibe.http.server;
+import vibe.inet.webform;
 
 import std.conv;
 import std.file;
 import std.stdio;
 
+alias BodyOutputStream = typeof(HTTPServerResponse.bodyWriter);
+
 interface CrateResource {
 	string contentType();
 
-	void write(OutputStream bodyWriter);
+	void write(BodyOutputStream bodyWriter);
 	void read(const FilePart file);
 
 	bool hasSize();
@@ -30,7 +34,7 @@ version(unittest) {
 			return "test/resource";
 		}
 
-		void write(OutputStream bodyWriter) {
+		void write(BodyOutputStream bodyWriter) {
 			bodyWriter.write("test body".to!(char[]));
 		}
 

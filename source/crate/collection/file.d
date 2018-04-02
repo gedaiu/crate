@@ -12,6 +12,7 @@ import std.algorithm;
 import std.uuid;
 import std.path;
 import std.exception;
+import vibe.inet.webform;
 
 import crate.mime;
 import crate.resource;
@@ -88,7 +89,7 @@ class CrateFile : CrateResource {
 		return currentFileName.extension.toMime;
 	}
 
-	void write(OutputStream bodyWriter) {
+	void write(BodyOutputStream bodyWriter) {
 		auto f = File(currentFileName, "r");
 		scope(exit) f.close;
 
