@@ -12,6 +12,8 @@ addons:
     - libmagickwand-dev
     - imagemagick
 
+services: mongodb
+
 d:
   # order: latest DMD, oldest DMD, LDC/GDC, remaining DMD versions
   # this way the overall test time gets cut down (GDC/LDC are a lot
@@ -29,4 +31,6 @@ matrix:
   allow_failures:
     - d: dmd-beta
     - d: ldc-beta
+
+
 script: ./travis-ci.sh
