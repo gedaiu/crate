@@ -11,7 +11,7 @@ void addHeaderValues(HTTPResponse response, const string name, string[] values) 
     values = response.headers[name].split(",") ~ values;
   }
 
-  response.headers[name] = values.map!(a => a.strip).uniq.join(", ");
+  response.headers[name] = values.map!(a => a.strip).uniq.filter!(a => a != "").join(", ");
 }
 
 @("it should create the header if does not exist")

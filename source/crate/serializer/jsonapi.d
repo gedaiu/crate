@@ -14,7 +14,8 @@ import std.traits, std.stdio, std.string;
 import std.range.interfaces;
 
 class CrateJsonApiSerializer : CrateSerializer
-{
+{	
+	/// Prepare the data to be sent to the client
 	Json denormalise(InputRange!Json data, ref const FieldDefinition definition) inout {
 		Json value = Json.emptyObject;
 
@@ -27,6 +28,7 @@ class CrateJsonApiSerializer : CrateSerializer
 		return value;
 	}
 
+	/// ditto
 	Json denormalise(Json data, ref const FieldDefinition definition) inout {
 		auto id(const FieldDefinition[] relationFields)
 		{
@@ -107,6 +109,7 @@ class CrateJsonApiSerializer : CrateSerializer
 		return value;
 	}
 
+	/// Get the client data and prepare it for deserialization
 	Json normalise(string id, Json data, ref const FieldDefinition definition) inout
 	{
 		enforce!CrateValidationException(data["data"]["type"].to!string == type(definition),

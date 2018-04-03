@@ -19,6 +19,7 @@ import vibe.http.router;
 import std.conv;
 import std.traits;
 import std.stdio;
+import std.functional;
 
 alias DefaultPolicy = crate.policy.restapi.CrateRestApiPolicy;
 
@@ -600,4 +601,27 @@ unittest {
 		.delete_("/sites/2")
 				.expectStatusCode(404)
 				.end();
+}
+
+//// 
+import crate.serializer.restapi;
+
+URLRouter putRestApi(T)(URLRouter router, string route, T function(T object, HTTPServerResponse res) @safe handler) {
+  return putRestApi(router, route, handler.toDelegate);
+}
+
+URLRouter putRestApi(T)(URLRouter router, string route, T delegate(T object, HTTPServerResponse res) @safe handler) {
+  FieldDefinition definition = getFields!T;
+
+  auto serializer = new RestApiSerializer(definition);
+
+  void handleRequest(HTTPServerRequest req, HTTPServerResponse res) @safe {
+    auto clientData = serializer.normalise(req.params["id"], req.json);
+    auto result = handler(clientData.deserializeJson!T, res);
+
+    res.statusCode = 200;
+    res.writeJsonBody(serializer.denormalise(result.serializeToJson));
+  }
+
+  return router.put(route, &handleRequest);
 }

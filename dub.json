@@ -10,11 +10,22 @@
   "dependencies": {
     "swaggerize": "~>0.2.2",
     "vibe-d": "~>0.8.1",
-    "vibe-auth": "~>0.1.4"
+    "vibe-auth": "~>0.1.5"
   },
   "configurations": [
     {
+      "name": "library"
+    },
+    {
       "name": "trial",
+      "sourcePaths": [
+        "source",
+        "tests"
+      ],
+      "importPaths": [
+        "source",
+        "tests"
+      ],
       "dependencies": {
         "vibe-d": "*",
         "fluent-asserts": "~>0.11.0",
