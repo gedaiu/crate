@@ -46,6 +46,7 @@ Site putSite(Site site, HTTPServerResponse res) @safe {
 
 alias s = Spec!({
   describe("The crate router", {
+
     it("should accept a PUT with REST Api structure", {
       auto router = new URLRouter();
       router.putRestApi("/sites/:id", &putSite);
@@ -64,6 +65,32 @@ alias s = Spec!({
             .end((Response response) => {
               dataUpdate["site"]["_id"] = "10";
               response.bodyJson.should.equal(dataUpdate);
+            });
+    });
+
+    it("should validate a PUT route", {
+      auto router = new URLRouter();
+      ({
+        router.putRestApi("/sites/:_id", &putSite);
+      }).should.throwAnyException.withMessage("Invalid `/sites/:_id` route. It must end with `/:id`.");
+    });
+
+    it("should validate the structure", {
+      auto router = new URLRouter();
+      router.putRestApi("/sites/:id", &putSite);
+
+      auto dataUpdate = `{ "site": { }}`.parseJsonString;
+      auto expectedError = `{"errors": [{
+        "description": "Can not deserialize data. Got .site.position of type undefined, expected object.", 
+        "title": "Validation error", 
+        "status": 400 }]}`.parseJsonString;
+
+      request(router)
+        .put("/sites/10")
+          .send(dataUpdate)
+            .expectStatusCode(400)
+            .end((Response response) => {
+              response.bodyJson.should.equal(expectedError);
             });
     });
   });
