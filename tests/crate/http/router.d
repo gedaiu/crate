@@ -13,6 +13,8 @@ import vibe.data.json;
 import vibe.http.router;
 
 import crate.http.router;
+import crate.policy.jsonapi;
+import crate.policy.restapi;
 
 struct Point {
   string type = "Point";
@@ -50,7 +52,7 @@ alias s = Spec!({
     describe("with a PUT REST Api request", {
       it("should accept a valid request", {
         auto router = new URLRouter();
-        router.putRestApi("/sites/:id", &putSite);
+        router.putWith!RestApi("/sites/:id", &putSite);
 
         Json dataUpdate = `{ "site": {
             "position": {
@@ -63,7 +65,7 @@ alias s = Spec!({
           .put("/sites/10")
             .send(dataUpdate)
               .expectStatusCode(200)
-              .expectHeader("Content-Type", "application/json; charset=UTF-8")
+              .expectHeader("Content-Type", "application/json")
               .end((Response response) => {
                 dataUpdate["site"]["_id"] = "10";
                 response.bodyJson.should.equal(dataUpdate);
@@ -73,13 +75,13 @@ alias s = Spec!({
       it("should throw an exception on invalid route name", {
         auto router = new URLRouter();
         ({
-          router.putRestApi("/sites/:_id", &putSite);
+          router.putWith!RestApi("/sites/:_id", &putSite);
         }).should.throwAnyException.withMessage("Invalid `/sites/:_id` route. It must end with `/:id`.");
       });
 
       it("should respond with an error when there are missing fields", {
         auto router = new URLRouter();
-        router.putRestApi("/sites/:id", &putSite);
+        router.putWith!RestApi("/sites/:id", &putSite);
 
         auto dataUpdate = `{ "site": { }}`.parseJsonString;
         auto expectedError = `{"errors": [{
@@ -101,7 +103,7 @@ alias s = Spec!({
     describe("with a PUT JSON Api request", {
       it("should accept a valid request", {
         auto router = new URLRouter();
-        router.putJsonApi("/sites/:id", &putSite);
+        router.putWith!JsonApi("/sites/:id", &putSite);
 
         Json dataUpdate = `{ "data": {
           "type": "sites",
@@ -116,7 +118,7 @@ alias s = Spec!({
           .put("/sites/10")
             .send(dataUpdate)
               .expectStatusCode(200)
-              .expectHeader("Content-Type", "application/json; charset=UTF-8")
+              .expectHeader("Content-Type", "application/vnd.api+json")
               .end((Response response) => {
                 dataUpdate["data"]["id"] = "10";
                 dataUpdate["data"]["relationships"] = Json.emptyObject;
@@ -128,13 +130,13 @@ alias s = Spec!({
       it("should throw an exception on invalid route name", {
         auto router = new URLRouter();
         ({
-          router.putJsonApi("/sites/:_id", &putSite);
+          router.putWith!JsonApi("/sites/:_id", &putSite);
         }).should.throwAnyException.withMessage("Invalid `/sites/:_id` route. It must end with `/:id`.");
       });
 
       it("should respond with an error when there are missing fields", {
         auto router = new URLRouter();
-        router.putJsonApi("/sites/:id", &putSite);
+        router.putWith!JsonApi("/sites/:id", &putSite);
 
         Json dataUpdate = `{ "data": {
           "type": "sites",

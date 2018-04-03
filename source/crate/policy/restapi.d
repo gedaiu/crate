@@ -10,6 +10,15 @@ import vibe.http.common;
 
 import std.string, std.stdio;
 
+struct RestApi {
+  static immutable {
+    string name = "Rest API";
+    string mime = "application/json";
+  }
+
+  alias Serializer = RestApiSerializer;
+}
+
 class CrateRestApiPolicy : CratePolicy
 {
 	private

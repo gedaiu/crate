@@ -627,46 +627,16 @@ unittest {
 import crate.serializer.restapi;
 import crate.serializer.jsonapi;
 
-URLRouter putRestApi(T)(URLRouter router, string route, T function(T object, HTTPServerResponse res) @safe handler) {
-  return putRestApi(router, route, handler.toDelegate);
+URLRouter putWith(U, T)(URLRouter router, string route, T function(T object, HTTPServerResponse res) @safe handler) {
+  return putWith!(U, T)(router, route, handler.toDelegate);
 }
 
-URLRouter putRestApi(T)(URLRouter router, string route, T delegate(T object, HTTPServerResponse res) @safe handler) {
+URLRouter putWith(U, T)(URLRouter router, string route, T delegate(T object, HTTPServerResponse res) @safe handler) {
   enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
 
   FieldDefinition definition = getFields!T;
 
-  auto serializer = new RestApiSerializer(definition);
-
-  void handleRequest(HTTPServerRequest req, HTTPServerResponse res) @safe {
-    auto clientData = serializer.normalise(req.params["id"], req.json);
-    T value;
-
-    try {
-      value = clientData.deserializeJson!T;
-    } catch (JSONException e) {
-      throw new CrateValidationException("Can not deserialize data. " ~ e.msg, e.file, e.line);
-    }
-    
-    auto result = handler(value, res);
-
-    res.statusCode = 200;
-    res.writeJsonBody(serializer.denormalise(result.serializeToJson));
-  }
-
-  return router.put(route, requestErrorHandler(&handleRequest));
-}
-
-URLRouter putJsonApi(T)(URLRouter router, string route, T function(T object, HTTPServerResponse res) @safe handler) {
-  return putJsonApi(router, route, handler.toDelegate);
-}
-
-URLRouter putJsonApi(T)(URLRouter router, string route, T delegate(T object, HTTPServerResponse res) @safe handler) {
-  enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
-
-  FieldDefinition definition = getFields!T;
-
-  auto serializer = new JsonApiSerializer(definition);
+  auto serializer = new U.Serializer(definition);
 
   void handleRequest(HTTPServerRequest req, HTTPServerResponse res) @safe {
     auto clientData = serializer.normalise(req.params["id"], req.json);
@@ -681,7 +651,7 @@ URLRouter putJsonApi(T)(URLRouter router, string route, T delegate(T object, HTT
     auto result = handler(value, res);
 
     res.statusCode = 200;
-    res.writeJsonBody(serializer.denormalise(result.serializeToJson));
+    res.writeJsonBody(serializer.denormalise(result.serializeToJson), U.mime);
   }
 
   return router.put(route, requestErrorHandler(&handleRequest));
