@@ -146,7 +146,7 @@ unittest {
 	request(router)
 		.header("Content-Type", "multipart/form-data; boundary=---------------------------9855312492823326321373169801")
 		.post("/resourcemodels/1/resource")
-		.expectStatusCode(403)
+		.expectStatusCode(400)
 		.send(data)
 		.end((Response response) => {
 			assert(TestResource.lastRead == "");

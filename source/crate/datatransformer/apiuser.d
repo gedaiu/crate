@@ -278,7 +278,7 @@ unittest
 	request(router)
 		.post("/users")
 			.send(data)
-			.expectStatusCode(403)
+			.expectStatusCode(400)
 			.end((Response response) => {
 				string[string] params;
 
@@ -300,7 +300,7 @@ unittest
 	request(router)
 		.put("/users/1")
 			.send(data)
-			.expectStatusCode(403)
+			.expectStatusCode(400)
 			.end((Response response) => {
 				auto userData = userDataCrate.getItem("1").exec.front;
 
