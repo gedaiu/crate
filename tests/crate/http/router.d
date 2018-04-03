@@ -48,7 +48,6 @@ alias s = Spec!({
   describe("The crate router", {
 
     describe("with a PUT REST Api request", {
-
       it("should accept a valid request", {
         auto router = new URLRouter();
         router.putRestApi("/sites/:id", &putSite);
@@ -85,6 +84,65 @@ alias s = Spec!({
         auto dataUpdate = `{ "site": { }}`.parseJsonString;
         auto expectedError = `{"errors": [{
           "description": "Can not deserialize data. Got .site.position of type undefined, expected object.", 
+          "title": "Validation error", 
+          "status": 400 }]}`.parseJsonString;
+
+        request(router)
+          .put("/sites/10")
+            .send(dataUpdate)
+              .expectStatusCode(400)
+              .expectHeader("Content-Type", "application/json; charset=UTF-8")
+              .end((Response response) => {
+                response.bodyJson.should.equal(expectedError);
+              });
+      });
+    });
+
+    describe("with a PUT JSON Api request", {
+      it("should accept a valid request", {
+        auto router = new URLRouter();
+        router.putJsonApi("/sites/:id", &putSite);
+
+        Json dataUpdate = `{ "data": {
+          "type": "sites",
+          "attributes": {
+            "position": {
+              "type": "Point",
+              "coordinates": [0, 0]
+            }
+          }}}`.parseJsonString;
+
+        request(router)
+          .put("/sites/10")
+            .send(dataUpdate)
+              .expectStatusCode(200)
+              .expectHeader("Content-Type", "application/json; charset=UTF-8")
+              .end((Response response) => {
+                dataUpdate["data"]["id"] = "10";
+                dataUpdate["data"]["relationships"] = Json.emptyObject;
+
+                response.bodyJson.should.equal(dataUpdate);
+              });
+      });
+
+      it("should throw an exception on invalid route name", {
+        auto router = new URLRouter();
+        ({
+          router.putJsonApi("/sites/:_id", &putSite);
+        }).should.throwAnyException.withMessage("Invalid `/sites/:_id` route. It must end with `/:id`.");
+      });
+
+      it("should respond with an error when there are missing fields", {
+        auto router = new URLRouter();
+        router.putJsonApi("/sites/:id", &putSite);
+
+        Json dataUpdate = `{ "data": {
+          "type": "sites",
+          "attributes": {
+          }}}`.parseJsonString;
+
+        auto expectedError = `{"errors": [{
+          "description": "Can not deserialize data. Got .position of type undefined, expected object.", 
           "title": "Validation error", 
           "status": 400 }]}`.parseJsonString;
 
