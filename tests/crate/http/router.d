@@ -64,6 +64,7 @@ alias s = Spec!({
           .put("/sites/10")
             .send(dataUpdate)
               .expectStatusCode(200)
+              .expectHeader("Content-Type", "application/json; charset=UTF-8")
               .end((Response response) => {
                 dataUpdate["site"]["_id"] = "10";
                 response.bodyJson.should.equal(dataUpdate);
@@ -91,6 +92,7 @@ alias s = Spec!({
           .put("/sites/10")
             .send(dataUpdate)
               .expectStatusCode(400)
+              .expectHeader("Content-Type", "application/json; charset=UTF-8")
               .end((Response response) => {
                 response.bodyJson.should.equal(expectedError);
               });
