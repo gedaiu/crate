@@ -721,7 +721,19 @@ URLRouter postWith(U, T)(URLRouter router, string route, T function(T object, HT
 }
 
 /// ditto
+URLRouter postWith(U, T)(URLRouter router, string route, void function(T object, HTTPServerResponse res) @safe handler) {
+  return postWith!(U, T)(router, route, handler.toDelegate);
+}
+
+/// ditto
 URLRouter postWith(U, T)(URLRouter router, string route, T delegate(T object, HTTPServerResponse res) @safe handler) {
+  auto deserializationHandler = requestFullDeserializationHandler!(U, T)(handler);
+
+  return router.post(route, requestErrorHandler(deserializationHandler));
+}
+
+/// ditto
+URLRouter postWith(U, T)(URLRouter router, string route, void delegate(T object, HTTPServerResponse res) @safe handler) {
   auto deserializationHandler = requestFullDeserializationHandler!(U, T)(handler);
 
   return router.post(route, requestErrorHandler(deserializationHandler));

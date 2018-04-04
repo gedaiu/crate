@@ -75,6 +75,8 @@ Site postSite(Site site, HTTPServerResponse res) @safe {
   return site;
 }
 
+void postVoidSite(Site site, HTTPServerResponse res) @safe { }
+
 alias s = Spec!({
   describe("The crate router", {
 
