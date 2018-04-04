@@ -68,6 +68,8 @@ Site putSite(Site site, HTTPServerResponse res) @safe {
   return site;
 }
 
+void putVoidSite(Site site, HTTPServerResponse res) @safe { }
+
 Site postSite(Site site, HTTPServerResponse res) @safe {
   site._id = "122";
   return site;
@@ -77,7 +79,7 @@ alias s = Spec!({
   describe("The crate router", {
 
     describe("with a PUT REST Api request", {
-      it("should accept a valid request", {
+      it("should accept a valid request and return the changed data", {
         auto router = new URLRouter();
         router.putWith!RestApi("/sites/:id", &putSite);
 
@@ -91,6 +93,21 @@ alias s = Spec!({
               .end((Response response) => {
                 dataUpdate["site"]["_id"] = "10";
                 response.bodyJson.should.equal(dataUpdate);
+              });
+      });
+
+      it("should accept a valid request and return an empty body", {
+        auto router = new URLRouter();
+        router.putWith!RestApi("/sites/:id", &putVoidSite);
+
+        Json dataUpdate = restSiteFixture.parseJsonString;
+
+        request(router)
+          .put("/sites/10")
+            .send(dataUpdate)
+              .expectStatusCode(204)
+              .end((Response response) => {
+                response.bodyString.should.equal("");
               });
       });
 
