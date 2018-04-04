@@ -42,7 +42,6 @@ struct Site {
   }
 }
 
-
 static immutable restSiteFixture = `{
   "site": {
     "position": {
@@ -69,6 +68,9 @@ Site putSite(Site site, HTTPServerResponse res) @safe {
 }
 
 void putVoidSite(Site site, HTTPServerResponse res) @safe { }
+Json putJsonSite(Site site, HTTPServerResponse res) @safe {
+  return site.serializeToJson;
+}
 
 Site postSite(Site site, HTTPServerResponse res) @safe {
   site._id = "122";
@@ -110,6 +112,22 @@ alias s = Spec!({
               .expectStatusCode(204)
               .end((Response response) => {
                 response.bodyString.should.equal("");
+              });
+      });
+
+      it("should accept a valid request as json", {
+        auto router = new URLRouter();
+        router.putWith!RestApi("/sites/:id", &putJsonSite);
+
+        Json dataUpdate = restSiteFixture.parseJsonString;
+
+        request(router)
+          .put("/sites/10")
+            .send(dataUpdate)
+              .expectStatusCode(200)
+              .end((Response response) => {
+                dataUpdate["site"]["_id"] = "10";
+                response.bodyJson.should.equal(dataUpdate);
               });
       });
 
