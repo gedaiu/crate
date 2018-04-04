@@ -209,6 +209,21 @@ alias s = Spec!({
               });
       });
 
+      it("should accept a valid request and return an empty body", {
+        auto router = new URLRouter();
+        router.postWith!RestApi("/sites", &postVoidSite);
+
+        Json dataUpdate = restSiteFixture.parseJsonString;
+
+        request(router)
+          .post("/sites")
+            .send(dataUpdate)
+              .expectStatusCode(204)
+              .end((Response response) => {
+                response.bodyString.should.equal("");
+              });
+      });
+
       it("should respond with an error when there are missing fields", {
         auto router = new URLRouter();
         router.postWith!RestApi("/sites", &postSite);
