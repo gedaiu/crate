@@ -42,7 +42,34 @@ struct Site {
   }
 }
 
+
+static immutable restSiteFixture = `{
+  "site": {
+    "position": {
+      "type": "Point",
+      "coordinates": [0, 0]
+    }
+  }
+}`;
+
+static immutable jsonSiteFixture = `{
+  "data": {
+    "type": "sites",
+    "attributes": {
+      "position": {
+        "type": "Point",
+        "coordinates": [0, 0]
+      }
+    }
+  }
+}`;
+
 Site putSite(Site site, HTTPServerResponse res) @safe {
+  return site;
+}
+
+Site postSite(Site site, HTTPServerResponse res) @safe {
+  site._id = "122";
   return site;
 }
 
@@ -54,12 +81,7 @@ alias s = Spec!({
         auto router = new URLRouter();
         router.putWith!RestApi("/sites/:id", &putSite);
 
-        Json dataUpdate = `{ "site": {
-            "position": {
-              "type": "Point",
-              "coordinates": [0, 0]
-            }
-        }}`.parseJsonString;
+        Json dataUpdate = restSiteFixture.parseJsonString;
 
         request(router)
           .put("/sites/10")
@@ -105,14 +127,7 @@ alias s = Spec!({
         auto router = new URLRouter();
         router.putWith!JsonApi("/sites/:id", &putSite);
 
-        Json dataUpdate = `{ "data": {
-          "type": "sites",
-          "attributes": {
-            "position": {
-              "type": "Point",
-              "coordinates": [0, 0]
-            }
-          }}}`.parseJsonString;
+        Json dataUpdate = jsonSiteFixture.parseJsonString;
 
         request(router)
           .put("/sites/10")
@@ -159,5 +174,43 @@ alias s = Spec!({
       });
     });
 
+    describe("with a POST REST Api request", {
+      it("should accept a valid request", {
+        auto router = new URLRouter();
+        router.postWith!RestApi("/sites", &postSite);
+
+        Json dataUpdate = restSiteFixture.parseJsonString;
+
+        request(router)
+          .post("/sites")
+            .send(dataUpdate)
+              .expectStatusCode(200)
+              .expectHeader("Content-Type", "application/json")
+              .end((Response response) => {
+                dataUpdate["site"]["_id"] = "122";
+                response.bodyJson.should.equal(dataUpdate);
+              });
+      });
+
+      it("should respond with an error when there are missing fields", {
+        auto router = new URLRouter();
+        router.postWith!RestApi("/sites", &postSite);
+
+        auto dataUpdate = `{ "site": { }}`.parseJsonString;
+        auto expectedError = `{"errors": [{
+          "description": "Can not deserialize data. Got .site.position of type undefined, expected object.", 
+          "title": "Validation error", 
+          "status": 400 }]}`.parseJsonString;
+
+        request(router)
+          .post("/sites")
+            .send(dataUpdate)
+              .expectStatusCode(400)
+              .expectHeader("Content-Type", "application/json; charset=UTF-8")
+              .end((Response response) => {
+                response.bodyJson.should.equal(expectedError);
+              });
+      });
+    });
   });
 });

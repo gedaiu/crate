@@ -627,19 +627,19 @@ unittest {
 import crate.serializer.restapi;
 import crate.serializer.jsonapi;
 
-URLRouter putWith(U, T)(URLRouter router, string route, T function(T object, HTTPServerResponse res) @safe handler) {
-  return putWith!(U, T)(router, route, handler.toDelegate);
-}
 
-URLRouter putWith(U, T)(URLRouter router, string route, T delegate(T object, HTTPServerResponse res) @safe handler) {
-  enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
-
+auto requestFullDeserializationHandler(U, T)(T delegate(T, HTTPServerResponse) @safe next) {
   FieldDefinition definition = getFields!T;
-
   auto serializer = new U.Serializer(definition);
 
-  void handleRequest(HTTPServerRequest req, HTTPServerResponse res) @safe {
-    auto clientData = serializer.normalise(req.params["id"], req.json);
+  void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
+    string id;
+
+    if("id" in request.params) {
+      id = request.params["id"];
+    }
+
+    auto clientData = serializer.normalise(id, request.json);
     T value;
 
     try {
@@ -648,11 +648,33 @@ URLRouter putWith(U, T)(URLRouter router, string route, T delegate(T object, HTT
       throw new CrateValidationException("Can not deserialize data. " ~ e.msg, e.file, e.line);
     }
 
-    auto result = handler(value, res);
+    auto result = next(value, response);
 
-    res.statusCode = 200;
-    res.writeJsonBody(serializer.denormalise(result.serializeToJson), U.mime);
+    response.statusCode = 200;
+    response.writeJsonBody(serializer.denormalise(result.serializeToJson), U.mime);
   }
 
-  return router.put(route, requestErrorHandler(&handleRequest));
+  return &deserialize;
+}
+
+URLRouter putWith(U, T)(URLRouter router, string route, T function(T object, HTTPServerResponse res) @safe handler) {
+  return putWith!(U, T)(router, route, handler.toDelegate);
+}
+
+URLRouter putWith(U, T)(URLRouter router, string route, T delegate(T object, HTTPServerResponse res) @safe handler) {
+  enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
+
+  auto deserializationHandler = requestFullDeserializationHandler!(U, T)(handler);
+
+  return router.put(route, requestErrorHandler(deserializationHandler));
+}
+
+URLRouter postWith(U, T)(URLRouter router, string route, T function(T object, HTTPServerResponse res) @safe handler) {
+  return postWith!(U, T)(router, route, handler.toDelegate);
+}
+
+URLRouter postWith(U, T)(URLRouter router, string route, T delegate(T object, HTTPServerResponse res) @safe handler) {
+  auto deserializationHandler = requestFullDeserializationHandler!(U, T)(handler);
+
+  return router.post(route, requestErrorHandler(deserializationHandler));
 }
