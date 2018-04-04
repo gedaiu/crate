@@ -77,6 +77,11 @@ Site postSite(Site site, HTTPServerResponse res) @safe {
   return site;
 }
 
+Json postJsonSite(Site site, HTTPServerResponse res) @safe {
+  site._id = "122";
+  return site.serializeToJson;
+}
+
 void postVoidSite(Site site, HTTPServerResponse res) @safe { }
 
 alias s = Spec!({
@@ -215,6 +220,23 @@ alias s = Spec!({
       it("should accept a valid request", {
         auto router = new URLRouter();
         router.postWith!RestApi("/sites", &postSite);
+
+        Json dataUpdate = restSiteFixture.parseJsonString;
+
+        request(router)
+          .post("/sites")
+            .send(dataUpdate)
+              .expectStatusCode(200)
+              .expectHeader("Content-Type", "application/json")
+              .end((Response response) => {
+                dataUpdate["site"]["_id"] = "122";
+                response.bodyJson.should.equal(dataUpdate);
+              });
+      });
+
+      it("should accept a valid request", {
+        auto router = new URLRouter();
+        router.postWith!RestApi("/sites", &postJsonSite);
 
         Json dataUpdate = restSiteFixture.parseJsonString;
 
