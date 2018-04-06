@@ -768,6 +768,7 @@ URLRouter deleteWith(U, T)(URLRouter router, string route, T function(string id,
 
 /// ditto
 URLRouter deleteWith(U, T)(URLRouter router, string route, T delegate(string id, HTTPServerResponse res) @safe handler) {
+  enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
   auto idHandler = requestIdHandler!(T)(handler);
 
   return router.delete_(route, requestErrorHandler(idHandler));
@@ -780,6 +781,7 @@ URLRouter deleteWith(U, T)(URLRouter router, string route, T function(string id)
 
 /// ditto
 URLRouter deleteWith(U, T)(URLRouter router, string route, T delegate(string id) @safe handler) {
+  enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
   auto idHandler = requestIdHandler!(T)(handler);
 
   return router.delete_(route, requestErrorHandler(idHandler));

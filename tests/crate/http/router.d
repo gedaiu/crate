@@ -325,6 +325,13 @@ alias s = Spec!({
               response.bodyString.should.equal("");
             });
       });
+
+       it("should throw an exception on invalid route name", {
+        auto router = new URLRouter();
+        ({
+          router.deleteWith!RestApi("/sites/:_id", &deleteSite);
+        }).should.throwAnyException.withMessage("Invalid `/sites/:_id` route. It must end with `/:id`.");
+      });
     });
   });
 });
