@@ -63,30 +63,44 @@ static immutable jsonSiteFixture = `{
   }
 }`;
 
-Site putSite(Site site, HTTPServerResponse res) @safe {
+Site putSite(Site site) @safe {
   return site;
 }
 
-void putVoidSite(Site site, HTTPServerResponse res) @safe { }
-Json putJsonSite(Site site, HTTPServerResponse res) @safe {
+void putVoidSite(Site site, HTTPServerResponse res) @safe {
+  res.statusCode = 204;
+  res.writeVoidBody;
+}
+
+Json putJsonSite(Site site) @safe {
   return site.serializeToJson;
 }
 
-Site postSite(Site site, HTTPServerResponse res) @safe {
+Site postSite(Site site) @safe {
   site._id = "122";
   return site;
 }
 
-Json postJsonSite(Site site, HTTPServerResponse res) @safe {
+Json postJsonSite(Site site) @safe {
   site._id = "122";
   return site.serializeToJson;
 }
 
-void postVoidSite(Site site, HTTPServerResponse res) @safe { }
+void postVoidSite(Site site, HTTPServerResponse res) @safe {
+  res.statusCode = 204;
+  res.writeVoidBody();
+}
+
+void deleteSiteWithResponse(string id, HTTPServerResponse res) @safe { 
+  res.statusCode = 204;
+  res.writeBody("");
+}
+
+void deleteSite(string id) @safe { 
+}
 
 alias s = Spec!({
   describe("The crate router", {
-
     describe("with a PUT REST Api request", {
       it("should accept a valid request and return the changed data", {
         auto router = new URLRouter();
@@ -284,6 +298,32 @@ alias s = Spec!({
               .end((Response response) => {
                 response.bodyJson.should.equal(expectedError);
               });
+      });
+    });
+
+    describe("with a DELETE request", {
+      it("should accept a valid request with id", {
+        auto router = new URLRouter();
+        router.deleteWith!RestApi("/sites/:id", &deleteSiteWithResponse);
+
+        request(router)
+          .delete_("/sites/122")
+            .expectStatusCode(204)
+            .end((Response response) => {
+              response.bodyString.should.equal("");
+            });
+      });
+
+      it("should accept a valid request with id when the response is not handeled", {
+        auto router = new URLRouter();
+        router.deleteWith!RestApi("/sites/:id", &deleteSite);
+
+        request(router)
+          .delete_("/sites/122")
+            .expectStatusCode(204)
+            .end((Response response) => {
+              response.bodyString.should.equal("");
+            });
       });
     });
   });

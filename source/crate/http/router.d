@@ -53,7 +53,6 @@ auto crateSetup(URLRouter router) {
 private static CrateCollection[URLRouter] proxyCollection;
 
 class CrateRouter(RouterPolicy) {
-
   private
   {
     URLRouter router;
@@ -628,41 +627,6 @@ import crate.serializer.restapi;
 import crate.serializer.jsonapi;
 
 /// Call the next handler after the request data is deserialized
-auto requestFullDeserializationHandler(U, T, V)(V delegate(T, HTTPServerResponse) @safe next) {
-  FieldDefinition definition = getFields!T;
-  auto serializer = new U.Serializer(definition);
-
-  void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
-    string id;
-
-    if("id" in request.params) {
-      id = request.params["id"];
-    }
-
-    auto clientData = serializer.normalise(id, request.json);
-    T value;
-
-    try {
-      value = clientData.deserializeJson!T;
-    } catch (JSONException e) {
-      throw new CrateValidationException("Can not deserialize data. " ~ e.msg, e.file, e.line);
-    }
-
-    static if(is(V == void)) {
-      next(value, response);
-      response.statusCode = 204;
-      response.writeVoidBody;
-    } else {
-      auto result = next(value, response);
-      response.statusCode = 200;
-      response.writeJsonBody(serializer.denormalise(result.serializeToJson), U.mime);
-    }
-  }
-
-  return &deserialize;
-}
-
-/// ditto
 auto requestFullDeserializationHandler(U, T)(void delegate(T, HTTPServerResponse) @safe next) {
   FieldDefinition definition = getFields!T;
   auto serializer = new U.Serializer(definition);
@@ -684,6 +648,47 @@ auto requestFullDeserializationHandler(U, T)(void delegate(T, HTTPServerResponse
     }
 
     next(value, response);
+  }
+
+  return &deserialize;
+}
+
+/// ditto
+auto requestDeserializationHandler(U, T, V)(V delegate(T) @safe next) {
+  FieldDefinition definition = getFields!T;
+  auto serializer = new U.Serializer(definition);
+
+  void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
+    string id;
+
+    if("id" in request.params) {
+      id = request.params["id"];
+    }
+
+    auto clientData = serializer.normalise(id, request.json);
+    T value;
+
+    try {
+      value = clientData.deserializeJson!T;
+    } catch (JSONException e) {
+      throw new CrateValidationException("Can not deserialize data. " ~ e.msg, e.file, e.line);
+    }
+
+    auto result = next(value);
+    response.statusCode = 200;
+    response.writeJsonBody(serializer.denormalise(result.serializeToJson), U.mime);
+  }
+
+  return &deserialize;
+}
+
+/// Handle requests with id and without body
+auto requestIdHandler(U)(U delegate(string) @safe next) {
+
+  void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
+    string id = request.params["id"];
+
+    next(id);
 
     response.statusCode = 204;
     response.writeVoidBody;
@@ -692,29 +697,94 @@ auto requestFullDeserializationHandler(U, T)(void delegate(T, HTTPServerResponse
   return &deserialize;
 }
 
+/// ditto
+auto requestIdHandler(U)(U delegate(string, HTTPServerResponse) @safe next) {
+
+  void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
+    string id = request.params["id"];
+
+    next(id, response);
+  }
+
+  return &deserialize;
+}
+
 /// Add a PUT route that parse the data according a Protocol
-URLRouter putWith(U, T, V)(URLRouter router, string route, V function(T object, HTTPServerResponse res) @safe handler) {
+URLRouter putWith(U, T)(URLRouter router, string route, void function(T object, HTTPServerResponse res) @safe handler) {
+  return putWith!(U, T)(router, route, handler.toDelegate);
+}
+
+/// ditto
+URLRouter putWith(U, T)(URLRouter router, string route, void delegate(T object, HTTPServerResponse res) @safe handler) {
+  enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
+
+  auto deserializationHandler = requestFullDeserializationHandler!(U, T)(handler);
+
+  return router.put(route, requestErrorHandler(deserializationHandler));
+}
+
+/// ditto
+URLRouter putWith(U, T, V)(URLRouter router, string route, V function(T object) @safe handler) if(!is(V == void)) {
   return putWith!(U, T, V)(router, route, handler.toDelegate);
 }
 
 /// ditto
-URLRouter putWith(U, T, V)(URLRouter router, string route, V delegate(T object, HTTPServerResponse res) @safe handler) {
+URLRouter putWith(U, T, V)(URLRouter router, string route, V delegate(T object) @safe handler) if(!is(V == void)) {
   enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
 
-  auto deserializationHandler = requestFullDeserializationHandler!(U, T, V)(handler);
+  auto deserializationHandler = requestDeserializationHandler!(U, T, V)(handler);
 
   return router.put(route, requestErrorHandler(deserializationHandler));
 }
 
 /// Add a POST route that parse the data according a Protocol
-URLRouter postWith(U, T, V)(URLRouter router, string route, V function(T object, HTTPServerResponse res) @safe handler) {
-  return postWith!(U, T, V)(router, route, handler.toDelegate);
+URLRouter postWith(U, T)(URLRouter router, string route, void function(T object, HTTPServerResponse res) @safe handler) {
+  return postWith!(U, T)(router, route, handler.toDelegate);
 }
 
-
 /// ditto
-URLRouter postWith(U, T, V)(URLRouter router, string route, V delegate(T object, HTTPServerResponse res) @safe handler) {
-  auto deserializationHandler = requestFullDeserializationHandler!(U, T, V)(handler);
+URLRouter postWith(U, T)(URLRouter router, string route, void delegate(T object, HTTPServerResponse res) @safe handler) {
+  auto deserializationHandler = requestFullDeserializationHandler!(U, T)(handler);
 
   return router.post(route, requestErrorHandler(deserializationHandler));
 }
+
+/// ditto
+URLRouter postWith(U, T, V)(URLRouter router, string route, V function(T object) @safe handler) {
+  return postWith!(U, T, V)(router, route, handler.toDelegate);
+}
+
+/// ditto
+URLRouter postWith(U, T, V)(URLRouter router, string route, V delegate(T object) @safe handler) {
+  auto deserializationHandler = requestDeserializationHandler!(U, T, V)(handler);
+
+  return router.post(route, requestErrorHandler(deserializationHandler));
+}
+
+/// Add a DELETE route that parse the data according a Protocol
+URLRouter deleteWith(U, T)(URLRouter router, string route, T function(string id, HTTPServerResponse res) @safe handler) {
+  return deleteWith!(U, T)(router, route, handler.toDelegate);
+}
+
+/// ditto
+URLRouter deleteWith(U, T)(URLRouter router, string route, T delegate(string id, HTTPServerResponse res) @safe handler) {
+  auto idHandler = requestIdHandler!(T)(handler);
+
+  return router.delete_(route, requestErrorHandler(idHandler));
+}
+
+/// ditto
+URLRouter deleteWith(U, T)(URLRouter router, string route, T function(string id) @safe handler) {
+  return deleteWith!(U, T)(router, route, handler.toDelegate);
+}
+
+/// ditto
+URLRouter deleteWith(U, T)(URLRouter router, string route, T delegate(string id) @safe handler) {
+  auto idHandler = requestIdHandler!(T)(handler);
+
+  return router.delete_(route, requestErrorHandler(idHandler));
+}
+
+/// GET
+
+/// GET All
