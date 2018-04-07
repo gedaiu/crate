@@ -86,6 +86,15 @@ Json postJsonSite(Site site) @safe {
   return site.serializeToJson;
 }
 
+Site getSite(string id) @safe {
+  Site site;
+
+  site._id = id;
+  site.position = Point("Point", [1.5, 2.5]);
+
+  return site;
+}
+
 void postVoidSite(Site site, HTTPServerResponse res) @safe {
   res.statusCode = 204;
   res.writeVoidBody();
@@ -331,6 +340,24 @@ alias s = Spec!({
         ({
           router.deleteWith!RestApi("/sites/:_id", &deleteSite);
         }).should.throwAnyException.withMessage("Invalid `/sites/:_id` route. It must end with `/:id`.");
+      });
+    });
+
+    describe("with a GET REST API request", {
+      it("should return the serialized structure", {
+        auto router = new URLRouter();
+        router.getWith!RestApi("/sites/:id", &getSite);
+
+        auto element = Json.emptyObject;
+        element["site"] = getSite("10").serializeToJson;
+
+        request(router)
+          .get("/sites/10")
+            .expectStatusCode(200)
+            .expectHeader("Content-Type", "application/json")
+            .end((Response response) => {
+              response.bodyJson.should.equal(element);
+            });
       });
     });
   });

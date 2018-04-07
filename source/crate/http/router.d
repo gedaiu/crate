@@ -683,7 +683,7 @@ auto requestDeserializationHandler(U, T, V)(V delegate(T) @safe next) {
 }
 
 /// Handle requests with id and without body
-auto requestIdHandler(U)(U delegate(string) @safe next) {
+auto requestIdHandler(void delegate(string) @safe next) {
 
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
     string id = request.params["id"];
@@ -698,12 +698,34 @@ auto requestIdHandler(U)(U delegate(string) @safe next) {
 }
 
 /// ditto
-auto requestIdHandler(U)(U delegate(string, HTTPServerResponse) @safe next) {
+auto requestIdHandler(void delegate(string, HTTPServerResponse) @safe next) {
 
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
     string id = request.params["id"];
 
     next(id, response);
+  }
+
+  return &deserialize;
+}
+
+/// ditto
+auto requestIdHandler(U, T)(T delegate(string) @safe next) {
+  FieldDefinition definition = getFields!T;
+  auto serializer = new U.Serializer(definition);
+
+  void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
+    string id = request.params["id"];
+
+    Json jsonResponse;
+
+    try {
+      jsonResponse = serializer.denormalise(next(id).serializeToJson);
+    } catch (JSONException e) {
+      throw new CrateValidationException("Can not serialize data. " ~ e.msg, e.file, e.line);
+    }
+
+    response.writeJsonBody(jsonResponse, 200, U.mime);
   }
 
   return &deserialize;
@@ -762,31 +784,42 @@ URLRouter postWith(U, T, V)(URLRouter router, string route, V delegate(T object)
 }
 
 /// Add a DELETE route that parse the data according a Protocol
-URLRouter deleteWith(U, T)(URLRouter router, string route, T function(string id, HTTPServerResponse res) @safe handler) {
-  return deleteWith!(U, T)(router, route, handler.toDelegate);
+URLRouter deleteWith(U)(URLRouter router, string route, void function(string id, HTTPServerResponse res) @safe handler) {
+  return deleteWith!(U)(router, route, handler.toDelegate);
 }
 
 /// ditto
-URLRouter deleteWith(U, T)(URLRouter router, string route, T delegate(string id, HTTPServerResponse res) @safe handler) {
+URLRouter deleteWith(U)(URLRouter router, string route, void delegate(string id, HTTPServerResponse res) @safe handler) {
   enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
-  auto idHandler = requestIdHandler!(T)(handler);
+  auto idHandler = requestIdHandler(handler);
 
   return router.delete_(route, requestErrorHandler(idHandler));
 }
 
 /// ditto
-URLRouter deleteWith(U, T)(URLRouter router, string route, T function(string id) @safe handler) {
-  return deleteWith!(U, T)(router, route, handler.toDelegate);
+URLRouter deleteWith(U)(URLRouter router, string route, void function(string id) @safe handler) {
+  return deleteWith!U(router, route, handler.toDelegate);
 }
 
 /// ditto
-URLRouter deleteWith(U, T)(URLRouter router, string route, T delegate(string id) @safe handler) {
+URLRouter deleteWith(U)(URLRouter router, string route, void delegate(string id) @safe handler) {
   enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
-  auto idHandler = requestIdHandler!(T)(handler);
+  auto idHandler = requestIdHandler(handler);
 
   return router.delete_(route, requestErrorHandler(idHandler));
 }
 
-/// GET
+/// add a GET route that returns to the client one item selected by id
+URLRouter getWith(U, T)(URLRouter router, string route, T function(string id) @safe handler) if(!is(T == void)) {
+  return getWith!(U, T)(router, route, handler.toDelegate);
+}
+
+/// ditto
+URLRouter getWith(U, T)(URLRouter router, string route, T delegate(string id) @safe handler) if(!is(T == void)) {
+  enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
+  auto idHandler = requestIdHandler!(U, T)(handler);
+
+  return router.get(route, requestErrorHandler(idHandler));
+}
 
 /// GET All
