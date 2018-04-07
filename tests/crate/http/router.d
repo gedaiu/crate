@@ -95,6 +95,10 @@ Site getSite(string id) @safe {
   return site;
 }
 
+void getSiteResponse(string id, HTTPServerResponse res) @safe {
+  res.writeBody("hello", 200);
+}
+
 void postVoidSite(Site site, HTTPServerResponse res) @safe {
   res.statusCode = 204;
   res.writeVoidBody();
@@ -357,6 +361,49 @@ alias s = Spec!({
             .expectHeader("Content-Type", "application/json")
             .end((Response response) => {
               response.bodyJson.should.equal(element);
+            });
+      });
+
+      it("should call a function with custom response", {
+        auto router = new URLRouter();
+        router.getWith!RestApi("/sites/:id", &getSiteResponse);
+
+        request(router)
+          .get("/sites/10")
+            .expectStatusCode(200)
+            .end((Response response) => {
+              response.bodyString.should.equal("hello");
+            });
+      });
+    });
+
+    describe("with a GET JSON API request", {
+      it("should return the serialized structure", {
+        auto router = new URLRouter();
+        router.getWith!JsonApi("/sites/:id", &getSite);
+
+        auto element = `{ "data": { "attributes": { "position": {
+          "coordinates": [1.5, 2.5], "type": "Point" }},
+          "relationships": {}, "type": "sites", "id": "10" }}`.parseJsonString;
+
+        request(router)
+          .get("/sites/10")
+            .expectStatusCode(200)
+            .expectHeader("Content-Type", "application/vnd.api+json")
+            .end((Response response) => {
+              response.bodyJson.should.equal(element);
+            });
+      });
+
+      it("should call a function with custom response", {
+        auto router = new URLRouter();
+        router.getWith!JsonApi("/sites/:id", &getSiteResponse);
+
+        request(router)
+          .get("/sites/10")
+            .expectStatusCode(200)
+            .end((Response response) => {
+              response.bodyString.should.equal("hello");
             });
       });
     });

@@ -710,7 +710,7 @@ auto requestIdHandler(void delegate(string, HTTPServerResponse) @safe next) {
 }
 
 /// ditto
-auto requestIdHandler(U, T)(T delegate(string) @safe next) {
+auto requestIdHandler(U, T)(T delegate(string) @safe next) if(!is(T == void)){
   FieldDefinition definition = getFields!T;
   auto serializer = new U.Serializer(definition);
 
@@ -818,6 +818,19 @@ URLRouter getWith(U, T)(URLRouter router, string route, T function(string id) @s
 URLRouter getWith(U, T)(URLRouter router, string route, T delegate(string id) @safe handler) if(!is(T == void)) {
   enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
   auto idHandler = requestIdHandler!(U, T)(handler);
+
+  return router.get(route, requestErrorHandler(idHandler));
+}
+
+/// ditto
+URLRouter getWith(U)(URLRouter router, string route, void function(string id, HTTPServerResponse res) @safe handler) if(!is(T == void)) {
+  return getWith!(U)(router, route, handler.toDelegate);
+}
+
+/// ditto
+URLRouter getWith(U)(URLRouter router, string route, void delegate(string id, HTTPServerResponse res) @safe handler) if(!is(T == void)) {
+  enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
+  auto idHandler = requestIdHandler(handler);
 
   return router.get(route, requestErrorHandler(idHandler));
 }
