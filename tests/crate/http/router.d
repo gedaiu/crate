@@ -95,6 +95,10 @@ Site getSite(string id) @safe {
   return site;
 }
 
+Site[] getAllSites() @safe {
+  return [ getSite("1") ];
+}
+
 void getSiteResponse(string id, HTTPServerResponse res) @safe {
   res.writeBody("hello", 200);
 }
@@ -407,5 +411,42 @@ alias s = Spec!({
             });
       });
     });
+
+    describe("with a GET All elements using REST API request", {
+      it("should return the serialized structure", {
+        auto router = new URLRouter();
+        router.getAllWith!RestApi("/sites", &getAllSites);
+
+        auto elements = `{"sites":[{"_id":"1","position":{"coordinates":[1.5,2.5],"type":"Point"}}]}`.parseJsonString;
+
+        request(router)
+          .get("/sites")
+            .expectStatusCode(200)
+            .expectHeader("Content-Type", "application/json")
+            .end((Response response) => {
+              response.bodyJson.should.equal(elements);
+            });
+      });
+    });
+
+    describe("with a GET All elements using JSON API request", {
+      it("should return the serialized structure", {
+        auto router = new URLRouter();
+        router.getAllWith!JsonApi("/sites", &getAllSites);
+
+        auto elements = `{"data": [
+          {"attributes": { "position": { "coordinates": [ 1.5, 2.5 ], "type": "Point"} },
+           "relationships": {}, "type": "sites", "id": "1" } ]}`.parseJsonString;
+
+        request(router)
+          .get("/sites")
+            .expectStatusCode(200)
+            .expectHeader("Content-Type", "application/vnd.api+json")
+            .end((Response response) => {
+              response.bodyJson.should.equal(elements);
+            });
+      });
+    });
+
   });
 });

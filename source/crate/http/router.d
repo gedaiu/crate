@@ -21,6 +21,7 @@ import std.traits;
 import std.stdio;
 import std.functional;
 import std.exception;
+import std.range.interfaces;
 
 alias DefaultPolicy = crate.policy.restapi.CrateRestApiPolicy;
 
@@ -731,6 +732,26 @@ auto requestIdHandler(U, T)(T delegate(string) @safe next) if(!is(T == void)){
   return &deserialize;
 }
 
+/// Handle a request that returns a list of elements
+auto requestListHandler(U, T)(T[] delegate() @safe next) if(!is(T == void)){
+  FieldDefinition definition = getFields!T;
+  auto serializer = new U.Serializer(definition);
+
+  void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
+    Json jsonResponse;
+
+    try {
+      jsonResponse = serializer.denormalise(next().map!(a => a.serializeToJson).inputRangeObject);
+    } catch (JSONException e) {
+      throw new CrateValidationException("Can not serialize data. " ~ e.msg, e.file, e.line);
+    }
+
+    response.writeJsonBody(jsonResponse, 200, U.mime);
+  }
+
+  return &deserialize;
+}
+
 /// Add a PUT route that parse the data according a Protocol
 URLRouter putWith(U, T)(URLRouter router, string route, void function(T object, HTTPServerResponse res) @safe handler) {
   return putWith!(U, T)(router, route, handler.toDelegate);
@@ -836,3 +857,13 @@ URLRouter getWith(U)(URLRouter router, string route, void delegate(string id, HT
 }
 
 /// GET All
+URLRouter getAllWith(U, T)(URLRouter router, string route, T[] function() @safe handler) if(!is(T == void)) {
+  return getAllWith!(U, T)(router, route, handler.toDelegate);
+}
+
+/// ditto
+URLRouter getAllWith(U, T)(URLRouter router, string route, T[] delegate() @safe handler) if(!is(T == void)) {
+  auto listHandler = requestListHandler!(U, T)(handler);
+
+  return router.get(route, requestErrorHandler(listHandler));
+}
