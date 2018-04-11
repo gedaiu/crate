@@ -5,362 +5,397 @@ import crate.base;
 import crate.http.router;
 import crate.policy.jsonapi;
 
-import swaggerize.definitions;
-import std.stdio, std.string, std.conv;
+import openapi.definitions;
+import std.stdio, std.string, std.conv, std.traits;
+import std.algorithm;
 import vibe.data.json;
 
-Swagger toOpenApi(T)(CrateRouter!T router)
+OperationsType strToType(string value) {
+  auto key = value.toLower;
+
+  static foreach(enumValue; EnumMembers!OperationsType) {
+    if(enumValue == key) {
+      return enumValue;
+    }
+  }
+
+  throw new Exception("Unknown operation `" ~ value ~ "`");
+}
+
+OpenApi toOpenApi(T)(CrateRouter!T router)
 {
-	Swagger openApi;
-	openApi.host = "localhost";
-	openApi.schemes = [Schemes.http, Schemes.https];
-	openApi.produces = router.mime;
-	openApi.consumes = router.mime;
-	openApi.definitions = errorDefinitions;
+  OpenApi openApi;
+  openApi.components.schemas = errorDefinitions;
 
-	auto routes = router.allRoutes;
+  auto routes = router.allRoutes;
 
-	foreach (string key, schema; routes.schemas)
-	{
-		openApi.definitions[key] = Schema(schema);
-	}
+  foreach (string key, schema; routes.schemas) {
+    openApi.components.schemas[key] = Schema.fromJson(schema);
+  }
 
-	foreach (string definedPath, methods; routes.paths)
-	{
-		string path = definedPath.toOpenApiPath;
-		openApi.paths[path] = Path();
+  foreach (string definedPath, methods; routes.paths) {
+    string path = definedPath.toOpenApiPath;
+    openApi.paths[path] = Path();
 
-		foreach (method, responses; methods)
-		{
-			string strMethod = method.to!string.toLower;
-			openApi.paths[path].operations[Path.strToType(strMethod)] = Operation();
+    foreach (method, responses; methods) {
+      string strMethod = method.to!string.toLower;
+      auto openApiMethod = strToType(strMethod);
 
-			foreach (response, pathDefinition; responses)
-			{
-				string strResponse = response.to!string;
-				openApi.paths[path].operations[strMethod].responses[strResponse] = swaggerize.definitions.Response();
+      openApi.paths[path].operations[openApiMethod] = Operation();
 
-				if (pathDefinition.schemaName != "")
-				{
-					openApi.paths[path][strMethod].responses[strResponse].schema = Schema(
-							Json.emptyObject);
-					openApi.paths[path][strMethod].responses[strResponse].schema.fields["$ref"]
-						= "#/definitions/" ~ pathDefinition.schemaName;
-				}
+      foreach (response, pathDefinition; responses) {
+        string strResponse = response.to!string;
 
-				if (pathDefinition.operation.isItemOperation)
-				{
-					openApi.paths[path].operations[strMethod].parameters = [itemId];
-					openApi.paths[path][strMethod].responses["404"] = notFoundResponse;
-					openApi.paths[path][strMethod].responses["500"] = errorResponse;
-				}
+        openApi.paths[path].operations[strMethod].responses[strResponse] = openapi.definitions.Response();
 
-				if (pathDefinition.schemaBody != "")
-				{
-					openApi.paths[path].operations[strMethod].parameters ~= bodyParameter(
-							pathDefinition.schemaBody);
-				}
-			}
-		}
-	}
+        if (pathDefinition.schemaName != "") {
+          auto refSchema = new Schema;
+          refSchema._ref = "#/components/schema/" ~ pathDefinition.schemaName;
 
-	return openApi;
+          openApi.paths[path][strMethod].responses[strResponse].content["_____SOME JSON"] = MediaType();
+          openApi.paths[path][strMethod].responses[strResponse].content["_____SOME JSON"].schema = refSchema;
+        }
+
+        if (pathDefinition.operation.isItemOperation)
+        {
+          openApi.paths[path].operations[strMethod].parameters = [itemId];
+          openApi.paths[path][strMethod].responses["404"] = notFoundResponse;
+          openApi.paths[path][strMethod].responses["500"] = errorResponse;
+        }
+
+        if (pathDefinition.schemaBody != "")
+        {
+          openApi.paths[path].operations[strMethod].parameters ~= bodyParameter(pathDefinition.schemaBody);
+        }
+      }
+    }
+  }
+
+  return openApi;
 }
 
 private bool isItemOperation(CrateOperation operation)
 {
-	return operation == CrateOperation.getItem || operation == CrateOperation.updateItem
-		|| operation == CrateOperation.replaceItem
-		|| operation == CrateOperation.deleteItem || operation == CrateOperation.otherItem;
+  return operation == CrateOperation.getItem || operation == CrateOperation.updateItem
+    || operation == CrateOperation.replaceItem
+    || operation == CrateOperation.deleteItem || operation == CrateOperation.otherItem;
 }
 
 private string toOpenApiPath(string path)
 {
-	return path.replace("/:id", "/{id}");
+  return path.replace("/:id", "/{id}");
 }
 
 private Path actionPath()
 {
-	auto actionPath = Path();
-	auto operation = Operation();
+  auto actionPath = Path();
+  auto operation = Operation();
 
-	operation.tags = ["action"];
-	operation.parameters ~= itemId;
-	operation.responses = standardResponses;
+  operation.tags = ["action"];
+  operation.parameters ~= itemId;
+  operation.responses = standardResponses;
 
-	actionPath.operations["get"] = operation;
+  actionPath.operations["get"] = operation;
 
-	return actionPath;
+  return actionPath;
 }
 
 private Parameter itemId()
 {
-	auto parameter = Parameter();
-	parameter.name = "id";
-	parameter.in_ = Parameter.In.path;
-	parameter.required = true;
-	parameter.description = "The item id";
-	parameter.other = Json.emptyObject;
-	parameter.other["type"] = "string";
+  auto parameter = Parameter();
+  parameter.name = "id";
+  parameter.in_ = ParameterIn.path;
+  parameter.schema = new Schema;
+  parameter.required = true;
+  parameter.description = "The item id";
+  parameter.schema.type = SchemaType.string;
 
-	return parameter;
+  return parameter;
 }
 
 private Parameter bodyParameter(string name)
 {
-	auto addParameter = Parameter();
-	addParameter.in_ = Parameter.In.body_;
-	addParameter.schema = Schema(Json.emptyObject);
-	addParameter.name = name;
-	addParameter.required = true;
-	addParameter.schema.fields["$ref"] = "#/definitions/" ~ name;
+  auto addParameter = Parameter();
+  addParameter.in_ = ParameterIn.body_;
+  addParameter.schema = new Schema;
+  addParameter.name = name;
+  addParameter.required = true;
+  addParameter.schema._ref = "#/components/schemas/" ~ name;
 
-	return addParameter;
+  return addParameter;
 }
 
-private swaggerize.definitions.Response[string] standardResponses()
+private openapi.definitions.Response[string] standardResponses()
 {
-	swaggerize.definitions.Response[string] responses;
+  openapi.definitions.Response[string] responses;
 
-	auto okResponse = swaggerize.definitions.Response();
-	okResponse.description = "success";
+  auto okResponse = openapi.definitions.Response();
+  okResponse.description = "success";
 
-	auto errorResponse = swaggerize.definitions.Response();
-	errorResponse.description = "server error";
-	errorResponse.schema.fields = Json.emptyObject;
-	errorResponse.schema.fields["$ref"] = "#/definitions/ErrorList";
+  auto errorResponse = openapi.definitions.Response();
+  errorResponse.description = "server error";
+  errorResponse.content["application/json"].schema = new Schema;
+  errorResponse.content["application/json"].schema._ref = "#/components/schemas/ErrorList";
 
-	responses["200"] = okResponse;
-	responses["404"] = notFoundResponse;
-	responses["500"] = errorResponse;
+  responses["200"] = okResponse;
+  responses["404"] = notFoundResponse;
+  responses["500"] = errorResponse;
 
-	return responses;
+  return responses;
 }
 
-private swaggerize.definitions.Response notFoundResponse()
+private openapi.definitions.Response notFoundResponse()
 {
-	auto notFoundResponse = swaggerize.definitions.Response();
-	notFoundResponse.description = "not found";
-	notFoundResponse.schema.fields = Json.emptyObject;
-	notFoundResponse.schema.fields["$ref"] = "#/definitions/ErrorList";
+  auto notFoundResponse = openapi.definitions.Response();
+  notFoundResponse.description = "not found";
+  notFoundResponse.content["application/json"] = MediaType();
+  notFoundResponse.content["application/json"].schema = new Schema;
+  notFoundResponse.content["application/json"].schema._ref = "#/components/schemas/ErrorList";
 
-	return notFoundResponse;
+  return notFoundResponse;
 }
 
-private swaggerize.definitions.Response errorResponse()
+private openapi.definitions.Response errorResponse()
 {
-	auto errorResponse = swaggerize.definitions.Response();
-	errorResponse.description = "server error";
-	errorResponse.schema.fields = Json.emptyObject;
-	errorResponse.schema.fields["$ref"] = "#/definitions/ErrorList";
+  auto errorResponse = openapi.definitions.Response();
+  errorResponse.description = "server error";
 
-	return errorResponse;
+  errorResponse.content["application/json"] = MediaType();
+  errorResponse.content["application/json"].schema = new Schema;
+  errorResponse.content["application/json"].schema._ref = "#/components/schemas/ErrorList";
+
+  return errorResponse;
 }
 
 private Schema[string] errorDefinitions()
 {
-	Schema[string] errors;
+  Schema[string] errors;
 
-	Schema error = Schema(Json.emptyObject);
-	Schema errorList = Schema(Json.emptyObject);
+  Schema error = new Schema();
+  Schema errorList = new Schema();
 
-	errorList.fields["type"] = "object";
-	errorList.fields["properties"] = Json.emptyObject;
-	errorList.fields["properties"]["errors"] = Json.emptyObject;
-	errorList.fields["properties"]["errors"]["type"] = "array";
-	errorList.fields["properties"]["errors"]["items"] = Json.emptyObject;
-	errorList.fields["properties"]["errors"]["items"]["$ref"] = "#/definitions/Error";
+  errorList.type = SchemaType.object;
+  errorList.required = ["properties"];
+  errorList.properties["properties"] = new Schema;
+  errorList.properties["properties"].type = SchemaType.object;
+  errorList.properties["properties"].required = ["errors"];
+  errorList.properties["properties"].properties["errors"] = new Schema;
+  errorList.properties["properties"].properties["errors"].type = SchemaType.array;
+  errorList.properties["properties"].properties["errors"].items = new Schema;
+  errorList.properties["properties"].properties["errors"].items._ref = "#/components/schemas/Error";
 
-	error.fields["type"] = "object";
-	error.fields["properties"] = Json.emptyObject;
-	error.fields["properties"]["status"] = Json.emptyObject;
-	error.fields["properties"]["status"]["type"] = "integer";
-	error.fields["properties"]["status"]["format"] = "int32";
-	error.fields["properties"]["title"] = Json.emptyObject;
-	error.fields["properties"]["title"]["type"] = "string";
-	error.fields["properties"]["description"] = Json.emptyObject;
-	error.fields["properties"]["description"]["type"] = "string";
+  error.type = SchemaType.object;
+  error.properties["status"] = new Schema;
+  error.properties["title"] = new Schema;
+  error.properties["description"] = new Schema;
+  error.properties["status"].type = SchemaType.integer;
+  error.properties["status"].format = SchemaFormat.int32;
+  error.properties["title"].type = SchemaType.string;
+  error.properties["description"].type = SchemaType.string;
 
-	errors["ErrorList"] = errorList;
-	errors["Error"] = error;
+  errors["ErrorList"] = errorList;
+  errors["Error"] = error;
 
-	return errors;
+  return errors;
 }
 
 version(unittest)
 {
-	import fluent.asserts;
-	import fluentasserts.vibe.request;
-	import vibe.data.serialization;
-	import vibe.data.json;
-	import crate.collection.memory;
+  import fluent.asserts;
+  import fluentasserts.vibe.request;
+  import vibe.data.serialization;
+  import vibe.data.json;
+  import crate.collection.memory;
 
-	bool isTestActionCalled;
+  bool isTestActionCalled;
 
-	struct OtherNested
-	{
-		string otherName;
-	}
+  struct OtherNested
+  {
+    string otherName;
+  }
 
-	struct Nested
-	{
-		string name;
-		OtherNested other;
-	}
+  struct Nested
+  {
+    string name;
+    OtherNested other;
+  }
 
-	struct TestModel
-	{
-		@optional
-		{
-			string _id;
-			string other = "";
-			string[] tags;
-			Nested[] list;
-		}
+  struct TestModel
+  {
+    @optional
+    {
+      string _id;
+      string other = "";
+      string[] tags;
+      Nested[] list;
+    }
 
-		string name = "";
+    string name = "";
 
-		void action()
-		{
-			isTestActionCalled = true;
-		}
+    void action()
+    {
+      isTestActionCalled = true;
+    }
 
-		string actionResponse()
-		{
-			isTestActionCalled = true;
-			return "ok.";
-		}
-	}
+    string actionResponse()
+    {
+      isTestActionCalled = true;
+      return "ok.";
+    }
+  }
 }
 
 @("Check if all the routes are defined")
 unittest
 {
-	auto router = new URLRouter();
-	auto crate = new MemoryCrate!TestModel;
+  auto router = new URLRouter();
+  auto crate = new MemoryCrate!TestModel;
 
-	auto crateRouter = router
-											.crateSetup
-												.add(crate)
-												.enableAction!(MemoryCrate!TestModel, "action")
-												.enableAction!(MemoryCrate!TestModel, "actionResponse");
+  auto crateRouter = router
+                      .crateSetup
+                        .add(crate)
+                        .enableAction!(MemoryCrate!TestModel, "action")
+                        .enableAction!(MemoryCrate!TestModel, "actionResponse");
 
-	auto api = crateRouter.toOpenApi;
+  auto api = crateRouter.toOpenApi;
 
-	assert(api.paths.length == 4);
-	assert(Path.OperationsType.get in api.paths["/testmodels/{id}/action"].operations);
-	assert(api.paths["/testmodels/{id}/action"]["get"].parameters.length == 1);
-	assert(api.paths["/testmodels/{id}/action"]["get"].parameters[0].name == "id");
+  assert(api.paths.length == 4);
+  assert(OperationsType.get in api.paths["/testmodels/{id}/action"].operations);
+  assert(api.paths["/testmodels/{id}/action"]["get"].parameters.length == 1);
+  assert(api.paths["/testmodels/{id}/action"]["get"].parameters[0].name == "id");
 
-	assert("ErrorList" in api.definitions);
-	assert("Error" in api.definitions);
-	assert("TestModelList" in api.definitions);
-	assert("TestModelResponse" in api.definitions);
-	assert("TestModelRequest" in api.definitions);
-	assert(Path.OperationsType.get in api.paths["/testmodels/{id}/actionResponse"].operations);
+  assert("ErrorList" in api.components.schemas);
+  assert("Error" in api.components.schemas);
+  assert("TestModelList" in api.components.schemas);
+  assert("TestModelResponse" in api.components.schemas);
+  assert("TestModelRequest" in api.components.schemas);
+  assert(OperationsType.get in api.paths["/testmodels/{id}/actionResponse"].operations);
 }
 
 @("Check if the array property has the right definition")
 unittest
 {
-	auto router = new URLRouter();
-	auto crate = new MemoryCrate!TestModel;
+  auto router = new URLRouter();
+  auto crate = new MemoryCrate!TestModel;
 
-	auto crateRouter = router.crateSetup!CrateJsonApiPolicy.add(crate);
+  auto crateRouter = router.crateSetup!CrateJsonApiPolicy.add(crate);
 
-	auto api = crateRouter.toOpenApi.serializeToJson;
+  auto api = crateRouter.toOpenApi.serializeToJson;
 
-	api["definitions"]["TestModelAttributes"]["properties"]["tags"]["type"].to!string
-		.should.equal("array");
+  api["components"]["schemas"].byKeyValue.map!"a.key".should.contain("TestModelAttributes");
 
-	api["definitions"]["TestModelAttributes"]["properties"]["tags"]["items"]["type"].to!string
-		.should.equal("string");
+  auto testModelAttributesDefinition = api["components"]["schemas"]["TestModelAttributes"];
 
-	api["definitions"]["TestModelAttributes"]["properties"]["list"]["type"].to!string
-		.should.equal("array");
+  Json expected = `{
+    "required": [
+      "name"
+    ],
+    "type": "object",
+    "properties": {
+      "tags": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "name": {
+        "type": "string"
+      },
+      "list": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/NestedModel"
+        }
+      },
+      "other": {
+        "type": "string"
+      }
+    }
+  }`.parseJsonString;
 
-	api["definitions"]["TestModelAttributes"]["properties"]["list"]["items"]["$ref"].to!string
-		.should.equal("#/definitions/NestedModel");
+  testModelAttributesDefinition.should.equal(expected);
 }
 
 @("Check if the nested property has the right definition")
 unittest
 {
-	auto router = new URLRouter();
-	auto crate = new MemoryCrate!TestModel;
+  auto router = new URLRouter();
+  auto crate = new MemoryCrate!TestModel;
 
-	auto crateRouter = router.crateSetup!CrateJsonApiPolicy.add(crate);
+  auto crateRouter = router.crateSetup!CrateJsonApiPolicy.add(crate);
 
-	auto api = crateRouter.toOpenApi.serializeToJson;
+  auto api = crateRouter.toOpenApi.serializeToJson;
 
-	api["definitions"]["NestedModel"]["properties"]["name"]["type"].to!string.should.equal("string");
-	api["definitions"]["NestedModel"]["properties"]["other"]["$ref"].to!string
-		.should.equal("#/definitions/OtherNestedModel");
+  api["components"]["schemas"].byKeyValue.map!"a.key".should.contain("NestedModel");
+
+  auto nestedModelDefinition = api["components"]["schemas"]["NestedModel"];
+  nestedModelDefinition["properties"]["name"]["type"].to!string.should.equal("string");
+  nestedModelDefinition["properties"]["other"]["$ref"].to!string.should.equal("#/components/schemas/OtherNestedModel");
 }
 
 string asOpenApiType(string dType)
 {
-	switch (dType)
-	{
-	case "int":
-		return "integer";
+  switch (dType)
+  {
+  case "int":
+    return "integer";
 
-	case "long":
-		return "integer";
+  case "long":
+    return "integer";
 
-	case "float":
-		return "number";
+  case "float":
+    return "number";
 
-	case "double":
-		return "number";
+  case "double":
+    return "number";
 
-	case "string":
-		return "string";
+  case "string":
+    return "string";
 
-	case "bool":
-		return "boolean";
+  case "bool":
+    return "boolean";
 
-	case "SysTime":
-		return "string";
+  case "SysTime":
+    return "string";
 
-	case "DateTime":
-		return "string";
+  case "DateTime":
+    return "string";
 
-	default:
-		return "object";
-	}
+  default:
+    return "object";
+  }
 }
 
 string asOpenApiFormat(string dType)
 {
-	switch (dType)
-	{
-	case "int":
-		return "int32";
+  switch (dType)
+  {
+  case "int":
+    return "int32";
 
-	case "long":
-		return "int64";
+  case "long":
+    return "int64";
 
-	case "float":
-		return "float";
+  case "float":
+    return "float";
 
-	case "double":
-		return "double";
+  case "double":
+    return "double";
 
-	case "string":
-		return "";
+  case "string":
+    return "";
 
-	case "bool":
-		return "";
+  case "bool":
+    return "";
 
-	case "SysTime":
-	case "DateTime":
-		return "date-time";
+  case "SysTime":
+  case "DateTime":
+    return "date-time";
 
-	case "Date":
-		return "date";
+  case "Date":
+    return "date";
 
-	default:
-		return "";
-	}
+  default:
+    return "";
+  }
 }

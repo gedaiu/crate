@@ -175,7 +175,7 @@ private
 		data["type"] = "object";
 		data["properties"] = Json.emptyObject;
 		data["properties"][singular] = Json.emptyObject;
-		data["properties"][singular]["$ref"] = "#/definitions/" ~ T.stringof;
+		data["properties"][singular]["$ref"] = "#/components/schemas/" ~ T.stringof;
 
 		return data;
 	}
@@ -190,7 +190,7 @@ private
 		data["properties"][plural] = Json.emptyObject;
 		data["properties"][plural]["type"] = "array";
 		data["properties"][plural]["items"] = Json.emptyObject;
-		data["properties"][plural]["items"]["$ref"] = "#/definitions/" ~ T.stringof;
+		data["properties"][plural]["items"]["$ref"] = "#/components/schemas/" ~ T.stringof;
 
 		return data;
 	}
@@ -213,7 +213,7 @@ private
 			}
 			else static if (type == "object")
 			{
-				enum refObj = "#/definitions/" ~ field.type;
+				enum refObj = "#/components/schemas/" ~ field.type;
 
 				static if (field.isArray)
 				{
@@ -320,14 +320,14 @@ unittest
 
 	assert(schema["TestModelResponse"]["type"] == "object");
 	assert(
-			schema["TestModelResponse"]["properties"]["testModel"]["$ref"] == "#/definitions/TestModel");
+			schema["TestModelResponse"]["properties"]["testModel"]["$ref"] == "#/components/schemas/TestModel");
 
 	assert(schema["TestModelList"]["type"] == "object");
 
 	assert(schema["TestModelList"]["properties"]["testModels"]["type"] == "array");
 
 	assert(
-			schema["TestModelList"]["properties"]["testModels"]["items"]["$ref"] == "#/definitions/TestModel");
+			schema["TestModelList"]["properties"]["testModels"]["items"]["$ref"] == "#/components/schemas/TestModel");
 
 	assert(schema["TestModelRequest"]["type"] == "object");
 
@@ -373,7 +373,7 @@ unittest
 	auto schema = schemas!ComposedModel.serializeToJson;
 
 	assert(schema["ComposedModel"]["type"] == "object");
-	assert(schema["ComposedModel"]["properties"]["child"]["$ref"] == "#/definitions/TestModel");
+	assert(schema["ComposedModel"]["properties"]["child"]["$ref"] == "#/components/schemas/TestModel");
 
 	assert(schema["TestModel"]["type"] == "object");
 	assert(schema["TestModel"]["properties"]["name"]["type"] == "string");

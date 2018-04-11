@@ -9,7 +9,7 @@ import vibe.http.server;
 
 import crate.ctfe;
 
-import swaggerize.definitions;
+import openapi.definitions;
 
 enum CrateOperation
 {

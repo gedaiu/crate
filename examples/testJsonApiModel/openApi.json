@@ -7,7 +7,7 @@
 			"type": "object",
 			"properties": {
 				"data": {
-					"$ref": "#/definitions/BookItem"
+					"$ref": "#/components/schemas/BookItem"
 				}
 			}
 		},
@@ -15,10 +15,10 @@
 			"type": "object",
 			"properties": {
 				"attributes": {
-					"$ref": "#/definitions/CategoryAttributes"
+					"$ref": "#/components/schemas/CategoryAttributes"
 				},
 				"relationships": {
-					"$ref": "#/definitions/CategoryRelationships"
+					"$ref": "#/components/schemas/CategoryRelationships"
 				},
 				"type": {
 					"type": "string"
@@ -32,10 +32,10 @@
 			"type": "object",
 			"properties": {
 				"attributes": {
-					"$ref": "#/definitions/CategoryAttributes"
+					"$ref": "#/components/schemas/CategoryAttributes"
 				},
 				"relationships": {
-					"$ref": "#/definitions/CategoryRelationships"
+					"$ref": "#/components/schemas/CategoryRelationships"
 				},
 				"type": {
 					"type": "string"
@@ -49,7 +49,7 @@
 					"type": "string"
 				},
 				"userId": {
-					"$ref": "#/definitions/BsonObjectIDModel"
+					"$ref": "#/components/schemas/BsonObjectIDModel"
 				}
 			}
 		},
@@ -62,7 +62,7 @@
 				"errors": {
 					"type": "array",
 					"items": {
-						"$ref": "#/definitions/Error"
+						"$ref": "#/components/schemas/Error"
 					}
 				}
 			}
@@ -74,7 +74,7 @@
 			"type": "object",
 			"properties": {
 				"category": {
-					"$ref": "#/definitions/CategoryRelation"
+					"$ref": "#/components/schemas/CategoryRelation"
 				}
 			}
 		},
@@ -84,7 +84,7 @@
 				"data": {
 					"type": "array",
 					"items": {
-						"$ref": "#/definitions/BookItem"
+						"$ref": "#/components/schemas/BookItem"
 					}
 				}
 			}
@@ -93,7 +93,7 @@
 			"type": "object",
 			"properties": {
 				"data": {
-					"$ref": "#/definitions/CategoryNewItem"
+					"$ref": "#/components/schemas/CategoryNewItem"
 				}
 			}
 		},
@@ -123,7 +123,7 @@
 			"type": "object",
 			"properties": {
 				"data": {
-					"$ref": "#/definitions/BookNewItem"
+					"$ref": "#/components/schemas/BookNewItem"
 				}
 			}
 		},
@@ -171,7 +171,7 @@
 				"data": {
 					"type": "array",
 					"items": {
-						"$ref": "#/definitions/CategoryItem"
+						"$ref": "#/components/schemas/CategoryItem"
 					}
 				}
 			}
@@ -180,10 +180,10 @@
 			"type": "object",
 			"properties": {
 				"attributes": {
-					"$ref": "#/definitions/BookAttributes"
+					"$ref": "#/components/schemas/BookAttributes"
 				},
 				"relationships": {
-					"$ref": "#/definitions/BookRelationships"
+					"$ref": "#/components/schemas/BookRelationships"
 				},
 				"type": {
 					"type": "string"
@@ -194,10 +194,10 @@
 			"type": "object",
 			"properties": {
 				"attributes": {
-					"$ref": "#/definitions/BookAttributes"
+					"$ref": "#/components/schemas/BookAttributes"
 				},
 				"relationships": {
-					"$ref": "#/definitions/BookRelationships"
+					"$ref": "#/components/schemas/BookRelationships"
 				},
 				"type": {
 					"type": "string"
@@ -211,7 +211,7 @@
 			"type": "object",
 			"properties": {
 				"data": {
-					"$ref": "#/definitions/CategoryItem"
+					"$ref": "#/components/schemas/CategoryItem"
 				}
 			}
 		},
@@ -227,7 +227,7 @@
 				"comments": {
 					"type": "array",
 					"items": {
-						"$ref": "#/definitions/CommentModel"
+						"$ref": "#/components/schemas/CommentModel"
 					}
 				},
 				"something": {
@@ -242,7 +242,7 @@
 				"category": {
 					"type": "array",
 					"items": {
-						"$ref": "#/definitions/CategoryModel"
+						"$ref": "#/components/schemas/CategoryModel"
 					}
 				},
 				"inStock": {
@@ -279,7 +279,7 @@
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/BookList"
+							"$ref": "#/components/schemas/BookList"
 						}
 					}
 				}
@@ -292,7 +292,7 @@
 						"in": "body",
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/BookRequest"
+							"$ref": "#/components/schemas/BookRequest"
 						}
 					}
 				],
@@ -300,7 +300,7 @@
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/BookResponse"
+							"$ref": "#/components/schemas/BookResponse"
 						}
 					}
 				}
@@ -321,7 +321,7 @@
 					"500": {
 						"description": "server error",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"201": {
@@ -330,7 +330,7 @@
 					"404": {
 						"description": "not found",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					}
 				}
@@ -349,19 +349,19 @@
 					"500": {
 						"description": "server error",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"404": {
 						"description": "not found",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/BookResponse"
+							"$ref": "#/components/schemas/BookResponse"
 						}
 					}
 				}
@@ -381,7 +381,7 @@
 						"in": "body",
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/BookRequest"
+							"$ref": "#/components/schemas/BookRequest"
 						}
 					}
 				],
@@ -389,19 +389,19 @@
 					"500": {
 						"description": "server error",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"404": {
 						"description": "not found",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/BookResponse"
+							"$ref": "#/components/schemas/BookResponse"
 						}
 					}
 				}
@@ -422,13 +422,13 @@
 					"500": {
 						"description": "server error",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"404": {
 						"description": "not found",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"200": {
@@ -443,7 +443,7 @@
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/CategoryList"
+							"$ref": "#/components/schemas/CategoryList"
 						}
 					}
 				}
@@ -456,7 +456,7 @@
 						"in": "body",
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/CategoryRequest"
+							"$ref": "#/components/schemas/CategoryRequest"
 						}
 					}
 				],
@@ -464,7 +464,7 @@
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/CategoryResponse"
+							"$ref": "#/components/schemas/CategoryResponse"
 						}
 					}
 				}
@@ -485,19 +485,19 @@
 					"500": {
 						"description": "server error",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"404": {
 						"description": "not found",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/StringResponse"
+							"$ref": "#/components/schemas/StringResponse"
 						}
 					}
 				}
@@ -518,7 +518,7 @@
 					"500": {
 						"description": "server error",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"201": {
@@ -527,7 +527,7 @@
 					"404": {
 						"description": "not found",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					}
 				}
@@ -546,19 +546,19 @@
 					"500": {
 						"description": "server error",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"404": {
 						"description": "not found",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/CategoryResponse"
+							"$ref": "#/components/schemas/CategoryResponse"
 						}
 					}
 				}
@@ -578,7 +578,7 @@
 						"in": "body",
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/CategoryRequest"
+							"$ref": "#/components/schemas/CategoryRequest"
 						}
 					}
 				],
@@ -586,19 +586,19 @@
 					"500": {
 						"description": "server error",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"404": {
 						"description": "not found",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/CategoryResponse"
+							"$ref": "#/components/schemas/CategoryResponse"
 						}
 					}
 				}

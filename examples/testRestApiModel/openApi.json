@@ -7,7 +7,7 @@
 			"type": "object",
 			"properties": {
 				"book": {
-					"$ref": "#/definitions/Book"
+					"$ref": "#/components/schemas/Book"
 				}
 			}
 		},
@@ -24,7 +24,7 @@
 				"comments": {
 					"type": "array",
 					"items": {
-						"$ref": "#/definitions/Comment"
+						"$ref": "#/components/schemas/Comment"
 					}
 				},
 				"something": {
@@ -44,7 +44,7 @@
 					"type": "boolean"
 				},
 				"_id": {
-					"$ref": "#/definitions/BsonObjectID"
+					"$ref": "#/components/schemas/BsonObjectID"
 				},
 				"author": {
 					"type": "string"
@@ -57,7 +57,7 @@
 				"errors": {
 					"type": "array",
 					"items": {
-						"$ref": "#/definitions/Error"
+						"$ref": "#/components/schemas/Error"
 					}
 				}
 			}
@@ -91,7 +91,7 @@
 				"books": {
 					"type": "array",
 					"items": {
-						"$ref": "#/definitions/Book"
+						"$ref": "#/components/schemas/Book"
 					}
 				}
 			}
@@ -130,7 +130,7 @@
 						"comments": {
 							"type": "array",
 							"items": {
-								"$ref": "#/definitions/Comment"
+								"$ref": "#/components/schemas/Comment"
 							}
 						},
 						"something": {
@@ -165,7 +165,7 @@
 			"type": "object",
 			"properties": {
 				"_id": {
-					"$ref": "#/definitions/BsonObjectID"
+					"$ref": "#/components/schemas/BsonObjectID"
 				},
 				"name": {
 					"type": "string"
@@ -181,7 +181,7 @@
 				"categories": {
 					"type": "array",
 					"items": {
-						"$ref": "#/definitions/Category"
+						"$ref": "#/components/schemas/Category"
 					}
 				}
 			}
@@ -197,7 +197,7 @@
 					"type": "string"
 				},
 				"userId": {
-					"$ref": "#/definitions/BsonObjectID"
+					"$ref": "#/components/schemas/BsonObjectID"
 				}
 			}
 		},
@@ -205,7 +205,7 @@
 			"type": "object",
 			"properties": {
 				"category": {
-					"$ref": "#/definitions/Category"
+					"$ref": "#/components/schemas/Category"
 				}
 			}
 		}
@@ -235,7 +235,7 @@
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/BookList"
+							"$ref": "#/components/schemas/BookList"
 						}
 					}
 				}
@@ -248,7 +248,7 @@
 						"in": "body",
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/BookRequest"
+							"$ref": "#/components/schemas/BookRequest"
 						}
 					}
 				],
@@ -256,7 +256,7 @@
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/BookResponse"
+							"$ref": "#/components/schemas/BookResponse"
 						}
 					}
 				}
@@ -277,7 +277,7 @@
 					"500": {
 						"description": "server error",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"201": {
@@ -286,7 +286,7 @@
 					"404": {
 						"description": "not found",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					}
 				}
@@ -305,19 +305,19 @@
 					"500": {
 						"description": "server error",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"404": {
 						"description": "not found",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/BookResponse"
+							"$ref": "#/components/schemas/BookResponse"
 						}
 					}
 				}
@@ -337,7 +337,7 @@
 						"in": "body",
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/BookRequest"
+							"$ref": "#/components/schemas/BookRequest"
 						}
 					}
 				],
@@ -345,19 +345,19 @@
 					"500": {
 						"description": "server error",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"404": {
 						"description": "not found",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/BookResponse"
+							"$ref": "#/components/schemas/BookResponse"
 						}
 					}
 				}
@@ -378,13 +378,13 @@
 					"500": {
 						"description": "server error",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"404": {
 						"description": "not found",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"200": {
@@ -399,7 +399,7 @@
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/CategoryList"
+							"$ref": "#/components/schemas/CategoryList"
 						}
 					}
 				}
@@ -412,7 +412,7 @@
 						"in": "body",
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/CategoryRequest"
+							"$ref": "#/components/schemas/CategoryRequest"
 						}
 					}
 				],
@@ -420,7 +420,7 @@
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/CategoryResponse"
+							"$ref": "#/components/schemas/CategoryResponse"
 						}
 					}
 				}
@@ -441,19 +441,19 @@
 					"500": {
 						"description": "server error",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"404": {
 						"description": "not found",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/StringResponse"
+							"$ref": "#/components/schemas/StringResponse"
 						}
 					}
 				}
@@ -474,7 +474,7 @@
 					"500": {
 						"description": "server error",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"201": {
@@ -483,7 +483,7 @@
 					"404": {
 						"description": "not found",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					}
 				}
@@ -502,19 +502,19 @@
 					"500": {
 						"description": "server error",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"404": {
 						"description": "not found",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/CategoryResponse"
+							"$ref": "#/components/schemas/CategoryResponse"
 						}
 					}
 				}
@@ -534,7 +534,7 @@
 						"in": "body",
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/CategoryRequest"
+							"$ref": "#/components/schemas/CategoryRequest"
 						}
 					}
 				],
@@ -542,19 +542,19 @@
 					"500": {
 						"description": "server error",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"404": {
 						"description": "not found",
 						"schema": {
-							"$ref": "#/definitions/ErrorList"
+							"$ref": "#/components/schemas/ErrorList"
 						}
 					},
 					"200": {
 						"description": "",
 						"schema": {
-							"$ref": "#/definitions/CategoryResponse"
+							"$ref": "#/components/schemas/CategoryResponse"
 						}
 					}
 				}

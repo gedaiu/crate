@@ -6,7 +6,7 @@ import crate.error;
 import vibe.data.json;
 import vibe.data.bson;
 
-import swaggerize.definitions;
+import openapi.definitions;
 
 import std.meta, std.conv, std.exception;
 import std.algorithm.searching, std.algorithm.iteration;

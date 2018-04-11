@@ -153,7 +153,7 @@ private
     data["properties"]["data"] = Json.emptyObject;
     data["properties"]["data"]["type"] = "array";
     data["properties"]["data"]["items"] = Json.emptyObject;
-    data["properties"]["data"]["items"]["$ref"] = "#/definitions/" ~ T.stringof ~ "Item";
+    data["properties"]["data"]["items"]["$ref"] = "#/components/schemas/" ~ T.stringof ~ "Item";
 
     return data;
   }
@@ -177,9 +177,9 @@ private
     item["properties"]["type"] = Json.emptyObject;
     item["properties"]["type"]["type"] = "string";
     item["properties"]["attributes"] = Json.emptyObject;
-    item["properties"]["attributes"]["$ref"] = "#/definitions/" ~ T.stringof ~ "Attributes";
+    item["properties"]["attributes"]["$ref"] = "#/components/schemas/" ~ T.stringof ~ "Attributes";
     item["properties"]["relationships"] = Json.emptyObject;
-    item["properties"]["relationships"]["$ref"] = "#/definitions/"
+    item["properties"]["relationships"]["$ref"] = "#/components/schemas/"
       ~ T.stringof ~ "Relationships";
 
     return item;
@@ -193,7 +193,7 @@ private
 
     item["properties"] = Json.emptyObject;
     item["properties"]["data"] = Json.emptyObject;
-    item["properties"]["data"]["$ref"] = "#/definitions/" ~ T.stringof ~ "Item";
+    item["properties"]["data"]["$ref"] = "#/components/schemas/" ~ T.stringof ~ "Item";
 
     return item;
   }
@@ -206,7 +206,7 @@ private
 
     item["properties"] = Json.emptyObject;
     item["properties"]["data"] = Json.emptyObject;
-    item["properties"]["data"]["$ref"] = "#/definitions/" ~ T.stringof ~ "NewItem";
+    item["properties"]["data"]["$ref"] = "#/components/schemas/" ~ T.stringof ~ "NewItem";
 
     return item;
   }
@@ -238,7 +238,7 @@ private
         }
         else
         {
-          attributes["properties"][field.name]["items"]["$ref"] = "#/definitions/"
+          attributes["properties"][field.name]["items"]["$ref"] = "#/components/schemas/"
             ~ field.fields[0].type ~ "Model";
         }
       }
@@ -270,7 +270,7 @@ private
         static if (fields[0].isRelation && !fields[0].isId)
         {
           attributes["properties"][fields[0].name] = Json.emptyObject;
-          attributes["properties"][fields[0].name]["$ref"] = "#/definitions/"
+          attributes["properties"][fields[0].name]["$ref"] = "#/components/schemas/"
             ~ fields[0].type ~ "Relation";
 
           static if (!fields[0].isOptional)
@@ -365,7 +365,7 @@ private
           }
 
           schema["properties"][key] = Json.emptyObject;
-          schema["properties"][key]["$ref"] = "#/definitions/"
+          schema["properties"][key]["$ref"] = "#/components/schemas/"
             ~ fields[0].type ~ "Model";
 
           enum FieldDefinition[] fields = getFields!Type.fields;
