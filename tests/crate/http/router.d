@@ -136,6 +136,20 @@ alias s = Spec!({
               });
       });
 
+      it("should deduce the route from the api policy", {
+        auto router = new URLRouter();
+        router.putWith!RestApi(&putSite);
+
+        Json dataUpdate = restSiteFixture.parseJsonString;
+
+        request(router)
+          .put("/sites/10")
+            .send(dataUpdate)
+              .expectStatusCode(200)
+              .expectHeader("Content-Type", "application/json")
+              .end;
+      });
+
       it("should accept a valid request and return an empty body", {
         auto router = new URLRouter();
         router.putWith!RestApi("/sites/:id", &putVoidSite);
@@ -149,6 +163,19 @@ alias s = Spec!({
               .end((Response response) => {
                 response.bodyString.should.equal("");
               });
+      });
+
+      it("should deduce the route from the api policy", {
+        auto router = new URLRouter();
+        router.putWith!RestApi(&putVoidSite);
+
+        Json dataUpdate = restSiteFixture.parseJsonString;
+
+        request(router)
+          .put("/sites/10")
+            .send(dataUpdate)
+              .expectStatusCode(204)
+              .end;
       });
 
       it("should accept a valid request as json", {
@@ -265,6 +292,23 @@ alias s = Spec!({
               });
       });
 
+      it("should deduce the post route", {
+        auto router = new URLRouter();
+        router.postWith!RestApi(&postSite);
+
+        Json dataUpdate = restSiteFixture.parseJsonString;
+
+        request(router)
+          .post("/sites")
+            .send(dataUpdate)
+              .expectStatusCode(200)
+              .expectHeader("Content-Type", "application/json")
+              .end((Response response) => {
+                dataUpdate["site"]["_id"] = "122";
+                response.bodyJson.should.equal(dataUpdate);
+              });
+      });
+
       it("should accept a valid request", {
         auto router = new URLRouter();
         router.postWith!RestApi("/sites", &postJsonSite);
@@ -295,6 +339,20 @@ alias s = Spec!({
               .end((Response response) => {
                 response.bodyString.should.equal("");
               });
+      });
+
+
+      it("should deduce the route of a post with result", {
+        auto router = new URLRouter();
+        router.postWith!RestApi(&postVoidSite);
+
+        Json dataUpdate = restSiteFixture.parseJsonString;
+
+        request(router)
+          .post("/sites")
+            .send(dataUpdate)
+              .expectStatusCode(204)
+              .end;
       });
 
       it("should respond with an error when there are missing fields", {

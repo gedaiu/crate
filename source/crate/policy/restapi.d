@@ -2,6 +2,7 @@ module crate.policy.restapi;
 
 import crate.base;
 import crate.serializer.restapi;
+import crate.routing.restapi;
 import crate.generator.openapi;
 import crate.ctfe;
 
@@ -17,6 +18,7 @@ struct RestApi {
   }
 
   alias Serializer = RestApiSerializer;
+  alias Routing = RestApiRouting;
 }
 
 class CrateRestApiPolicy : CratePolicy

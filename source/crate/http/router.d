@@ -48,7 +48,7 @@ auto crateSetup(T)(URLRouter router) {
 }
 
 auto crateSetup(URLRouter router) {
-  return new CrateRouter!CrateRestApiPolicy(router);
+  return new CrateRouter!RestApi(router);
 }
 
 private static CrateCollection[URLRouter] proxyCollection;
@@ -78,15 +78,6 @@ class CrateRouter(RouterPolicy) {
 
   CrateRouter enableResource(T, string resourcePath, Policy)()
   {
-    auto const policy = new Policy;
-    auto config = proxyCollection[router].getByType(T.stringof).config;
-
-    auto path = basePath(policy.name, config) ~ "/:id/" ~ resourcePath;
-    auto resource = new Resource!(T, resourcePath)(proxyCollection[router]);
-
-    router.get(path, checkError(policy, &resource.get));
-    router.post(path, checkError(policy, &resource.post));
-
     return this;
   }
 
@@ -101,15 +92,6 @@ class CrateRouter(RouterPolicy) {
 
   CrateRouter enableAction(T: Crate!U, string actionName, Policy, U)()
   {
-    auto const policy = new Policy;
-    auto action = new ModelAction!(T, actionName)(proxyCollection[router]);
-    auto config = proxyCollection[router].getByType(U.stringof).config;
-    auto path = basePath(policy.name, config) ~ "/:id/" ~ actionName;
-
-    definedRoutes.paths[path][action.method][200] = PathDefinition(action.returnType, "", CrateOperation.otherItem);
-
-    router.match(action.method, path, checkError(policy, &action.handler));
-
     return this;
   }
 
@@ -120,15 +102,6 @@ class CrateRouter(RouterPolicy) {
 
   CrateRouter enableCrateAction(T: Crate!U, string actionName, Policy, U)(T crate)
   {
-    auto const policy = new Policy;
-    auto action = new CrateAction!(T, actionName)(crate);
-    auto config = proxyCollection[router].getByType(U.stringof).config;
-    auto path = basePath(policy.name, config) ~ "/:id/" ~ actionName;
-
-    definedRoutes.paths[path][action.method][200] = PathDefinition(action.returnType, "", CrateOperation.otherItem);
-
-    router.match(action.method, path, checkError(policy, &action.handler));
-
     return this;
   }
 
@@ -142,40 +115,17 @@ class CrateRouter(RouterPolicy) {
     return mimeList.keys;
   }
 
-  CrateRouter add(Policy, T)(Crate!T crate, ICrateFilter[] filters ...)
-  {
-    const policy = new const Policy;
-
-    mimeList[policy.mime] = true;
-
-    auto tmpRoutes = defineRoutes!T(policy, crate.config());
-
-    foreach (string name, schema; tmpRoutes.schemas)
-    {
-      definedRoutes.schemas[name] = schema;
-    }
-
-    foreach (string path, methods; tmpRoutes.paths)
-    {
-      foreach (method, responses; methods)
-      {
-        foreach (response, pathDefinition; responses)
-        {
-          definedRoutes.paths[path][method][response] = pathDefinition;
-        }
-      }
-    }
-
-    bindRoutes(tmpRoutes, policy, crate, filters);
-
-    proxyCollection[router].addByPath(basePath(policy.name, crate.config), crate);
-
-    return this;
-  }
-
   CrateRouter add(T)(Crate!T crate, ICrateFilter[] filters ...)
   {
     return add!RouterPolicy(crate, filters);
+  }
+
+  CrateRouter add(Policy, T)(Crate!T crate, ICrateFilter[] filters ...)
+  {
+    throw new Exception("not implemented");
+    //router.putWith!Policy(crate.updateItem);
+
+    //return this;
   }
 
   private
@@ -753,53 +703,86 @@ auto requestListHandler(U, T)(T[] delegate() @safe next) if(!is(T == void)){
 }
 
 /// Add a PUT route that parse the data according a Protocol
-URLRouter putWith(U, T)(URLRouter router, string route, void function(T object, HTTPServerResponse res) @safe handler) {
-  return putWith!(U, T)(router, route, handler.toDelegate);
+URLRouter putWith(Policy, T)(URLRouter router, string route, void function(T object, HTTPServerResponse res) @safe handler) {
+  return putWith!(Policy, T)(router, route, handler.toDelegate);
 }
 
 /// ditto
-URLRouter putWith(U, T)(URLRouter router, string route, void delegate(T object, HTTPServerResponse res) @safe handler) {
+URLRouter putWith(Policy, T)(URLRouter router, string route, void delegate(T object, HTTPServerResponse res) @safe handler) {
   enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
 
-  auto deserializationHandler = requestFullDeserializationHandler!(U, T)(handler);
+  auto deserializationHandler = requestFullDeserializationHandler!(Policy, T)(handler);
 
   return router.put(route, requestErrorHandler(deserializationHandler));
 }
 
 /// ditto
-URLRouter putWith(U, T, V)(URLRouter router, string route, V function(T object) @safe handler) if(!is(V == void)) {
-  return putWith!(U, T, V)(router, route, handler.toDelegate);
+URLRouter putWith(Policy, T, V)(URLRouter router, string route, V function(T object) @safe handler) if(!is(V == void)) {
+  return putWith!(Policy, T, V)(router, route, handler.toDelegate);
 }
 
 /// ditto
-URLRouter putWith(U, T, V)(URLRouter router, string route, V delegate(T object) @safe handler) if(!is(V == void)) {
+URLRouter putWith(Policy, T, V)(URLRouter router, V function(T object) @safe handler) if(!is(V == void)) {
+  FieldDefinition definition = getFields!T;
+  auto routing = new Policy.Routing(definition);
+
+  return putWith!(Policy, T, V)(router, routing.put(), handler.toDelegate);
+}
+
+/// ditto
+URLRouter putWith(Policy, T)(URLRouter router, void function(T object, HTTPServerResponse) @safe handler) {
+  FieldDefinition definition = getFields!T;
+  auto routing = new Policy.Routing(definition);
+
+  return putWith!(Policy, T)(router, routing.put(), handler.toDelegate);
+}
+
+/// ditto
+URLRouter putWith(Policy, T, V)(URLRouter router, string route, V delegate(T object) @safe handler) if(!is(V == void)) {
   enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
 
-  auto deserializationHandler = requestDeserializationHandler!(U, T, V)(handler);
+  auto deserializationHandler = requestDeserializationHandler!(Policy, T, V)(handler);
 
   return router.put(route, requestErrorHandler(deserializationHandler));
 }
 
 /// Add a POST route that parse the data according a Protocol
-URLRouter postWith(U, T)(URLRouter router, string route, void function(T object, HTTPServerResponse res) @safe handler) {
-  return postWith!(U, T)(router, route, handler.toDelegate);
+URLRouter postWith(Policy, T)(URLRouter router, string route, void function(T object, HTTPServerResponse res) @safe handler) {
+  return postWith!(Policy, T)(router, route, handler.toDelegate);
+}
+
+
+/// ditto
+URLRouter postWith(Policy, T)(URLRouter router, void function(T object, HTTPServerResponse res) @safe handler) {
+  FieldDefinition definition = getFields!T;
+  auto routing = new Policy.Routing(definition);
+
+  return postWith!(Policy, T)(router, routing.post, handler.toDelegate);
 }
 
 /// ditto
-URLRouter postWith(U, T)(URLRouter router, string route, void delegate(T object, HTTPServerResponse res) @safe handler) {
-  auto deserializationHandler = requestFullDeserializationHandler!(U, T)(handler);
+URLRouter postWith(Policy, T)(URLRouter router, string route, void delegate(T object, HTTPServerResponse res) @safe handler) {
+  auto deserializationHandler = requestFullDeserializationHandler!(Policy, T)(handler);
 
   return router.post(route, requestErrorHandler(deserializationHandler));
 }
 
 /// ditto
-URLRouter postWith(U, T, V)(URLRouter router, string route, V function(T object) @safe handler) {
-  return postWith!(U, T, V)(router, route, handler.toDelegate);
+URLRouter postWith(Policy, T, V)(URLRouter router, string route, V function(T object) @safe handler) {
+  return postWith!(Policy, T, V)(router, route, handler.toDelegate);
 }
 
 /// ditto
-URLRouter postWith(U, T, V)(URLRouter router, string route, V delegate(T object) @safe handler) {
-  auto deserializationHandler = requestDeserializationHandler!(U, T, V)(handler);
+URLRouter postWith(Policy, T, V)(URLRouter router, V function(T object) @safe handler) {
+  FieldDefinition definition = getFields!T;
+  auto routing = new Policy.Routing(definition);
+
+  return postWith!(Policy, T, V)(router, routing.post, handler.toDelegate);
+}
+
+/// ditto
+URLRouter postWith(Policy, T, V)(URLRouter router, string route, V delegate(T object) @safe handler) {
+  auto deserializationHandler = requestDeserializationHandler!(Policy, T, V)(handler);
 
   return router.post(route, requestErrorHandler(deserializationHandler));
 }
