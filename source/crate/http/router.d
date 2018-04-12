@@ -708,33 +708,41 @@ URLRouter putWith(Policy, T)(URLRouter router, string route, void function(T obj
 }
 
 /// ditto
-URLRouter putWith(Policy, T)(URLRouter router, string route, void delegate(T object, HTTPServerResponse res) @safe handler) {
-  enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
-
-  auto deserializationHandler = requestFullDeserializationHandler!(Policy, T)(handler);
-
-  return router.put(route, requestErrorHandler(deserializationHandler));
-}
-
-/// ditto
 URLRouter putWith(Policy, T, V)(URLRouter router, string route, V function(T object) @safe handler) if(!is(V == void)) {
   return putWith!(Policy, T, V)(router, route, handler.toDelegate);
 }
 
 /// ditto
 URLRouter putWith(Policy, T, V)(URLRouter router, V function(T object) @safe handler) if(!is(V == void)) {
+  return putWith!(Policy, T, V)(router, handler.toDelegate);
+}
+/// ditto
+URLRouter putWith(Policy, T)(URLRouter router, void function(T object, HTTPServerResponse) @safe handler) {
+  return putWith!(Policy, T)(router, handler.toDelegate);
+}
+
+/// ditto
+URLRouter putWith(Policy, T, V)(URLRouter router, V delegate(T object) @safe handler) if(!is(V == void)) {
   FieldDefinition definition = getFields!T;
   auto routing = new Policy.Routing(definition);
 
   return putWith!(Policy, T, V)(router, routing.put(), handler.toDelegate);
 }
-
 /// ditto
-URLRouter putWith(Policy, T)(URLRouter router, void function(T object, HTTPServerResponse) @safe handler) {
+URLRouter putWith(Policy, T)(URLRouter router, void delegate(T object, HTTPServerResponse) @safe handler) {
   FieldDefinition definition = getFields!T;
   auto routing = new Policy.Routing(definition);
 
   return putWith!(Policy, T)(router, routing.put(), handler.toDelegate);
+}
+
+/// ditto
+URLRouter putWith(Policy, T)(URLRouter router, string route, void delegate(T object, HTTPServerResponse res) @safe handler) {
+  enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
+
+  auto deserializationHandler = requestFullDeserializationHandler!(Policy, T)(handler);
+
+  return router.put(route, requestErrorHandler(deserializationHandler));
 }
 
 /// ditto
@@ -746,18 +754,27 @@ URLRouter putWith(Policy, T, V)(URLRouter router, string route, V delegate(T obj
   return router.put(route, requestErrorHandler(deserializationHandler));
 }
 
+
+
+
 /// Add a POST route that parse the data according a Protocol
 URLRouter postWith(Policy, T)(URLRouter router, string route, void function(T object, HTTPServerResponse res) @safe handler) {
   return postWith!(Policy, T)(router, route, handler.toDelegate);
 }
 
-
 /// ditto
 URLRouter postWith(Policy, T)(URLRouter router, void function(T object, HTTPServerResponse res) @safe handler) {
-  FieldDefinition definition = getFields!T;
-  auto routing = new Policy.Routing(definition);
+  return postWith!(Policy, T)(router, handler.toDelegate);
+}
 
-  return postWith!(Policy, T)(router, routing.post, handler.toDelegate);
+/// ditto
+URLRouter postWith(Policy, T, V)(URLRouter router, V function(T object) @safe handler) {
+  return postWith!(Policy, T, V)(router, handler.toDelegate);
+}
+
+/// ditto
+URLRouter postWith(Policy, T, V)(URLRouter router, string route, V function(T object) @safe handler) {
+  return postWith!(Policy, T, V)(router, route, handler.toDelegate);
 }
 
 /// ditto
@@ -768,16 +785,19 @@ URLRouter postWith(Policy, T)(URLRouter router, string route, void delegate(T ob
 }
 
 /// ditto
-URLRouter postWith(Policy, T, V)(URLRouter router, string route, V function(T object) @safe handler) {
-  return postWith!(Policy, T, V)(router, route, handler.toDelegate);
-}
-
-/// ditto
-URLRouter postWith(Policy, T, V)(URLRouter router, V function(T object) @safe handler) {
+URLRouter postWith(Policy, T)(URLRouter router, void delegate(T object, HTTPServerResponse res) @safe handler) {
   FieldDefinition definition = getFields!T;
   auto routing = new Policy.Routing(definition);
 
-  return postWith!(Policy, T, V)(router, routing.post, handler.toDelegate);
+  return postWith!(Policy, T)(router, routing.post, handler);
+}
+
+/// ditto
+URLRouter postWith(Policy, T, V)(URLRouter router, V delegate(T object) @safe handler) {
+  FieldDefinition definition = getFields!T;
+  auto routing = new Policy.Routing(definition);
+
+  return postWith!(Policy, T, V)(router, routing.post, handler);
 }
 
 /// ditto
@@ -786,6 +806,9 @@ URLRouter postWith(Policy, T, V)(URLRouter router, string route, V delegate(T ob
 
   return router.post(route, requestErrorHandler(deserializationHandler));
 }
+
+
+
 
 /// Add a DELETE route that parse the data according a Protocol
 URLRouter deleteWith(U)(URLRouter router, string route, void function(string id, HTTPServerResponse res) @safe handler) {
