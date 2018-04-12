@@ -389,6 +389,27 @@ alias s = Spec!({
             });
       });
 
+      it("should use the default route when it is missing for a handler with response", {
+        auto router = new URLRouter();
+        router.deleteWith!(RestApi, Site)(&deleteSiteWithResponse);
+
+        request(router)
+          .delete_("/sites/122")
+            .expectStatusCode(204)
+            .end();
+      });
+
+
+      it("should use the default route when it is missing for a handler with no response", {
+        auto router = new URLRouter();
+        router.deleteWith!(RestApi, Site)(&deleteSite);
+
+        request(router)
+          .delete_("/sites/122")
+            .expectStatusCode(204)
+            .end();
+      });
+
       it("should accept a valid request with id when the response is not handeled", {
         auto router = new URLRouter();
         router.deleteWith!RestApi("/sites/:id", &deleteSite);

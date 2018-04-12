@@ -17,6 +17,10 @@ class RestApiRouting {
     return "/" ~ definition.plural.toLower ~ "/:id";
   }
 
+  string delete_() {
+    return "/" ~ definition.plural.toLower ~ "/:id";
+  }
+
   string post() {
     return "/" ~ definition.plural.toLower;
   }

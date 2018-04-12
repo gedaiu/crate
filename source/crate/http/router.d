@@ -811,12 +811,27 @@ URLRouter postWith(Policy, T, V)(URLRouter router, string route, V delegate(T ob
 
 
 /// Add a DELETE route that parse the data according a Protocol
-URLRouter deleteWith(U)(URLRouter router, string route, void function(string id, HTTPServerResponse res) @safe handler) {
-  return deleteWith!(U)(router, route, handler.toDelegate);
+URLRouter deleteWith(Policy)(URLRouter router, string route, void function(string id, HTTPServerResponse res) @safe handler) {
+  return deleteWith!(Policy)(router, route, handler.toDelegate);
+}
+
+URLRouter deleteWith(Policy, T)(URLRouter router, void function(string id, HTTPServerResponse res) @safe handler) {
+  return deleteWith!(Policy, T)(router, handler.toDelegate);
 }
 
 /// ditto
-URLRouter deleteWith(U)(URLRouter router, string route, void delegate(string id, HTTPServerResponse res) @safe handler) {
+URLRouter deleteWith(Policy)(URLRouter router, string route, void function(string id) @safe handler) {
+  return deleteWith!Policy(router, route, handler.toDelegate);
+}
+
+
+/// ditto
+URLRouter deleteWith(Policy, T)(URLRouter router, void function(string id) @safe handler) {
+  return deleteWith!(Policy, T)(router, handler.toDelegate);
+}
+
+/// ditto
+URLRouter deleteWith(Policy)(URLRouter router, string route, void delegate(string id, HTTPServerResponse res) @safe handler) {
   enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
   auto idHandler = requestIdHandler(handler);
 
@@ -824,17 +839,30 @@ URLRouter deleteWith(U)(URLRouter router, string route, void delegate(string id,
 }
 
 /// ditto
-URLRouter deleteWith(U)(URLRouter router, string route, void function(string id) @safe handler) {
-  return deleteWith!U(router, route, handler.toDelegate);
+URLRouter deleteWith(Policy, T)(URLRouter router, void delegate(string id, HTTPServerResponse res) @safe handler) {
+  FieldDefinition definition = getFields!T;
+  auto routing = new Policy.Routing(definition);
+
+  return deleteWith!(Policy)(router, routing.delete_, handler);
 }
 
 /// ditto
-URLRouter deleteWith(U)(URLRouter router, string route, void delegate(string id) @safe handler) {
+URLRouter deleteWith(Policy, T)(URLRouter router, void delegate(string id) @safe handler) {
+  FieldDefinition definition = getFields!T;
+  auto routing = new Policy.Routing(definition);
+
+  return deleteWith!(Policy)(router, routing.delete_, handler);
+}
+
+/// ditto
+URLRouter deleteWith(Policy)(URLRouter router, string route, void delegate(string id) @safe handler) {
   enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
   auto idHandler = requestIdHandler(handler);
 
   return router.delete_(route, requestErrorHandler(idHandler));
 }
+
+
 
 /// add a GET route that returns to the client one item selected by id
 URLRouter getWith(U, T)(URLRouter router, string route, T function(string id) @safe handler) if(!is(T == void)) {
