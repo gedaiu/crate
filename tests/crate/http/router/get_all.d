@@ -53,6 +53,17 @@ alias s = Spec!({
               response.bodyJson.should.equal(elements);
             });
       });
+
+      it("should return use the default route", {
+        auto router = new URLRouter();
+        router.getAllWith!RestApi(&getAllSites);
+
+        request(router)
+          .get("/sites")
+            .expectStatusCode(200)
+            .expectHeader("Content-Type", "application/json")
+            .end();
+      });
     });
 
     describe("with a GET All elements using JSON API request", {

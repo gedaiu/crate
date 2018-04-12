@@ -17,6 +17,7 @@ struct JsonApi {
   }
 
   alias Serializer = JsonApiSerializer;
+  alias Routing = JsonApiRouting;
 }
 
 class CrateJsonApiPolicy : CratePolicy

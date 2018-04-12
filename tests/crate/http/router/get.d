@@ -82,7 +82,6 @@ alias s = Spec!({
             .expectStatusCode(200)
             .end();
       });
-
     });
 
     describe("with a GET JSON API request", {

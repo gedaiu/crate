@@ -923,8 +923,21 @@ URLRouter getAllWith(Policy, T)(URLRouter router, string route, T[] function() @
 }
 
 /// ditto
+URLRouter getAllWith(Policy, T)(URLRouter router, T[] function() @safe handler) if(!is(T == void)) {
+  return getAllWith!(Policy, T)(router, handler.toDelegate);
+}
+
+/// ditto
 URLRouter getAllWith(Policy, T)(URLRouter router, string route, T[] delegate() @safe handler) if(!is(T == void)) {
   auto listHandler = requestListHandler!(Policy, T)(handler);
 
   return router.get(route, requestErrorHandler(listHandler));
+}
+
+/// ditto
+URLRouter getAllWith(Policy, T)(URLRouter router, T[] delegate() @safe handler) if(!is(T == void)) {
+  FieldDefinition definition = getFields!T;
+  auto routing = new Policy.Routing(definition);
+
+  return getAllWith!(Policy, T)(router, routing.getAll, handler.toDelegate);
 }

@@ -1,11 +1,11 @@
-module crate.routing.restapi;
+module crate.routing.jsonapi;
 
 import crate.base;
 import std.string;
 
 
 /// The default routes used by the REST API
-class RestApiRouting {
+class JsonApiRouting {
   const { 
     FieldDefinition definition;
   }
