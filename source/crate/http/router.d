@@ -865,39 +865,66 @@ URLRouter deleteWith(Policy)(URLRouter router, string route, void delegate(strin
 
 
 /// add a GET route that returns to the client one item selected by id
-URLRouter getWith(U, T)(URLRouter router, string route, T function(string id) @safe handler) if(!is(T == void)) {
-  return getWith!(U, T)(router, route, handler.toDelegate);
+URLRouter getWith(Policy, T)(URLRouter router, string route, T function(string id) @safe handler) if(!is(T == void)) {
+  return getWith!(Policy, T)(router, route, handler.toDelegate);
 }
 
 /// ditto
-URLRouter getWith(U, T)(URLRouter router, string route, T delegate(string id) @safe handler) if(!is(T == void)) {
+URLRouter getWith(Policy)(URLRouter router, string route, void function(string id, HTTPServerResponse res) @safe handler) if(!is(T == void)) {
+  return getWith!(Policy)(router, route, handler.toDelegate);
+}
+
+/// ditto
+URLRouter getWith(Policy, T)(URLRouter router, void function(string id, HTTPServerResponse res) @safe handler) if(!is(T == void)) {
+  return getWith!(Policy, T)(router, handler.toDelegate);
+}
+
+/// ditto
+URLRouter getWith(Policy, T)(URLRouter router, T function(string id) @safe handler) if(!is(T == void)) {
+  return getWith!(Policy, T)(router, handler.toDelegate);
+}
+
+/// ditto
+URLRouter getWith(Policy, T)(URLRouter router, string route, T delegate(string id) @safe handler) if(!is(T == void)) {
   enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
-  auto idHandler = requestIdHandler!(U, T)(handler);
+  auto idHandler = requestIdHandler!(Policy, T)(handler);
 
   return router.get(route, requestErrorHandler(idHandler));
 }
 
 /// ditto
-URLRouter getWith(U)(URLRouter router, string route, void function(string id, HTTPServerResponse res) @safe handler) if(!is(T == void)) {
-  return getWith!(U)(router, route, handler.toDelegate);
-}
-
-/// ditto
-URLRouter getWith(U)(URLRouter router, string route, void delegate(string id, HTTPServerResponse res) @safe handler) if(!is(T == void)) {
+URLRouter getWith(Policy)(URLRouter router, string route, void delegate(string id, HTTPServerResponse res) @safe handler) if(!is(T == void)) {
   enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
   auto idHandler = requestIdHandler(handler);
 
   return router.get(route, requestErrorHandler(idHandler));
 }
 
-/// GET All
-URLRouter getAllWith(U, T)(URLRouter router, string route, T[] function() @safe handler) if(!is(T == void)) {
-  return getAllWith!(U, T)(router, route, handler.toDelegate);
+/// ditto
+URLRouter getWith(Policy, T)(URLRouter router, T delegate(string id) @safe handler) if(!is(T == void)) {
+  FieldDefinition definition = getFields!T;
+  auto routing = new Policy.Routing(definition);
+
+  return getWith!(Policy, T)(router, routing.get, handler);
 }
 
 /// ditto
-URLRouter getAllWith(U, T)(URLRouter router, string route, T[] delegate() @safe handler) if(!is(T == void)) {
-  auto listHandler = requestListHandler!(U, T)(handler);
+URLRouter getWith(Policy, T)(URLRouter router, void delegate(string id, HTTPServerResponse res) @safe handler) if(!is(T == void)) {
+  FieldDefinition definition = getFields!T;
+  auto routing = new Policy.Routing(definition);
+
+  return getWith!(Policy)(router, routing.get, handler);
+}
+
+
+/// GET All
+URLRouter getAllWith(Policy, T)(URLRouter router, string route, T[] function() @safe handler) if(!is(T == void)) {
+  return getAllWith!(Policy, T)(router, route, handler.toDelegate);
+}
+
+/// ditto
+URLRouter getAllWith(Policy, T)(URLRouter router, string route, T[] delegate() @safe handler) if(!is(T == void)) {
+  auto listHandler = requestListHandler!(Policy, T)(handler);
 
   return router.get(route, requestErrorHandler(listHandler));
 }
