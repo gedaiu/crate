@@ -2,6 +2,7 @@ module crate.policy.jsonapi;
 
 import crate.base;
 import crate.serializer.jsonapi;
+import crate.routing.jsonapi;
 import crate.generator.openapi;
 import crate.ctfe;
 
