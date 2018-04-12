@@ -31,12 +31,13 @@ interface ICrateFilter
 
 interface ICrateSelector
 {
-  ICrateSelector where(string field, string value);
-  ICrateSelector whereArrayContains(string field, string value);
-  ICrateSelector whereArrayFieldContains(string arrayField, string field, string value);
-  ICrateSelector limit(size_t nr);
+  @safe:
+    ICrateSelector where(string field, string value);
+    ICrateSelector whereArrayContains(string field, string value);
+    ICrateSelector whereArrayFieldContains(string arrayField, string field, string value);
+    ICrateSelector limit(size_t nr);
 
-  InputRange!Json exec();
+    InputRange!Json exec();
 }
 
 class CrateRange : ICrateSelector
@@ -155,16 +156,17 @@ struct ModelDefinition
 
 interface Crate(Type)
 {
-  CrateConfig!Type config();
+  @safe:
+    CrateConfig!Type config();
 
-  ICrateSelector get();
+    ICrateSelector get();
 
-  ICrateSelector getList(string[string] parameters);
-  ICrateSelector getItem(string id);
+    ICrateSelector getList(string[string] parameters);
+    ICrateSelector getItem(string id);
 
-  Json addItem(Json item);
-  void updateItem(Json item);
-  void deleteItem(string id);
+    Json addItem(Json item);
+    void updateItem(Json item);
+    void deleteItem(string id);
 }
 
 interface CrateSerializer

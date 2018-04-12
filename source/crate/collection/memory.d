@@ -17,55 +17,56 @@ class MemoryCrate(T) : Crate!T
 {
   private {
     ulong lastId;
-		Json[] list;
-		CrateConfig!T _config;
-		enum string idField = getFields!T.idField.name;
-	}
-
-	this(CrateConfig!T config = CrateConfig!T())
-	{
-		this._config = config;
-	}
-
-	CrateConfig!T config() {
-		return _config;
-	}
-
-  ICrateSelector get() {
-    return new CrateRange(list);
+    Json[] list;
+    CrateConfig!T _config;
+    enum string idField = getFields!T.idField.name;
   }
 
-  ICrateSelector getList(string[string])
+  this(CrateConfig!T config = CrateConfig!T())
   {
-    return get();
+    this._config = config;
   }
 
-  Json addItem(Json item)
-  {
-    lastId++;
-    item[idField] = lastId.to!string;
-    list ~= item;
+  @trusted:
+    CrateConfig!T config() {
+      return _config;
+    }
 
-    return item;
-  }
+    ICrateSelector get() {
+      return new CrateRange(list);
+    }
 
-  ICrateSelector getItem(string id)
-  {
-    return get.where(idField, id).limit(1);
-  }
+    ICrateSelector getList(string[string])
+    {
+      return get();
+    }
 
-  void updateItem(Json item)
-  {
-    auto match = list.enumerate
-      .filter!(a => a[1][idField] == item[idField]);
+    Json addItem(Json item)
+    {
+      lastId++;
+      item[idField] = lastId.to!string;
+      list ~= item;
 
-    enforce!CrateNotFoundException(!match.empty, "No item found.");
+      return item;
+    }
 
-    list[match.front[0]] = item;
-  }
+    ICrateSelector getItem(string id)
+    {
+      return get.where(idField, id).limit(1);
+    }
 
-  void deleteItem(string id)
-  {
-    list = list.filter!(a => a[idField].to!string != id).array;
-  }
+    void updateItem(Json item)
+    {
+      auto match = list.enumerate
+        .filter!(a => a[1][idField] == item[idField]);
+
+      enforce!CrateNotFoundException(!match.empty, "No item found.");
+
+      list[match.front[0]] = item;
+    }
+
+    void deleteItem(string id)
+    {
+      list = list.filter!(a => a[idField].to!string != id).array;
+    }
 }

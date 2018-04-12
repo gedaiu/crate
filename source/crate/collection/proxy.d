@@ -11,172 +11,173 @@ import std.range.interfaces;
 class CrateProxy: Crate!void
 {
 
-	private
-	{
-		CrateConfig!void configProxy;
+  private
+  {
+    CrateConfig!void configProxy;
 
-		ICrateSelector delegate() getRef;
-		ICrateSelector delegate(string[string]) getListRef;
-		Json delegate(Json) addItemRef;
-		ICrateSelector delegate(string) getItemRef;
-		void delegate(Json) updateItemRef;
-		void delegate(string) deleteItemRef;
+    ICrateSelector delegate() getRef;
+    ICrateSelector delegate(string[string]) getListRef;
+    Json delegate(Json) addItemRef;
+    ICrateSelector delegate(string) getItemRef;
+    void delegate(Json) updateItemRef;
+    void delegate(string) deleteItemRef;
 
-		FieldDefinition _definition;
-	}
+    FieldDefinition _definition;
+  }
 
-	this(T)(ref Crate!T crate)
-	{
-		set(crate.config);
+  this(T)(ref Crate!T crate)
+  {
+    set(crate.config);
 
-		getRef = &crate.get;
-		getListRef = &crate.getList;
-		addItemRef = &crate.addItem;
-		getItemRef = &crate.getItem;
-		updateItemRef = &crate.updateItem;
-		deleteItemRef = &crate.deleteItem;
+    getRef = &crate.get;
+    getListRef = &crate.getList;
+    addItemRef = &crate.addItem;
+    getItemRef = &crate.getItem;
+    updateItemRef = &crate.updateItem;
+    deleteItemRef = &crate.deleteItem;
 
-		static if(isAggregateType!T) {
-			_definition = getFields!T;
-			_definition.singular = crate.config.singular;
-			_definition.plural = crate.config.plural;
-		} else {
-			_definition = FieldDefinition();
-		}
-	}
+    static if(isAggregateType!T) {
+      _definition = getFields!T;
+      _definition.singular = crate.config.singular;
+      _definition.plural = crate.config.plural;
+    } else {
+      _definition = FieldDefinition();
+    }
+  }
 
-	private void set(T)(CrateConfig!T crate) {
-		configProxy.getList = crate.getList;
-		configProxy.getItem = crate.getItem;
-		configProxy.addItem = crate.addItem;
-		configProxy.deleteItem = crate.deleteItem;
-		configProxy.replaceItem = crate.replaceItem;
-		configProxy.updateItem = crate.updateItem;
+  @trusted:
+    private void set(T)(CrateConfig!T crate) {
+      configProxy.getList = crate.getList;
+      configProxy.getItem = crate.getItem;
+      configProxy.addItem = crate.addItem;
+      configProxy.deleteItem = crate.deleteItem;
+      configProxy.replaceItem = crate.replaceItem;
+      configProxy.updateItem = crate.updateItem;
 
-		configProxy.singular = crate.singular;
-		configProxy.plural = crate.plural;
-	}
+      configProxy.singular = crate.singular;
+      configProxy.plural = crate.plural;
+    }
 
-	FieldDefinition definition()
-	{
-		return _definition;
-	}
+    FieldDefinition definition()
+    {
+      return _definition;
+    }
 
-	CrateConfig!void config()
-	{
-		return configProxy;
-	}
+    CrateConfig!void config()
+    {
+      return configProxy;
+    }
 
-	ICrateSelector get() {
-		return getRef();
-	}
+    ICrateSelector get() {
+      return getRef();
+    }
 
-	ICrateSelector getList(string[string] parameters)
-	{
-		return getListRef(parameters);
-	}
+    ICrateSelector getList(string[string] parameters)
+    {
+      return getListRef(parameters);
+    }
 
-	Json addItem(Json item)
-	{
-		return addItemRef(item);
-	}
+    Json addItem(Json item)
+    {
+      return addItemRef(item);
+    }
 
-	ICrateSelector getItem(string id)
-	{
-		return getItemRef(id);
-	}
+    ICrateSelector getItem(string id)
+    {
+      return getItemRef(id);
+    }
 
-	void updateItem(Json item)
-	{
-		updateItemRef(item);
-	}
+    void updateItem(Json item)
+    {
+      updateItemRef(item);
+    }
 
-	void deleteItem(string id)
-	{
-		deleteItemRef(id);
-	}
+    void deleteItem(string id)
+    {
+      deleteItemRef(id);
+    }
 }
 
 class CrateCollection
 {
 
-	private
-	{
-		CrateProxy[string] crates;
-		string[string] types;
-	}
+  private
+  {
+    CrateProxy[string] crates;
+    string[string] types;
+  }
 
-	void addByPath(T)(string basePath, ref Crate!T crate)
-	{
-		crates[basePath] = new CrateProxy(crate);
-		types[T.stringof] = basePath;
-	}
+  void addByPath(T)(string basePath, ref Crate!T crate)
+  {
+    crates[basePath] = new CrateProxy(crate);
+    types[T.stringof] = basePath;
+  }
 
-	string[] paths() {
-		return crates.keys;
-	}
+  string[] paths() {
+    return crates.keys;
+  }
 
-	CrateProxy getByPath(string path)
-	{
-		foreach (basePath, crate; crates)
-		{
-			if (path.indexOf(basePath) == 0)
-			{
-				return crate;
-			}
-		}
+  CrateProxy getByPath(string path)
+  {
+    foreach (basePath, crate; crates)
+    {
+      if (path.indexOf(basePath) == 0)
+      {
+        return crate;
+      }
+    }
 
-		assert(false, "No crate found found at `" ~ path ~ "`");
-	}
+    assert(false, "No crate found found at `" ~ path ~ "`");
+  }
 
-	CrateProxy getByType(string type)
-	{
-		if (type in types)
-		{
-			return crates[types[type]];
-		}
+  CrateProxy getByType(string type)
+  {
+    if (type in types)
+    {
+      return crates[types[type]];
+    }
 
-		assert(false, "Crate not found");
-	}
+    assert(false, "Crate not found");
+  }
 }
 
 class ProxySelector: ICrateSelector {
 
-	protected {
-		ICrateSelector selector;
-	}
+  protected {
+    ICrateSelector selector;
+  }
 
-	this(ICrateSelector selector) {
-		this.selector = selector;
-	}
+  this(ICrateSelector selector) {
+    this.selector = selector;
+  }
 
-	override {
-		ICrateSelector where(string field, string value) {
-			this.selector.where(field, value);
+  override {
+    ICrateSelector where(string field, string value) {
+      this.selector.where(field, value);
 
-			return this;
-		}
+      return this;
+    }
 
-		ICrateSelector whereArrayContains(string field, string value) {
-			this.selector.whereArrayContains(field, value);
+    ICrateSelector whereArrayContains(string field, string value) {
+      this.selector.whereArrayContains(field, value);
 
-			return this;
-		}
+      return this;
+    }
 
-		ICrateSelector whereArrayFieldContains(string arrayField, string field, string value) {
-			this.selector.whereArrayFieldContains(arrayField, field, value);
+    ICrateSelector whereArrayFieldContains(string arrayField, string field, string value) {
+      this.selector.whereArrayFieldContains(arrayField, field, value);
 
-			return this;
-		}
+      return this;
+    }
 
-		ICrateSelector limit(size_t nr) {
-			this.selector.limit(nr);
+    ICrateSelector limit(size_t nr) {
+      this.selector.limit(nr);
 
-			return this;
-		}
+      return this;
+    }
 
-		InputRange!Json exec() {
-			return this.selector.exec;
-		}
-	}
+    InputRange!Json exec() {
+      return this.selector.exec;
+    }
+  }
 }

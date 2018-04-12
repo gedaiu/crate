@@ -278,7 +278,7 @@ unittest
   auto router = new URLRouter();
   auto crate = new MemoryCrate!TestModel;
 
-  auto crateRouter = router.crateSetup!CrateJsonApiPolicy.add(crate);
+  auto crateRouter = router.crateSetup!JsonApi.add(crate);
 
   auto api = crateRouter.toOpenApi.serializeToJson;
 
@@ -322,7 +322,7 @@ unittest
   auto router = new URLRouter();
   auto crate = new MemoryCrate!TestModel;
 
-  auto crateRouter = router.crateSetup!CrateJsonApiPolicy.add(crate);
+  auto crateRouter = router.crateSetup!JsonApi.add(crate);
 
   auto api = crateRouter.toOpenApi.serializeToJson;
 

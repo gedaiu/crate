@@ -30,6 +30,13 @@ Json putJsonSite(Site site) @safe {
   return site.serializeToJson;
 }
 
+void putVoidJsonSite(Json site) @safe {
+}
+
+Site putSiteJson(Json site) @safe {
+  return Site("10", Point("Point", [0, 0]));
+}
+
 alias s = Spec!({
   describe("The crate router", {
     describe("with a PUT REST Api request", {
@@ -44,6 +51,48 @@ alias s = Spec!({
             .send(dataUpdate)
               .expectStatusCode(200)
               .expectHeader("Content-Type", "application/json")
+              .end((Response response) => {
+                dataUpdate["site"]["_id"] = "10";
+                response.bodyJson.should.equal(dataUpdate);
+              });
+      });
+
+      it("should accept a valid request and return the changed data", {
+        auto router = new URLRouter();
+        router.putJsonWith!(RestApi, Site)("/sites/:id", &putVoidJsonSite);
+
+        Json dataUpdate = restSiteFixture.parseJsonString;
+
+        request(router)
+          .put("/sites/10")
+            .send(dataUpdate)
+              .expectStatusCode(204)
+              .end();
+      });
+
+      it("should accept a valid request and return the changed data", {
+        auto router = new URLRouter();
+        router.putJsonWith!(RestApi, Site)(&putVoidJsonSite);
+
+        Json dataUpdate = restSiteFixture.parseJsonString;
+
+        request(router)
+          .put("/sites/10")
+            .send(dataUpdate)
+              .expectStatusCode(204)
+              .end();
+      });
+
+      it("should accept a valid request and return the changed data", {
+        auto router = new URLRouter();
+        router.putJsonWith!(RestApi, Site)("/sites/:id", &putSiteJson);
+
+        Json dataUpdate = restSiteFixture.parseJsonString;
+
+        request(router)
+          .put("/sites/10")
+            .send(dataUpdate)
+              .expectStatusCode(200)
               .end((Response response) => {
                 dataUpdate["site"]["_id"] = "10";
                 response.bodyJson.should.equal(dataUpdate);
