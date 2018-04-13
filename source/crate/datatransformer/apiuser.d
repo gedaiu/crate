@@ -128,14 +128,8 @@ class ApiUserTransformer: Crate!User {
       return new ApiUserSelector(crate.get);
     }
 
-    ICrateSelector getList(string[string] parameters) {
-      auto data = crate.getList(parameters).exec.map!(a => a.fromCrate).array;
-
-      if("term" in parameters) {
-        string term = parameters["term"];
-
-        data = data.filter!(a => a["email"].to!string.indexOf(term) >= 0).array;
-      }
+    ICrateSelector getList() {
+      auto data = crate.getList().exec.map!(a => a.fromCrate).array;
 
       return new CrateRange(data.array);
     }
@@ -281,10 +275,8 @@ unittest
       .send(data)
       .expectStatusCode(400)
       .end((Response response) => {
-        string[string] params;
-
         response.bodyJson.keys.should.equal(["errors"]);
-        userDataCrate.getList(params).exec.empty.should.equal(true);
+        userDataCrate.getList().exec.empty.should.equal(true);
       });
 }
 

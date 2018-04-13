@@ -26,6 +26,7 @@ interface CrateResource {
 version(unittest) {
 	import fluent.asserts;
 	import fluentasserts.vibe.request;
+	import crate.collection.memory;
 
 	class TestResource : CrateResource {
 		static string lastRead;
@@ -95,7 +96,7 @@ unittest {
 	import std.stdio;
 
 	auto router = new URLRouter();
-	auto resourceCrate = new TestCrate!ResourceModel;
+	auto resourceCrate = new MemoryCrate!ResourceModel;
 
 	resourceCrate.addItem(ResourceModel().serializeToJson);
 
@@ -161,7 +162,7 @@ unittest {
 	import std.stdio;
 
 	auto router = new URLRouter();
-	auto resourceCrate = new TestCrate!RelationModel;
+	auto resourceCrate = new MemoryCrate!RelationModel;
 
 	resourceCrate.addItem(RelationModel().serializeToJson);
 
@@ -209,7 +210,7 @@ unittest {
 	import std.stdio;
 
 	auto router = new URLRouter();
-	auto resourceCrate = new TestCrate!ArrayModel;
+	auto resourceCrate = new MemoryCrate!ArrayModel;
 
 	resourceCrate.addItem(ArrayModel().serializeToJson);
 

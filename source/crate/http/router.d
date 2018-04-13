@@ -123,6 +123,7 @@ class CrateRouter(RouterPolicy) {
   CrateRouter add(Policy, Type)(Crate!Type crate, ICrateFilter[] filters ...)
   {
     router.putJsonWith!(Policy, Type)(&crate.updateItem);
+    router.deleteWith!(Policy, Type)(&crate.deleteItem);
     router.getWith!(Policy, Type)(&crate.getItem);
     router.getListFilteredWith!(Policy, Type)(&crate.getList, filters);
 
@@ -259,22 +260,6 @@ version (unittest)
     }
   }
 
-  class TestCrate(T) : MemoryCrate!T
-  {
-    void action() {}
-
-    override
-    ICrateSelector getList(string[string] parameters) {
-
-      if("type" in parameters) {
-        return new CrateRange(super.getList(parameters).exec
-          .filter!(a => a["position"]["type"].to!string == parameters["type"]));
-      }
-
-      return super.getList(parameters);
-    }
-  }
-
   struct Point
   {
     string type = "Point";
@@ -308,7 +293,7 @@ version (unittest)
 unittest
 {
   auto router = new URLRouter();
-  auto baseCrate = new TestCrate!Site;
+  auto baseCrate = new MemoryCrate!Site;
 
   router
     .crateSetup
@@ -346,12 +331,12 @@ version(unittest) {
 
   auto testRouter() {
     auto router = new URLRouter();
-    auto baseCrate = new TestCrate!Site;
+    auto baseCrate = new MemoryCrate!Site;
 
     router
       .crateSetup
         .add(baseCrate)
-          .enableCrateAction!(TestCrate!Site, "action")(baseCrate);
+          .enableCrateAction!(MemoryCrate!Site, "action")(baseCrate);
 
     Json data = `{
         "position": {
@@ -542,7 +527,7 @@ unittest {
         .end();
 }
 
-@("Replace available items using query alteration")
+/// Replace a missing resource
 unittest {
   Json dataUpdate = `{ "site": {
       "position": {
@@ -552,7 +537,7 @@ unittest {
   }}`.parseJsonString;
 
   request(queryRouter)
-    .put("/sites/2")
+    .put("/sites/24")
       .send(dataUpdate)
         .expectStatusCode(404)
         .end();
@@ -566,10 +551,10 @@ unittest {
       .end();
 }
 
-@("Delete unavailable items using query alteration")
+/// Delete unavailable items using query alteration
 unittest {
   request(queryRouter)
-    .delete_("/sites/2")
+    .delete_("/sites/24")
         .expectStatusCode(404)
         .end();
 }
@@ -733,7 +718,7 @@ auto requestListHandler(U, T)(T[] delegate() @safe next) if(!is(T == void)){
 
 
 /// Handle a request that returns a list of elements before applying some filters
-auto requestFilteredListHandler(U, T)(const ICrateSelector delegate(string[string]) @safe next, ICrateFilter[] filters...) if(!is(T == void)) {
+auto requestFilteredListHandler(U, T)(const ICrateSelector delegate() @safe next, ICrateFilter[] filters...) if(!is(T == void)) {
   FieldDefinition definition = getFields!T;
   auto serializer = new U.Serializer(definition);
 
@@ -741,10 +726,9 @@ auto requestFilteredListHandler(U, T)(const ICrateSelector delegate(string[strin
 
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @trusted {
     Json jsonResponse;
-    string[string] parameters;
 
     try {
-      auto items = next(parameters);
+      auto items = next();
       
       foreach(filter; localFilters) {
         items = filter.apply(request, items);
@@ -1039,7 +1023,7 @@ URLRouter getListWith(Policy, T)(URLRouter router, T[] delegate() @safe handler)
 }
 
 /// ditto
-URLRouter getListFilteredWith(Policy, Type)(URLRouter router, ICrateSelector delegate(string[string]) @safe handler, ICrateFilter[] filters ...) {
+URLRouter getListFilteredWith(Policy, Type)(URLRouter router, ICrateSelector delegate() @safe handler, ICrateFilter[] filters ...) {
   FieldDefinition definition = getFields!Type;
   auto routing = new Policy.Routing(definition);
 

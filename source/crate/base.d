@@ -161,7 +161,7 @@ interface Crate(Type)
 
     ICrateSelector get();
 
-    ICrateSelector getList(string[string] parameters);
+    ICrateSelector getList();
     ICrateSelector getItem(string id);
 
     Json addItem(Json item);

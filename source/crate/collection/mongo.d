@@ -149,7 +149,7 @@ class MongoCrate(T): Crate!T
       return new MongoCrateRange(collection);
     }
 
-    ICrateSelector getList(string[string])
+    ICrateSelector getList()
     {
       return get();
     }
@@ -191,9 +191,16 @@ class MongoCrate(T): Crate!T
 
     Json updateItem(Json item)
     {
+      string id = item["_id"].to!string;
+
+      if (collection.count(["_id" : toId(id, collection.name)]) == 0)
+      {
+        throw new CrateNotFoundException("There is no item with id `" ~ id ~ "` inside `" ~ collection.name ~ "`");
+      }
+
       auto updateItem = toBson!T(item);
 
-      collection.update(["_id" : toId(item["_id"].to!string, collection.name)], updateItem);
+      collection.update(["_id" : toId(id, collection.name)], updateItem);
 
       return item;
     }

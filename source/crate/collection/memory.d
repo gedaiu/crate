@@ -36,7 +36,7 @@ class MemoryCrate(T) : Crate!T
       return new CrateRange(list);
     }
 
-    ICrateSelector getList(string[string])
+    ICrateSelector getList()
     {
       return get();
     }
