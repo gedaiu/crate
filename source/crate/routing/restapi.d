@@ -27,5 +27,5 @@ class RestApiRouting {
   alias delete_ = item;
 
   alias post = model;
-  alias getAll = model;
+  alias getList = model;
 }

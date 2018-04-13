@@ -1035,7 +1035,7 @@ URLRouter getListWith(Policy, T)(URLRouter router, T[] delegate() @safe handler)
   FieldDefinition definition = getFields!T;
   auto routing = new Policy.Routing(definition);
 
-  return getListWith!(Policy, T)(router, routing.getAll, handler.toDelegate);
+  return getListWith!(Policy, T)(router, routing.getList, handler.toDelegate);
 }
 
 /// ditto
@@ -1047,5 +1047,5 @@ URLRouter getListFilteredWith(Policy, Type)(URLRouter router, ICrateSelector del
 
   auto listHandler = requestFilteredListHandler!(Policy, Type)(handler, filters);
 
-  return router.get(routing.getAll, requestErrorHandler(listHandler));
+  return router.get(routing.getList, requestErrorHandler(listHandler));
 }
