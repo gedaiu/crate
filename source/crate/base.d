@@ -165,7 +165,7 @@ interface Crate(Type)
     ICrateSelector getItem(string id);
 
     Json addItem(Json item);
-    void updateItem(Json item);
+    Json updateItem(Json item);
     void deleteItem(string id);
 }
 

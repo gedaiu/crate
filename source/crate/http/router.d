@@ -448,8 +448,8 @@ unittest
       .send(data)
         .expectStatusCode(200)
         .end((Response response) => {
-          response.bodyJson["site"]["position"]["coordinates"][0].to!int.should.equal(0);
-          response.bodyJson["site"]["position"]["coordinates"][1].to!int.should.equal(1);
+          data["site"]["_id"] = "1";
+          response.bodyJson.should.equal(data);
         });
 }
 

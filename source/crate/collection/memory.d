@@ -55,7 +55,7 @@ class MemoryCrate(T) : Crate!T
       return get.where(idField, id).limit(1);
     }
 
-    void updateItem(Json item)
+    Json updateItem(Json item)
     {
       auto match = list.enumerate
         .filter!(a => a[1][idField] == item[idField]);
@@ -63,6 +63,8 @@ class MemoryCrate(T) : Crate!T
       enforce!CrateNotFoundException(!match.empty, "No item found.");
 
       list[match.front[0]] = item;
+
+      return item;
     }
 
     void deleteItem(string id)

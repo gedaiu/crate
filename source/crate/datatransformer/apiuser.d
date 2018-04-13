@@ -150,12 +150,12 @@ class ApiUserTransformer: Crate!User {
       return new CrateRange(crate.getItem(id).exec.map!(a => a.fromCrate));
     }
 
-    void updateItem(Json item) {
+    Json updateItem(Json item) {
       validateUserFields(item);
 
       auto dbItem = crate.getItem(item["_id"].to!string).exec.front;
 
-      crate.updateItem(item.toCrate(dbItem));
+      return crate.updateItem(item.toCrate(dbItem));
     }
 
     void deleteItem(string id) {

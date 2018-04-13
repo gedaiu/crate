@@ -189,11 +189,13 @@ class MongoCrate(T): Crate!T
       return getItem(id).exec.front;
     }
 
-    void updateItem(Json item)
+    Json updateItem(Json item)
     {
       auto updateItem = toBson!T(item);
 
       collection.update(["_id" : toId(item["_id"].to!string, collection.name)], updateItem);
+
+      return item;
     }
 
     void deleteItem(string id)
