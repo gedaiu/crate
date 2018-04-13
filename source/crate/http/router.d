@@ -516,7 +516,7 @@ unittest {
 @("Get unavailable items with query alteration")
 unittest {
   request(queryRouter)
-    .get("/sites/2")
+    .get("/sites/22")
       .expectStatusCode(404)
       .end();
 }
@@ -992,7 +992,11 @@ URLRouter getWith(Policy, T)(URLRouter router, T delegate(string id) @safe handl
 /// ditto
 URLRouter getWith(Policy, Type)(URLRouter router, ICrateSelector delegate(string id) @safe handler) if(!is(T == void)) {
   Type resultExtractor(string id) @trusted {
-    return handler(id).exec.front.deserializeJson!Type;
+    auto result = handler(id).exec;
+
+    enforce!CrateNotFoundException(!result.empty, "Missing `" ~ Type.stringof ~ "`.");
+
+    return result.front.deserializeJson!Type;
   }
 
   return getWith!(Policy, Type)(router, &resultExtractor);
@@ -1036,8 +1040,6 @@ URLRouter getListWith(Policy, T)(URLRouter router, T[] delegate() @safe handler)
 URLRouter getListFilteredWith(Policy, Type)(URLRouter router, ICrateSelector delegate() @safe handler, ICrateFilter[] filters ...) {
   FieldDefinition definition = getFields!Type;
   auto routing = new Policy.Routing(definition);
-
-  import std.stdio;
 
   auto listHandler = requestFilteredListHandler!(Policy, Type)(handler, filters);
 

@@ -69,6 +69,11 @@ class MemoryCrate(T) : Crate!T
 
     void deleteItem(string id)
     {
+      auto match = list
+        .filter!(a => a[idField] == id);
+
+      enforce!CrateNotFoundException(!match.empty, "No item found.");
+
       list = list.filter!(a => a[idField].to!string != id).array;
     }
 }
