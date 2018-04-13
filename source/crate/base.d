@@ -77,7 +77,7 @@ class CrateRange : ICrateSelector
       return this;
     }
 
-    InputRange!Json exec() {
+    InputRange!Json exec() @trusted {
       return data;
     }
   }

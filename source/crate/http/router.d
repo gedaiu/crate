@@ -122,8 +122,9 @@ class CrateRouter(RouterPolicy) {
 
   CrateRouter add(Policy, Type)(Crate!Type crate, ICrateFilter[] filters ...)
   {
-    //throw new Exception("not implemented");
     router.putJsonWith!(Policy, Type)(&crate.updateItem);
+    router.getWith!(Policy, Type)(&crate.getItem);
+    router.getAllFilteredWith!(Policy, Type)(&crate.getList, filters);
 
     return this;
   }
@@ -730,6 +731,37 @@ auto requestListHandler(U, T)(T[] delegate() @safe next) if(!is(T == void)){
   return &deserialize;
 }
 
+
+/// Handle a request that returns a list of elements before applying some filters
+auto requestFilteredListHandler(U, T)(const ICrateSelector delegate(string[string]) @safe next, ICrateFilter[] filters...) if(!is(T == void)) {
+  FieldDefinition definition = getFields!T;
+  auto serializer = new U.Serializer(definition);
+
+  ICrateFilter[] localFilters = filters.dup;
+
+  void deserialize(HTTPServerRequest request, HTTPServerResponse response) @trusted {
+    Json jsonResponse;
+    string[string] parameters;
+
+    try {
+      auto items = next(parameters);
+      
+      foreach(filter; localFilters) {
+        items = filter.apply(request, items);
+      }
+
+      auto result = items.exec.array.inputRangeObject;
+      jsonResponse = serializer.denormalise(result);
+    } catch (JSONException e) {
+      throw new CrateValidationException("Can not serialize data. " ~ e.msg, e.file, e.line);
+    }
+
+    response.writeJsonBody(jsonResponse, 200, U.mime);
+  }
+
+  return &deserialize;
+}
+
 ///
 URLRouter putJsonWith(Policy, Type, V)(URLRouter router, string route, V function(Json) @safe handler) {
   return putJsonWith!(Policy, Type)(router, route, handler.toDelegate);
@@ -741,14 +773,6 @@ URLRouter putJsonWith(Policy, Type, V)(URLRouter router, V delegate(Json) @safe 
   auto routing = new Policy.Routing(definition);
 
   return putJsonWith!(Policy, Type)(router, routing.put(), handler);
-}
-
-/// ditto
-URLRouter putJsonWith(Policy, Type)(URLRouter router, void delegate(Json) @safe handler) {
-  //FieldDefinition definition = getFields!Type;
-  //auto routing = new Policy.Routing(definition);
-
-  return router;//putJsonWith!(Policy, Type)(router, routing.put(), handler);
 }
 
 /// ditto
@@ -972,6 +996,15 @@ URLRouter getWith(Policy, T)(URLRouter router, T delegate(string id) @safe handl
 }
 
 /// ditto
+URLRouter getWith(Policy, Type)(URLRouter router, ICrateSelector delegate(string id) @safe handler) if(!is(T == void)) {
+  Type resultExtractor(string id) @trusted {
+    return handler(id).exec.front.deserializeJson!Type;
+  }
+
+  return getWith!(Policy, Type)(router, &resultExtractor);
+}
+
+/// ditto
 URLRouter getWith(Policy, T)(URLRouter router, void delegate(string id, HTTPServerResponse res) @safe handler) if(!is(T == void)) {
   FieldDefinition definition = getFields!T;
   auto routing = new Policy.Routing(definition);
@@ -1003,4 +1036,16 @@ URLRouter getAllWith(Policy, T)(URLRouter router, T[] delegate() @safe handler) 
   auto routing = new Policy.Routing(definition);
 
   return getAllWith!(Policy, T)(router, routing.getAll, handler.toDelegate);
+}
+
+/// ditto
+URLRouter getAllFilteredWith(Policy, Type)(URLRouter router, ICrateSelector delegate(string[string]) @safe handler, ICrateFilter[] filters ...) {
+  FieldDefinition definition = getFields!Type;
+  auto routing = new Policy.Routing(definition);
+
+  import std.stdio;
+
+  auto listHandler = requestFilteredListHandler!(Policy, Type)(handler, filters);
+
+  return router.get(routing.getAll, requestErrorHandler(listHandler));
 }
