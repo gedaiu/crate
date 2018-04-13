@@ -124,7 +124,7 @@ class CrateRouter(RouterPolicy) {
   {
     router.putJsonWith!(Policy, Type)(&crate.updateItem);
     router.getWith!(Policy, Type)(&crate.getItem);
-    router.getAllFilteredWith!(Policy, Type)(&crate.getList, filters);
+    router.getListFilteredWith!(Policy, Type)(&crate.getList, filters);
 
     return this;
   }
@@ -1015,12 +1015,12 @@ URLRouter getWith(Policy, T)(URLRouter router, void delegate(string id, HTTPServ
 
 /// GET All
 URLRouter getListWith(Policy, T)(URLRouter router, string route, T[] function() @safe handler) if(!is(T == void)) {
-  return getAllWith!(Policy, T)(router, route, handler.toDelegate);
+  return getListWith!(Policy, T)(router, route, handler.toDelegate);
 }
 
 /// ditto
 URLRouter getListWith(Policy, T)(URLRouter router, T[] function() @safe handler) if(!is(T == void)) {
-  return getAllWith!(Policy, T)(router, handler.toDelegate);
+  return getListWith!(Policy, T)(router, handler.toDelegate);
 }
 
 /// ditto
@@ -1035,7 +1035,7 @@ URLRouter getListWith(Policy, T)(URLRouter router, T[] delegate() @safe handler)
   FieldDefinition definition = getFields!T;
   auto routing = new Policy.Routing(definition);
 
-  return getAllWith!(Policy, T)(router, routing.getAll, handler.toDelegate);
+  return getListWith!(Policy, T)(router, routing.getAll, handler.toDelegate);
 }
 
 /// ditto
