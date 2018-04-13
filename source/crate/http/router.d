@@ -1014,24 +1014,24 @@ URLRouter getWith(Policy, T)(URLRouter router, void delegate(string id, HTTPServ
 
 
 /// GET All
-URLRouter getAllWith(Policy, T)(URLRouter router, string route, T[] function() @safe handler) if(!is(T == void)) {
+URLRouter getListWith(Policy, T)(URLRouter router, string route, T[] function() @safe handler) if(!is(T == void)) {
   return getAllWith!(Policy, T)(router, route, handler.toDelegate);
 }
 
 /// ditto
-URLRouter getAllWith(Policy, T)(URLRouter router, T[] function() @safe handler) if(!is(T == void)) {
+URLRouter getListWith(Policy, T)(URLRouter router, T[] function() @safe handler) if(!is(T == void)) {
   return getAllWith!(Policy, T)(router, handler.toDelegate);
 }
 
 /// ditto
-URLRouter getAllWith(Policy, T)(URLRouter router, string route, T[] delegate() @safe handler) if(!is(T == void)) {
+URLRouter getListWith(Policy, T)(URLRouter router, string route, T[] delegate() @safe handler) if(!is(T == void)) {
   auto listHandler = requestListHandler!(Policy, T)(handler);
 
   return router.get(route, requestErrorHandler(listHandler));
 }
 
 /// ditto
-URLRouter getAllWith(Policy, T)(URLRouter router, T[] delegate() @safe handler) if(!is(T == void)) {
+URLRouter getListWith(Policy, T)(URLRouter router, T[] delegate() @safe handler) if(!is(T == void)) {
   FieldDefinition definition = getFields!T;
   auto routing = new Policy.Routing(definition);
 
@@ -1039,7 +1039,7 @@ URLRouter getAllWith(Policy, T)(URLRouter router, T[] delegate() @safe handler) 
 }
 
 /// ditto
-URLRouter getAllFilteredWith(Policy, Type)(URLRouter router, ICrateSelector delegate(string[string]) @safe handler, ICrateFilter[] filters ...) {
+URLRouter getListFilteredWith(Policy, Type)(URLRouter router, ICrateSelector delegate(string[string]) @safe handler, ICrateFilter[] filters ...) {
   FieldDefinition definition = getFields!Type;
   auto routing = new Policy.Routing(definition);
 
