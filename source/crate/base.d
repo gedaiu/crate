@@ -2,7 +2,7 @@ module crate.base;
 
 import vibe.data.json, vibe.http.common;
 
-import std.string, std.traits, std.conv;
+import std.string, std.traits, std.conv, std.typecons;
 import std.algorithm, std.range, std.string;
 import std.range.interfaces;
 import vibe.http.server;
@@ -10,6 +10,8 @@ import vibe.http.server;
 import crate.ctfe;
 
 import openapi.definitions;
+
+version(unittest) import fluent.asserts;
 
 enum CrateOperation
 {
@@ -22,7 +24,6 @@ enum CrateOperation
   otherItem,
   other
 }
-
 
 interface ICrateFilter
 {
@@ -40,6 +41,82 @@ interface ICrateSelector
     InputRange!Json exec();
 }
 
+/// Takes a nested Json object and moves the values to a Json assoc array where the key 
+/// is the path from the original object to that value
+Json[string] flatten(Json object) @trusted {
+  Json[string] elements;
+
+  auto root = tuple("", object);
+  Tuple!(string, Json)[] queue = [ root ];
+
+  while(queue.length > 0) {
+    auto element = queue[0];
+
+    if(element[0] != "") {
+      if(element[1].type != Json.Type.object && element[1].type != Json.Type.array) {
+        elements[element[0]] = element[1];
+      }
+
+      if(element[1].type == Json.Type.object && element[1].length == 0) {
+        elements[element[0]] = element[1];
+      }
+
+      if(element[1].type == Json.Type.array && element[1].length == 0) {
+        elements[element[0]] = element[1];
+      }
+    }
+
+    if(element[1].type == Json.Type.object) {
+      foreach(string key, value; element[1].byKeyValue) {
+        string nextKey = key;
+
+        if(element[0] != "") {
+          nextKey = element[0] ~ "." ~ nextKey;
+        }
+
+        queue ~= tuple(nextKey, value);
+      }
+    }
+
+    if(element[1].type == Json.Type.array) {
+      size_t index;
+
+      foreach(value; element[1].byValue) {
+        string nextKey = element[0] ~ "[" ~ index.to!string ~ "]";
+
+        queue ~= tuple(nextKey, value);
+        index++;
+      }
+    }
+
+    queue = queue[1..$];
+  }
+
+  return elements;
+}
+
+/// Get a flatten object
+unittest {
+  auto obj = Json.emptyObject;
+  obj["key1"] = 1;
+  obj["key2"] = 2;
+  obj["key3"] = Json.emptyObject;
+  obj["key3"]["item1"] = "3";
+  obj["key3"]["item2"] = Json.emptyObject;
+  obj["key3"]["item2"]["item4"] = Json.emptyObject;
+  obj["key3"]["item2"]["item5"] = Json.emptyObject;
+  obj["key3"]["item2"]["item5"]["item6"] = Json.emptyObject;
+  
+  auto result = obj.flatten;
+  result.byKeyValue.map!(a => a.key).should.containOnly(["key1", "key2", "key3.item1", "key3.item2.item4", "key3.item2.item5.item6"]);
+  result["key1"].should.equal(1);
+  result["key2"].should.equal(2);
+  result["key3.item1"].should.equal("3");
+  result["key3.item2.item4"].should.equal(Json.emptyObject);
+  result["key3.item2.item5.item6"].should.equal(Json.emptyObject);
+}
+
+
 class CrateRange : ICrateSelector
 {
   private {
@@ -56,7 +133,12 @@ class CrateRange : ICrateSelector
 
   override {
     ICrateSelector where(string field, string value) {
-      data = data.filter!(a => a[field].to!string == value).inputRangeObject;
+      data = data
+        .map!(a => tuple(a, a.flatten))
+        .filter!(a => a[1][field].to!string == value)
+        .map!(a => a[0])
+          .inputRangeObject;
+
       return this;
     }
 

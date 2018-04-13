@@ -244,6 +244,16 @@ version (unittest)
   import std.array;
   import fluent.asserts;
 
+  class TypeFilter : ICrateFilter {
+    ICrateSelector apply(HTTPServerRequest request, ICrateSelector selector) {
+      if("type" !in request.query) {
+        return selector;
+      }
+
+      return selector.where("position.type", request.query["type"]);
+    }
+  }
+
   struct TestModel
   {
     @optional string _id = "1";
@@ -297,7 +307,7 @@ unittest
 
   router
     .crateSetup
-      .add(baseCrate);
+      .add(baseCrate, new TypeFilter);
 
   Json data1 = `{
       "position": {
@@ -729,7 +739,7 @@ auto requestFilteredListHandler(U, T)(const ICrateSelector delegate() @safe next
 
     try {
       auto items = next();
-      
+
       foreach(filter; localFilters) {
         items = filter.apply(request, items);
       }

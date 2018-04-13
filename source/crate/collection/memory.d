@@ -15,7 +15,7 @@ import vibe.data.json;
 
 class MemoryCrate(T) : Crate!T
 {
-  private {
+  protected {
     ulong lastId;
     Json[] list;
     CrateConfig!T _config;
