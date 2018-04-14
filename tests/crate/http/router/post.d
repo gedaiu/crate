@@ -23,9 +23,19 @@ Site postSite(Site site) @safe {
   return site;
 }
 
+Site postSiteJson(Json site) @safe {
+  site["_id"] = "122";
+  return site.deserializeJson!Site;
+}
+
 Json postJsonSite(Site site) @safe {
   site._id = "122";
   return site.serializeToJson;
+}
+
+Json postJson(Json site) @safe {
+  site["_id"] = "122";
+  return site;
 }
 
 void postVoidSite(Site site, HTTPServerResponse res) @safe {
@@ -53,9 +63,60 @@ alias s = Spec!({
               });
       });
 
-      it("should deduce the post route", {
+      it("should be able to handle a request with a JSON handler", {
         auto router = new URLRouter();
-        router.postWith!RestApi(&postSite);
+        router.postJsonWith!(RestApi, Site)("/sites", &postSiteJson);
+
+        Json dataUpdate = restSiteFixture.parseJsonString;
+
+        request(router)
+          .post("/sites")
+            .send(dataUpdate)
+              .expectStatusCode(200)
+              .expectHeader("Content-Type", "application/json")
+              .end((Response response) => {
+                dataUpdate["site"]["_id"] = "122";
+                response.bodyJson.should.equal(dataUpdate);
+              });
+      });
+
+      it("should be able to use the default route to handle a request with a JSON handler", {
+        auto router = new URLRouter();
+        router.postJsonWith!(RestApi, Site)(&postSiteJson);
+
+        Json dataUpdate = restSiteFixture.parseJsonString;
+
+        request(router)
+          .post("/sites")
+            .send(dataUpdate)
+              .expectStatusCode(200)
+              .expectHeader("Content-Type", "application/json")
+              .end((Response response) => {
+                dataUpdate["site"]["_id"] = "122";
+                response.bodyJson.should.equal(dataUpdate);
+              });
+      });
+
+      it("should be able to use full JSON handler", {
+        auto router = new URLRouter();
+        router.postJsonWith!(RestApi, Site)(&postJson);
+
+        Json dataUpdate = restSiteFixture.parseJsonString;
+
+        request(router)
+          .post("/sites")
+            .send(dataUpdate)
+              .expectStatusCode(200)
+              .expectHeader("Content-Type", "application/json")
+              .end((Response response) => {
+                dataUpdate["site"]["_id"] = "122";
+                response.bodyJson.should.equal(dataUpdate);
+              });
+      });
+
+      it("should use the default post route", {
+        auto router = new URLRouter();
+        router.postWith!RestApi("/sites", &postSite);
 
         Json dataUpdate = restSiteFixture.parseJsonString;
 

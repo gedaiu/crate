@@ -123,6 +123,7 @@ class CrateRouter(RouterPolicy) {
   CrateRouter add(Policy, Type)(Crate!Type crate, ICrateFilter[] filters ...)
   {
     router.putJsonWith!(Policy, Type)(&crate.updateItem);
+    router.postJsonWith!(Policy, Type)(&crate.addItem);
     router.deleteWith!(Policy, Type)(&crate.deleteItem);
     router.getWith!(Policy, Type)(&crate.getItem);
     router.getListFilteredWith!(Policy, Type)(&crate.getList, filters);
@@ -401,7 +402,10 @@ unittest
       .send(data)
         .expectStatusCode(400)
         .end((Response response) => {
-          response.bodyJson["errors"][0]["title"].to!string.should.equal("Validation error");
+          response.bodyJson.should.equal(`{"errors": [{ 
+            "description": "Missing ` ~ "`position`"~ ` value.", 
+            "title": "Validation error", 
+            "status": 400} ]}`.parseJsonString);
         });
 }
 
@@ -632,6 +636,7 @@ auto requestDeserializationHandler(U, T, V)(V delegate(T) @safe next) if(!is(V =
 /// ditto
 auto requestDeserializedHandler(Policy, Type, V)(V delegate(Json) @safe next) {
   FieldDefinition definition = getFields!Type;
+
   auto serializer = new Policy.Serializer(definition);
 
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
@@ -647,6 +652,10 @@ auto requestDeserializedHandler(Policy, Type, V)(V delegate(Json) @safe next) {
       next(clientData);
       response.statusCode = 204;
       response.writeVoidBody;
+    } else static if(is(V == Json)) {
+      auto result = next(clientData);
+      response.statusCode = 200;
+      response.writeJsonBody(serializer.denormalise(result), Policy.mime);
     } else {
       auto result = next(clientData);
       response.statusCode = 200;
@@ -888,6 +897,30 @@ URLRouter postWith(Policy, T, V)(URLRouter router, string route, V delegate(T ob
   return router.post(route, requestErrorHandler(deserializationHandler));
 }
 
+/// ditto
+URLRouter postJsonWith(Policy, Type, V)(URLRouter router, string route, V function(Json object) @safe handler) {
+  return postJsonWith!(Policy, Type)(router, route, handler.toDelegate);
+}
+
+/// ditto
+URLRouter postJsonWith(Policy, Type, V)(URLRouter router, V function(Json object) @safe handler) {
+  return postJsonWith!(Policy, Type)(router, handler.toDelegate);
+}
+
+/// ditto
+URLRouter postJsonWith(Policy, Type, V)(URLRouter router, V delegate(Json object) @safe next) {
+  FieldDefinition definition = getFields!Type;
+  auto routing = new Policy.Routing(definition);
+
+  return postJsonWith!(Policy, Type)(router, routing.post, next);
+}
+
+/// ditto
+URLRouter postJsonWith(Policy, Type, V)(URLRouter router, string route, V delegate(Json object) @safe next) {
+  auto handler = requestDeserializedHandler!(Policy, Type)(next);
+
+  return router.post(route, requestErrorHandler(handler));
+}
 
 
 
