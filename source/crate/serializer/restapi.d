@@ -19,7 +19,7 @@ class RestApiSerializer : ModelSerializer {
     private CrateRestApiSerializer serializer;
   }
 
-  this(const FieldDefinition definition) {
+  this(const FieldDefinition definition) pure {
     this.definition = definition;
     serializer = new const CrateRestApiSerializer();
   }

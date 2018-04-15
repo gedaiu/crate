@@ -19,7 +19,7 @@ class JsonApiSerializer : ModelSerializer {
     private CrateJsonApiSerializer serializer;
   }
 
-  this(const FieldDefinition definition) {
+  this(const FieldDefinition definition) pure {
     this.definition = definition;
     serializer = new const CrateJsonApiSerializer();
   }

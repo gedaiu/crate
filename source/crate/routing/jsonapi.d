@@ -10,15 +10,15 @@ class JsonApiRouting {
     FieldDefinition definition;
   }
 
-  this(const FieldDefinition definition) {
+  this(const FieldDefinition definition) pure {
     this.definition = definition;
   }
 
-  string item() {
+  string item() pure {
     return model() ~ "/:id";
   }
 
-  string model() {
+  string model() pure {
     return "/" ~ definition.plural.toLower;
   }
 

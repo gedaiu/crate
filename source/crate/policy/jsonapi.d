@@ -19,6 +19,39 @@ struct JsonApi {
 
   alias Serializer = JsonApiSerializer;
   alias Routing = JsonApiRouting;
+
+  static pure:
+    private CrateRule templateRule(FieldDefinition definition) {
+      auto serializer = new JsonApiSerializer(definition);
+      CrateRule rule;
+
+      rule.request.serializer = serializer;
+
+      rule.response.mime = "application/vnd.api+json";
+      rule.response.serializer = serializer;
+
+      return rule;
+    }
+
+    CrateRule create(FieldDefinition definition) {
+      auto routing = new JsonApiRouting(definition);
+      CrateRule rule = templateRule(definition);
+
+      rule.request.path = routing.post;
+      rule.response.statusCode = 201;
+
+      return rule;
+    }
+
+    CrateRule replace(FieldDefinition definition) {
+      auto routing = new JsonApiRouting(definition);
+      CrateRule rule = templateRule(definition);
+
+      rule.request.path = routing.put;
+      rule.response.statusCode = 200;
+
+      return rule;
+    }
 }
 
 class CrateJsonApiPolicy : CratePolicy

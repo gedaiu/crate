@@ -41,6 +41,22 @@ interface ICrateSelector
     InputRange!Json exec();
 }
 
+struct CrateResponse {
+  string mime;
+  uint statusCode;
+  ModelSerializer serializer;
+}
+
+struct CrateRequest {
+  string path;
+  ModelSerializer serializer;
+}
+
+struct CrateRule {
+  CrateRequest request;
+  CrateResponse response;
+}
+
 /// Takes a nested Json object and moves the values to a Json assoc array where the key 
 /// is the path from the original object to that value
 Json[string] flatten(Json object) @trusted {

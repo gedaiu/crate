@@ -72,7 +72,7 @@ alias s = Spec!({
         request(router)
           .post("/sites")
             .send(dataUpdate)
-              .expectStatusCode(200)
+              .expectStatusCode(201)
               .expectHeader("Content-Type", "application/json")
               .end((Response response) => {
                 dataUpdate["site"]["_id"] = "122";
@@ -89,7 +89,7 @@ alias s = Spec!({
         request(router)
           .post("/sites")
             .send(dataUpdate)
-              .expectStatusCode(200)
+              .expectStatusCode(201)
               .expectHeader("Content-Type", "application/json")
               .end((Response response) => {
                 dataUpdate["site"]["_id"] = "122";
@@ -106,7 +106,7 @@ alias s = Spec!({
         request(router)
           .post("/sites")
             .send(dataUpdate)
-              .expectStatusCode(200)
+              .expectStatusCode(201)
               .expectHeader("Content-Type", "application/json")
               .end((Response response) => {
                 dataUpdate["site"]["_id"] = "122";
