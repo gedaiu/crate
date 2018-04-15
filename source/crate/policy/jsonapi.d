@@ -52,6 +52,16 @@ struct JsonApi {
 
       return rule;
     }
+
+    CrateRule delete_(FieldDefinition definition) {
+      auto routing = new JsonApiRouting(definition);
+      CrateRule rule = templateRule(definition);
+
+      rule.request.path = routing.delete_;
+      rule.response.statusCode = 204;
+
+      return rule;
+    }
 }
 
 class CrateJsonApiPolicy : CratePolicy

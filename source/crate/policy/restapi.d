@@ -52,6 +52,16 @@ struct RestApi {
 
       return rule;
     }
+
+    CrateRule delete_(FieldDefinition definition) {
+      auto routing = new RestApiRouting(definition);
+      CrateRule rule = templateRule(definition);
+
+      rule.request.path = routing.delete_;
+      rule.response.statusCode = 204;
+
+      return rule;
+    }
 }
 
 class CrateRestApiPolicy : CratePolicy
