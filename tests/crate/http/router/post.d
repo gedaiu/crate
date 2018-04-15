@@ -48,24 +48,7 @@ alias s = Spec!({
     describe("with a POST REST Api request", {
       it("should accept a valid request", {
         auto router = new URLRouter();
-        router.postWith!RestApi("/sites", &postSite);
-
-        Json dataUpdate = restSiteFixture.parseJsonString;
-
-        request(router)
-          .post("/sites")
-            .send(dataUpdate)
-              .expectStatusCode(200)
-              .expectHeader("Content-Type", "application/json")
-              .end((Response response) => {
-                dataUpdate["site"]["_id"] = "122";
-                response.bodyJson.should.equal(dataUpdate);
-              });
-      });
-
-      it("should be able to handle a request with a JSON handler", {
-        auto router = new URLRouter();
-        router.postJsonWith!(RestApi, Site)("/sites", &postSiteJson);
+        router.postWith!RestApi(&postSite);
 
         Json dataUpdate = restSiteFixture.parseJsonString;
 
@@ -80,7 +63,7 @@ alias s = Spec!({
               });
       });
 
-      it("should be able to use the default route to handle a request with a JSON handler", {
+      it("should be able to handle a request with a JSON handler", {
         auto router = new URLRouter();
         router.postJsonWith!(RestApi, Site)(&postSiteJson);
 
@@ -114,33 +97,16 @@ alias s = Spec!({
               });
       });
 
-      it("should use the default post route", {
-        auto router = new URLRouter();
-        router.postWith!RestApi("/sites", &postSite);
-
-        Json dataUpdate = restSiteFixture.parseJsonString;
-
-        request(router)
-          .post("/sites")
-            .send(dataUpdate)
-              .expectStatusCode(200)
-              .expectHeader("Content-Type", "application/json")
-              .end((Response response) => {
-                dataUpdate["site"]["_id"] = "122";
-                response.bodyJson.should.equal(dataUpdate);
-              });
-      });
-
       it("should accept a valid request", {
         auto router = new URLRouter();
-        router.postWith!RestApi("/sites", &postJsonSite);
+        router.postWith!RestApi(&postJsonSite);
 
         Json dataUpdate = restSiteFixture.parseJsonString;
 
         request(router)
           .post("/sites")
             .send(dataUpdate)
-              .expectStatusCode(200)
+              .expectStatusCode(201)
               .expectHeader("Content-Type", "application/json")
               .end((Response response) => {
                 dataUpdate["site"]["_id"] = "122";
@@ -150,7 +116,7 @@ alias s = Spec!({
 
       it("should accept a valid request and return an empty body", {
         auto router = new URLRouter();
-        router.postWith!RestApi("/sites", &postVoidSite);
+        router.postWith!RestApi(&postVoidSite);
 
         Json dataUpdate = restSiteFixture.parseJsonString;
 
@@ -179,7 +145,7 @@ alias s = Spec!({
 
       it("should respond with an error when there are missing fields", {
         auto router = new URLRouter();
-        router.postWith!RestApi("/sites", &postSite);
+        router.postWith!RestApi(&postSite);
 
         auto dataUpdate = `{ "site": { }}`.parseJsonString;
         auto expectedError = `{"errors": [{

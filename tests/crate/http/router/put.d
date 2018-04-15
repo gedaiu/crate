@@ -42,7 +42,7 @@ alias s = Spec!({
     describe("with a PUT REST Api request", {
       it("should accept a valid request and return the changed data", {
         auto router = new URLRouter();
-        router.putWith!RestApi("/sites/:id", &putSite);
+        router.putWith!RestApi(&putSite);
 
         Json dataUpdate = restSiteFixture.parseJsonString;
 
@@ -55,19 +55,6 @@ alias s = Spec!({
                 dataUpdate["site"]["_id"] = "10";
                 response.bodyJson.should.equal(dataUpdate);
               });
-      });
-
-      it("should accept a valid request and return the changed data", {
-        auto router = new URLRouter();
-        router.putJsonWith!(RestApi, Site)("/sites/:id", &putVoidJsonSite);
-
-        Json dataUpdate = restSiteFixture.parseJsonString;
-
-        request(router)
-          .put("/sites/10")
-            .send(dataUpdate)
-              .expectStatusCode(204)
-              .end();
       });
 
       it("should accept a valid request and return the changed data", {
@@ -85,7 +72,7 @@ alias s = Spec!({
 
       it("should accept a valid request and return the changed data", {
         auto router = new URLRouter();
-        router.putJsonWith!(RestApi, Site)("/sites/:id", &putSiteJson);
+        router.putJsonWith!(RestApi, Site)(&putSiteJson);
 
         Json dataUpdate = restSiteFixture.parseJsonString;
 
@@ -99,23 +86,9 @@ alias s = Spec!({
               });
       });
 
-      it("should deduce the route from the api policy", {
-        auto router = new URLRouter();
-        router.putWith!RestApi(&putSite);
-
-        Json dataUpdate = restSiteFixture.parseJsonString;
-
-        request(router)
-          .put("/sites/10")
-            .send(dataUpdate)
-              .expectStatusCode(200)
-              .expectHeader("Content-Type", "application/json")
-              .end;
-      });
-
       it("should accept a valid request and return an empty body", {
         auto router = new URLRouter();
-        router.putWith!RestApi("/sites/:id", &putVoidSite);
+        router.putWith!RestApi(&putVoidSite);
 
         Json dataUpdate = restSiteFixture.parseJsonString;
 
@@ -128,22 +101,9 @@ alias s = Spec!({
               });
       });
 
-      it("should deduce the route from the api policy", {
-        auto router = new URLRouter();
-        router.putWith!RestApi(&putVoidSite);
-
-        Json dataUpdate = restSiteFixture.parseJsonString;
-
-        request(router)
-          .put("/sites/10")
-            .send(dataUpdate)
-              .expectStatusCode(204)
-              .end;
-      });
-
       it("should accept a valid request as json", {
         auto router = new URLRouter();
-        router.putWith!RestApi("/sites/:id", &putJsonSite);
+        router.putWith!RestApi(&putJsonSite);
 
         Json dataUpdate = restSiteFixture.parseJsonString;
 
@@ -157,16 +117,9 @@ alias s = Spec!({
               });
       });
 
-      it("should throw an exception on invalid route name", {
-        auto router = new URLRouter();
-        ({
-          router.putWith!RestApi("/sites/:_id", &putSite);
-        }).should.throwAnyException.withMessage("Invalid `/sites/:_id` route. It must end with `/:id`.");
-      });
-
       it("should respond with an error when there are missing fields", {
         auto router = new URLRouter();
-        router.putWith!RestApi("/sites/:id", &putSite);
+        router.putWith!RestApi(&putSite);
 
         auto dataUpdate = `{ "site": { }}`.parseJsonString;
         auto expectedError = `{"errors": [{
@@ -188,7 +141,7 @@ alias s = Spec!({
     describe("with a PUT JSON Api request", {
       it("should accept a valid request", {
         auto router = new URLRouter();
-        router.putWith!JsonApi("/sites/:id", &putSite);
+        router.putWith!JsonApi(&putSite);
 
         Json dataUpdate = jsonSiteFixture.parseJsonString;
 
@@ -205,16 +158,9 @@ alias s = Spec!({
               });
       });
 
-      it("should throw an exception on invalid route name", {
-        auto router = new URLRouter();
-        ({
-          router.putWith!JsonApi("/sites/:_id", &putSite);
-        }).should.throwAnyException.withMessage("Invalid `/sites/:_id` route. It must end with `/:id`.");
-      });
-
       it("should respond with an error when there are missing fields", {
         auto router = new URLRouter();
-        router.putWith!JsonApi("/sites/:id", &putSite);
+        router.putWith!JsonApi(&putSite);
 
         Json dataUpdate = `{ "data": {
           "type": "sites",

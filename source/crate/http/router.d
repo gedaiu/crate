@@ -578,10 +578,7 @@ import crate.serializer.restapi;
 import crate.serializer.jsonapi;
 
 /// Call the next handler after the request data is deserialized
-auto requestFullDeserializationHandler(U, T)(void delegate(T, HTTPServerResponse) @safe next) {
-  FieldDefinition definition = getFields!T;
-  auto serializer = new U.Serializer(definition);
-
+auto requestFullDeserializationHandler(U, T)(void delegate(T, HTTPServerResponse) @safe next, CrateRule rule) {
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
     string id;
 
@@ -589,7 +586,7 @@ auto requestFullDeserializationHandler(U, T)(void delegate(T, HTTPServerResponse
       id = request.params["id"];
     }
 
-    auto clientData = serializer.normalise(id, request.json);
+    auto clientData = rule.request.serializer.normalise(id, request.json);
     T value;
 
     try {
@@ -598,6 +595,8 @@ auto requestFullDeserializationHandler(U, T)(void delegate(T, HTTPServerResponse
       throw new CrateValidationException("Can not deserialize data. " ~ e.msg, e.file, e.line);
     }
 
+    response.statusCode = rule.response.statusCode;
+
     next(value, response);
   }
 
@@ -605,10 +604,7 @@ auto requestFullDeserializationHandler(U, T)(void delegate(T, HTTPServerResponse
 }
 
 /// ditto
-auto requestDeserializationHandler(U, T, V)(V delegate(T) @safe next) if(!is(V == void)) {
-  FieldDefinition definition = getFields!T;
-  auto serializer = new U.Serializer(definition);
-
+auto requestDeserializationHandler(U, T, V)(V delegate(T) @safe next, CrateRule rule) if(!is(V == void)) {
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
     string id;
 
@@ -616,7 +612,7 @@ auto requestDeserializationHandler(U, T, V)(V delegate(T) @safe next) if(!is(V =
       id = request.params["id"];
     }
 
-    auto clientData = serializer.normalise(id, request.json);
+    auto clientData = rule.request.serializer.normalise(id, request.json);
     T value;
 
     try {
@@ -626,8 +622,8 @@ auto requestDeserializationHandler(U, T, V)(V delegate(T) @safe next) if(!is(V =
     }
 
     auto result = next(value);
-    response.statusCode = 200;
-    response.writeJsonBody(serializer.denormalise(result.serializeToJson), U.mime);
+    response.statusCode = rule.response.statusCode;
+    response.writeJsonBody(rule.response.serializer.denormalise(result.serializeToJson), U.mime);
   }
 
   return &deserialize;
@@ -763,81 +759,58 @@ auto requestFilteredListHandler(U, T)(const ICrateSelector delegate() @safe next
 }
 
 ///
-URLRouter putJsonWith(Policy, Type, V)(URLRouter router, string route, V function(Json) @safe handler) {
-  return putJsonWith!(Policy, Type)(router, route, handler.toDelegate);
-}
-
-/// ditto
-URLRouter putJsonWith(Policy, Type, V)(URLRouter router, V delegate(Json) @safe handler) {
-  FieldDefinition definition = getFields!Type;
-  auto routing = new Policy.Routing(definition);
-
-  return putJsonWith!(Policy, Type)(router, routing.put(), handler);
-}
-
-/// ditto
 URLRouter putJsonWith(Policy, Type, V)(URLRouter router, V function(Json) @safe handler) {
   return putJsonWith!(Policy, Type)(router, handler.toDelegate);
 }
 
 /// ditto
-URLRouter putJsonWith(Policy, Type, V)(URLRouter router, string route, V delegate(Json) @safe next) {
-  enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
+URLRouter putJsonWith(Policy, Type, V)(URLRouter router, V delegate(Json) @safe next) {
   FieldDefinition definition = getFields!Type;
   auto rule = Policy.replace(definition);
 
+  enforce(rule.request.path.endsWith("/:id"), "Invalid `" ~ rule.request.path ~ "` route. It must end with `/:id`.");
+
   auto handler = requestDeserializedHandler!(Policy, Type)(next, rule);
 
-  return router.put(route, requestErrorHandler(handler));
+  return router.put(rule.request.path, requestErrorHandler(handler));
 }
-
 
 /// Add a PUT route that parse the data according a Protocol
-URLRouter putWith(Policy, T)(URLRouter router, string route, T handler) if(is(T == function)) {
-  return putWith!(Policy, T)(router, route, handler.toDelegate);
+URLRouter putWith(Policy, T, V)(URLRouter router, V function(T object) @safe handler) {
+  return putWith!(Policy, T, V)(router, handler.toDelegate);
 }
 
 /// ditto
-URLRouter putWith(Policy, T, V)(URLRouter router, V delegate(T object) @safe handler) {
-  FieldDefinition definition = getFields!T;
-  auto routing = new Policy.Routing(definition);
-
-  return putWith!(Policy, T, V)(router, routing.put(), handler);
+URLRouter putWith(Policy, T)(URLRouter router, void function(T object, HTTPServerResponse) @safe handler) {
+  return putWith!(Policy, T)(router, handler.toDelegate);
 }
 
 /// ditto
-URLRouter putWith(Policy, T)(URLRouter router, void delegate(T object, HTTPServerResponse) @safe handler) {
-  FieldDefinition definition = getFields!T;
-  auto routing = new Policy.Routing(definition);
+URLRouter putWith(Policy, Type)(URLRouter router, void delegate(Type object, HTTPServerResponse res) @safe handler) {
+  FieldDefinition definition = getFields!Type;
+  auto rule = Policy.replace(definition);
 
-  return putWith!(Policy, T)(router, routing.put(), handler.toDelegate);
+  enforce(rule.request.path.endsWith("/:id"), "Invalid `" ~ rule.request.path ~ "` route. It must end with `/:id`.");
+
+  auto deserializationHandler = requestFullDeserializationHandler!(Policy, Type)(handler, rule);
+
+  return router.put(rule.request.path, requestErrorHandler(deserializationHandler));
 }
 
 /// ditto
-URLRouter putWith(Policy, T)(URLRouter router, string route, void delegate(T object, HTTPServerResponse res) @safe handler) {
-  enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
+URLRouter putWith(Policy, Type, V)(URLRouter router, V delegate(Type object) @safe next) {
+  FieldDefinition definition = getFields!Type;
+  auto rule = Policy.replace(definition);
 
-  auto deserializationHandler = requestFullDeserializationHandler!(Policy, T)(handler);
+  enforce(rule.request.path.endsWith("/:id"), "Invalid `" ~ rule.request.path ~ "` route. It must end with `/:id`.");
+  auto handler = requestDeserializationHandler!Policy(next, rule);
 
-  return router.put(route, requestErrorHandler(deserializationHandler));
-}
-
-/// ditto
-URLRouter putWith(Policy, T, V)(URLRouter router, string route, V delegate(T object) @safe next) {
-  enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
-  auto handler = requestDeserializationHandler!Policy(next);
-
-  return router.put(route, requestErrorHandler(handler));
+  return router.put(rule.request.path, requestErrorHandler(handler));
 }
 
 
 
 /// Add a POST route that parse the data according a Protocol
-URLRouter postWith(Policy, T)(URLRouter router, string route, void function(T object, HTTPServerResponse res) @safe handler) {
-  return postWith!(Policy, T)(router, route, handler.toDelegate);
-}
-
-/// ditto
 URLRouter postWith(Policy, T)(URLRouter router, void function(T object, HTTPServerResponse res) @safe handler) {
   return postWith!(Policy, T)(router, handler.toDelegate);
 }
@@ -848,46 +821,28 @@ URLRouter postWith(Policy, T, V)(URLRouter router, V function(T object) @safe ha
 }
 
 /// ditto
-URLRouter postWith(Policy, T, V)(URLRouter router, string route, V function(T object) @safe handler) {
-  return postWith!(Policy, T, V)(router, route, handler.toDelegate);
+URLRouter postWith(Policy, Type)(URLRouter router, void delegate(Type object, HTTPServerResponse res) @safe handler) {
+  FieldDefinition definition = getFields!Type;
+  auto rule = Policy.create(definition);
+
+  auto deserializationHandler = requestFullDeserializationHandler!Policy(handler, rule);
+
+  return router.post(rule.request.path, requestErrorHandler(deserializationHandler));
 }
 
 /// ditto
-URLRouter postWith(Policy, T)(URLRouter router, string route, void delegate(T object, HTTPServerResponse res) @safe handler) {
-  auto deserializationHandler = requestFullDeserializationHandler!(Policy, T)(handler);
+URLRouter postWith(Policy, Type, V)(URLRouter router, V delegate(Type object) @safe handler) {
+  FieldDefinition definition = getFields!Type;
+  auto rule = Policy.create(definition);
 
-  return router.post(route, requestErrorHandler(deserializationHandler));
+  auto deserializationHandler = requestDeserializationHandler!Policy(handler, rule);
+
+  return router.post(rule.request.path, requestErrorHandler(deserializationHandler));
 }
 
-/// ditto
-URLRouter postWith(Policy, T)(URLRouter router, void delegate(T object, HTTPServerResponse res) @safe handler) {
-  FieldDefinition definition = getFields!T;
-  auto routing = new Policy.Routing(definition);
 
-  return postWith!(Policy, T)(router, routing.post, handler);
-}
 
-/// ditto
-URLRouter postWith(Policy, T, V)(URLRouter router, V delegate(T object) @safe handler) {
-  FieldDefinition definition = getFields!T;
-  auto routing = new Policy.Routing(definition);
-
-  return postWith!(Policy, T, V)(router, routing.post, handler);
-}
-
-/// ditto
-URLRouter postWith(Policy, T, V)(URLRouter router, string route, V delegate(T object) @safe handler) {
-  auto deserializationHandler = requestDeserializationHandler!(Policy, T, V)(handler);
-
-  return router.post(route, requestErrorHandler(deserializationHandler));
-}
-
-/// ditto
-URLRouter postJsonWith(Policy, Type, V)(URLRouter router, string route, V function(Json object) @safe handler) {
-  return postJsonWith!(Policy, Type)(router, route, handler.toDelegate);
-}
-
-/// ditto
+///
 URLRouter postJsonWith(Policy, Type, V)(URLRouter router, V function(Json object) @safe handler) {
   return postJsonWith!(Policy, Type)(router, handler.toDelegate);
 }
@@ -895,19 +850,11 @@ URLRouter postJsonWith(Policy, Type, V)(URLRouter router, V function(Json object
 /// ditto
 URLRouter postJsonWith(Policy, Type, V)(URLRouter router, V delegate(Json object) @safe next) {
   FieldDefinition definition = getFields!Type;
-  auto routing = new Policy.Routing(definition);
-
-  return postJsonWith!(Policy, Type)(router, routing.post, next);
-}
-
-/// ditto
-URLRouter postJsonWith(Policy, Type, V)(URLRouter router, string route, V delegate(Json object) @safe next) {
-  FieldDefinition definition = getFields!Type;
   auto rule = Policy.create(definition);
 
   auto handler = requestDeserializedHandler!(Policy, Type)(next, rule);
 
-  return router.post(route, requestErrorHandler(handler));
+  return router.post(rule.request.path, requestErrorHandler(handler));
 }
 
 
