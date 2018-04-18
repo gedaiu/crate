@@ -48,6 +48,7 @@ struct CrateResponse {
 }
 
 struct CrateRequest {
+  HTTPMethod method;
   string path;
   ModelSerializer serializer;
 }

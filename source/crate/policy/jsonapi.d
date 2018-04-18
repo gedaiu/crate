@@ -38,6 +38,7 @@ struct JsonApi {
       CrateRule rule = templateRule(definition);
 
       rule.request.path = routing.post;
+      rule.request.method = HTTPMethod.POST;
       rule.response.statusCode = 201;
 
       return rule;
@@ -48,6 +49,7 @@ struct JsonApi {
       CrateRule rule = templateRule(definition);
 
       rule.request.path = routing.put;
+      rule.request.method = HTTPMethod.PUT;
       rule.response.statusCode = 200;
 
       return rule;
@@ -58,7 +60,30 @@ struct JsonApi {
       CrateRule rule = templateRule(definition);
 
       rule.request.path = routing.delete_;
+      rule.request.method = HTTPMethod.DELETE;
       rule.response.statusCode = 204;
+
+      return rule;
+    }
+
+    CrateRule get(FieldDefinition definition) {
+      auto routing = new JsonApiRouting(definition);
+      CrateRule rule = templateRule(definition);
+
+      rule.request.method = HTTPMethod.GET;
+      rule.request.path = routing.get;
+      rule.response.statusCode = 200;
+
+      return rule;
+    }
+
+    CrateRule action(MethodReturnType, ParameterType, string actionName)(FieldDefinition definition) {
+      auto routing = new JsonApiRouting(definition);
+      CrateRule rule;
+
+      rule.request.path = routing.get ~ "/" ~ actionName;
+      rule.request.method = HTTPMethod.GET;
+      rule.response.statusCode = 200;
 
       return rule;
     }

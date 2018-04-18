@@ -494,6 +494,7 @@ unittest
   });
 }
 
+/// Call an action with JSON API and mongo crate
 unittest
 {
   import vibe.db.mongo.mongo : connectMongoDB;
@@ -512,12 +513,19 @@ unittest
 
   auto router = new URLRouter();
   auto crate = new MongoCrate!TestModel(collection);
-  router.crateSetup!JsonApi.add(crate).enableAction!(MongoCrate!TestModel, "action");
 
-  request(router).get("/testmodels/573cbc2fc3b7025427000000/action").expectStatusCode(200).end((Response response) => {
-    response.bodyString.should.equal("");
-    isTestActionCalled.should.equal(true);
-  });
+  router
+    .crateSetup!JsonApi
+    .add(crate)
+    .enableAction!(TestModel, "action")(crate);
+
+  request(router)
+    .get("/testmodels/573cbc2fc3b7025427000000/action")
+    .expectStatusCode(200)
+    .end((Response response) => {
+      response.bodyString.should.equal("");
+      isTestActionCalled.should.equal(true);
+    });
 }
 
 unittest
@@ -538,7 +546,9 @@ unittest
   auto router = new URLRouter();
   auto crate = new MongoCrate!TestModel(collection);
 
-  router.crateSetup!JsonApi.add(crate).enableAction!(MongoCrate!TestModel, "actionResponse");
+  router.crateSetup!JsonApi
+    .add(crate)
+    .enableAction!(TestModel, "actionResponse")(crate);
 
   request(router).get("/testmodels/573cbc2fc3b7025427000000/actionResponse").expectStatusCode(200)
     .end((Response response) => {

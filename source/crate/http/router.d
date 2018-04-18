@@ -7,6 +7,7 @@ import crate.collection.proxy;
 import crate.http.methodcollection;
 import crate.http.action.model;
 import crate.http.action.crate;
+import crate.generator.openapi;
 
 import crate.http.resource;
 
@@ -15,6 +16,7 @@ import crate.policy.restapi;
 
 import vibe.data.json;
 import vibe.http.router;
+import vibe.stream.operations;
 
 import std.conv;
 import std.traits;
@@ -85,13 +87,13 @@ class CrateRouter(RouterPolicy) {
     return this;
   }
 
-  CrateRouter enableAction(T: Crate!U, string actionName, U)()
-  {
-    return enableAction!(T, actionName, RouterPolicy);
+  CrateRouter enableAction(Type, string actionName)(Crate!Type crate) {
+    return enableAction!(RouterPolicy, Type, actionName)(crate);
   }
 
-  CrateRouter enableAction(T: Crate!U, string actionName, Policy, U)()
-  {
+  CrateRouter enableAction(Policy, Type, string actionName)(Crate!Type crate) {
+    router.enableAction!(Policy, Type, actionName)(&crate.getItem, &crate.updateItem);
+
     return this;
   }
 
@@ -397,15 +399,20 @@ unittest
     }
   }`.parseJsonString;
 
+  auto expected = "{
+    \"errors\": [{ 
+      \"description\": \"Missing `position` value.\", 
+      \"title\": \"Validation error\", 
+      \"status\": 400
+    }]
+  }".parseJsonString;
+
   testRouter
     .post("/sites")
       .send(data)
         .expectStatusCode(400)
         .end((Response response) => {
-          response.bodyJson.should.equal(`{"errors": [{ 
-            "description": "Missing ` ~ "`position`"~ ` value.", 
-            "title": "Validation error", 
-            "status": 400} ]}`.parseJsonString);
+          response.bodyJson.should.equal(expected);
         });
 }
 
@@ -687,22 +694,19 @@ auto requestIdHandler(void delegate(string, HTTPServerResponse) @safe next, Crat
 }
 
 /// ditto
-auto requestIdHandler(U, T)(T delegate(string) @safe next) if(!is(T == void)){
-  FieldDefinition definition = getFields!T;
-  auto serializer = new U.Serializer(definition);
-
+auto requestIdHandler(T)(T delegate(string) @safe next, CrateRule rule) if(!is(T == void)){
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
     string id = request.params["id"];
 
     Json jsonResponse;
 
     try {
-      jsonResponse = serializer.denormalise(next(id).serializeToJson);
+      jsonResponse = rule.response.serializer.denormalise(next(id).serializeToJson);
     } catch (JSONException e) {
       throw new CrateValidationException("Can not serialize data. " ~ e.msg, e.file, e.line);
     }
 
-    response.writeJsonBody(jsonResponse, 200, U.mime);
+    response.writeJsonBody(jsonResponse, 200, rule.response.mime);
   }
 
   return &deserialize;
@@ -753,6 +757,69 @@ auto requestFilteredListHandler(U, T)(const ICrateSelector delegate() @safe next
     }
 
     response.writeJsonBody(jsonResponse, 200, U.mime);
+  }
+
+  return &deserialize;
+}
+
+auto requestActionHandler(Type, string actionName, T, U, V)(T delegate(string id) @system getElement, U delegate(V item) @system updateElement, CrateRule rule) 
+    if(is(T == ICrateSelector) || is(T == Json) || is(T == Type)) {
+  void deserialize(HTTPServerRequest request, HTTPServerResponse response) @trusted {
+    string id = request.params["id"];
+
+    auto queryValue = getElement(id);
+
+    static if(is(T == ICrateSelector)) {
+      auto result = queryValue.exec;
+      enforce!CrateNotFoundException(!result.empty, "Missing `" ~ Type.stringof ~ "`.");
+
+      Type value = result.front.deserializeJson!Type;
+    } else static if(is(T == Json)) {
+      Type value = queryValue.deserializeJson!Type;
+    } else {
+      alias value = queryValue;
+    }
+
+    alias Func = typeof(__traits(getMember, value, actionName));
+    
+    static if(Parameters!Func.length == 0) {
+      alias Param = void;
+    } else {
+      alias Param = Parameters!Func[0];
+    }
+
+    static if(is(ReturnType!Func == void)) {
+      static if(is(Param == void)) {
+        __traits(getMember, value, actionName)();
+      } else {
+        __traits(getMember, value, actionName)(request.bodyReader.readAllUTF8.to!Param);
+      }
+
+      static if(is(V == Json)) {
+        updateElement(value.serializeToJson);
+      } else {
+        updateElement(value);
+      }
+
+      response.statusCode = rule.response.statusCode;
+      
+      response.writeVoidBody();
+    } else {
+
+      static if(is(Param == void)) {
+        auto output = __traits(getMember, value, actionName)();
+      } else {
+        auto output = __traits(getMember, value, actionName)(request.bodyReader.readAllUTF8.to!Param);
+      }
+
+      static if(is(V == Json)) {
+        updateElement(value.serializeToJson);
+      } else {
+        updateElement(value);
+      }
+
+      response.writeBody(output, rule.response.statusCode, rule.response.mime);
+    }
   }
 
   return &deserialize;
@@ -887,54 +954,28 @@ URLRouter deleteWith(Policy, Type)(URLRouter router, void delegate(string id) @s
   enforce(rule.request.path.endsWith("/:id"), "Invalid `" ~ rule.request.path ~ "` route. It must end with `/:id`.");
   auto idHandler = requestIdHandler(handler, rule);
 
-  return router.delete_(rule.request.path, requestErrorHandler(idHandler));
+  return router.addRule(rule, requestErrorHandler(idHandler));
 }
-
 
 /// add a GET route that returns to the client one item selected by id
-URLRouter getWith(Policy, T)(URLRouter router, string route, T function(string id) @safe handler) if(!is(T == void)) {
-  return getWith!(Policy, T)(router, route, handler.toDelegate);
+URLRouter getWith(Policy, Type)(URLRouter router, Type function(string id) @safe handler) if(!is(Type == void)) {
+  return getWith!(Policy, Type)(router, handler.toDelegate);
 }
 
 /// ditto
-URLRouter getWith(Policy)(URLRouter router, string route, void function(string id, HTTPServerResponse res) @safe handler) if(!is(T == void)) {
-  return getWith!(Policy)(router, route, handler.toDelegate);
+URLRouter getWith(Policy, Type)(URLRouter router, void function(string id, HTTPServerResponse res) @safe handler) if(!is(T == void)) {
+  return getWith!(Policy, Type)(router, handler.toDelegate);
 }
 
 /// ditto
-URLRouter getWith(Policy, T)(URLRouter router, void function(string id, HTTPServerResponse res) @safe handler) if(!is(T == void)) {
-  return getWith!(Policy, T)(router, handler.toDelegate);
-}
+URLRouter getWith(Policy, Type)(URLRouter router, Type delegate(string id) @safe handler) if(!is(Type == void)) {
+  FieldDefinition definition = getFields!Type;
+  auto rule = Policy.get(definition);
 
-/// ditto
-URLRouter getWith(Policy, T)(URLRouter router, T function(string id) @safe handler) if(!is(T == void)) {
-  return getWith!(Policy, T)(router, handler.toDelegate);
-}
-
-/// ditto
-URLRouter getWith(Policy, T)(URLRouter router, string route, T delegate(string id) @safe handler) if(!is(T == void)) {
-  enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
-  auto idHandler = requestIdHandler!(Policy, T)(handler);
-
-  return router.get(route, requestErrorHandler(idHandler));
-}
-
-/// ditto
-URLRouter getWith(Policy)(URLRouter router, string route, void delegate(string id, HTTPServerResponse res) @safe handler) if(!is(T == void)) {
-  enforce(route.endsWith("/:id"), "Invalid `" ~ route ~ "` route. It must end with `/:id`.");
-  CrateRule rule;
-
+  enforce(rule.request.path.endsWith("/:id"), "Invalid `" ~ rule.request.path ~ "` route. It must end with `/:id`.");
   auto idHandler = requestIdHandler(handler, rule);
 
-  return router.get(route, requestErrorHandler(idHandler));
-}
-
-/// ditto
-URLRouter getWith(Policy, T)(URLRouter router, T delegate(string id) @safe handler) if(!is(T == void)) {
-  FieldDefinition definition = getFields!T;
-  auto routing = new Policy.Routing(definition);
-
-  return getWith!(Policy, T)(router, routing.get, handler);
+  return router.addRule(rule, requestErrorHandler(idHandler));
 }
 
 /// ditto
@@ -951,15 +992,17 @@ URLRouter getWith(Policy, Type)(URLRouter router, ICrateSelector delegate(string
 }
 
 /// ditto
-URLRouter getWith(Policy, T)(URLRouter router, void delegate(string id, HTTPServerResponse res) @safe handler) if(!is(T == void)) {
-  FieldDefinition definition = getFields!T;
-  auto routing = new Policy.Routing(definition);
+URLRouter getWith(Policy, Type)(URLRouter router, void delegate(string id, HTTPServerResponse res) @safe handler) if(!is(Type == void)) {
+  FieldDefinition definition = getFields!Type;
+  auto rule = Policy.get(definition);
 
-  return getWith!(Policy)(router, routing.get, handler);
+  enforce(rule.request.path.endsWith("/:id"), "Invalid `" ~ rule.request.path ~ "` route. It must end with `/:id`.");
+  auto idHandler = requestIdHandler(handler, rule);
+
+  return router.addRule(rule, requestErrorHandler(idHandler));
 }
 
-
-/// GET All
+/// GET list
 URLRouter getListWith(Policy, T)(URLRouter router, string route, T[] function() @safe handler) if(!is(T == void)) {
   return getListWith!(Policy, T)(router, route, handler.toDelegate);
 }
@@ -992,4 +1035,76 @@ URLRouter getListFilteredWith(Policy, Type)(URLRouter router, ICrateSelector del
   auto listHandler = requestFilteredListHandler!(Policy, Type)(handler, filters);
 
   return router.get(routing.getList, requestErrorHandler(listHandler));
+}
+
+URLRouter addRule(T)(URLRouter router, CrateRule rule, T handler) {
+  router.addApi(rule);
+
+  return router.match(rule.request.method, rule.request.path, handler);
+}
+
+/// Call a method from a structure by passing the body data
+URLRouter enableAction(Policy, Type, string actionName, T)(URLRouter router, T getHandler) {
+  alias Method = typeof(__traits(getMember, Type, actionName));
+  alias MethodReturnType = ReturnType!Method;
+
+  static if(Parameters!Method.length == 0) {
+    alias ParameterType = void;
+  } else static if(Parameters!Method.length == 1) {
+    alias ParameterType = Parameters!Method[0];
+  } else {
+    static assert(false, "enableAction works only with no or one parameter");
+  }
+
+  FieldDefinition definition = getFields!Type;
+  auto rule = Policy.action!(MethodReturnType, ParameterType, actionName)(definition);
+
+  enforce(rule.request.path.canFind("/:id/"), "Invalid `" ~ rule.request.path ~ "` route. It must contain `/:id/`.");
+
+  static if(isDelegate!T) {
+    alias _getHandler = getHandler;
+  } else {
+    auto _getHandler = getHandler.toDelegate;
+  }
+
+  void nullSink(Type) { }
+
+  auto actionHandler = requestActionHandler!(Type, actionName)(_getHandler, &nullSink, rule);
+
+  return router.addRule(rule, requestErrorHandler(actionHandler));
+}
+
+/// ditto
+URLRouter enableAction(Policy, Type, string actionName, T, U)(URLRouter router, T getHandler, U updateHandler) {
+  alias Method = typeof(__traits(getMember, Type, actionName));
+  alias MethodReturnType = ReturnType!Method;
+
+  static if(Parameters!Method.length == 0) {
+    alias ParameterType = void;
+  } else static if(Parameters!Method.length == 1) {
+    alias ParameterType = Parameters!Method[0];
+  } else {
+    static assert(false, "enableAction works only with no or one parameter");
+  }
+
+  FieldDefinition definition = getFields!Type;
+  auto rule = Policy.action!(MethodReturnType, ParameterType, actionName)(definition);
+
+  enforce(rule.request.path.canFind("/:id/"), "Invalid `" ~ rule.request.path ~ "` route. It must contain `/:id/`.");
+
+  static if(isDelegate!T) {
+    alias _getHandler = getHandler;
+  } else {
+    auto _getHandler = getHandler.toDelegate;
+  }
+
+  static if(isDelegate!U) {
+    alias _updateHandler = updateHandler;
+  } else {
+    auto _updateHandler = updateHandler is null ? null : updateHandler.toDelegate;
+  }
+
+  auto actionHandler = requestActionHandler!(Type, actionName)(_getHandler, _updateHandler, rule);
+
+  return router.addRule(rule, requestErrorHandler(actionHandler));
 }

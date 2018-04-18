@@ -22,6 +22,68 @@ OperationsType strToType(string value) {
   throw new Exception("Unknown operation `" ~ value ~ "`");
 }
 
+private CrateRoutes[URLRouter] definedRoutes;
+
+URLRouter addApi(URLRouter router, CrateRule rule) {
+  PathDefinition definition;
+
+  if(router !in definedRoutes) {
+    definedRoutes[router] = CrateRoutes();
+  }
+
+  definedRoutes[router].paths
+    [rule.request.path]
+    [rule.request.method]
+    [rule.response.statusCode] = definition;
+
+  return router;
+}
+
+
+OpenApi toOpenApi(URLRouter router) {
+  OpenApi openApi;
+
+  foreach (string definedPath, methods; definedRoutes[router].paths) {
+    string path = definedPath.toOpenApiPath;
+    openApi.paths[path] = Path();
+
+    foreach (method, responses; methods) {
+      string strMethod = method.to!string.toLower;
+      auto openApiMethod = strToType(strMethod);
+
+      openApi.paths[path].operations[openApiMethod] = Operation();
+
+      foreach (response, pathDefinition; responses) {
+        string strResponse = response.to!string;
+
+        openApi.paths[path].operations[strMethod].responses[strResponse] = openapi.definitions.Response();
+
+        if (pathDefinition.schemaName != "") {
+          auto refSchema = new Schema;
+          refSchema._ref = "#/components/schema/" ~ pathDefinition.schemaName;
+
+          openApi.paths[path][strMethod].responses[strResponse].content["_____SOME JSON"] = MediaType();
+          openApi.paths[path][strMethod].responses[strResponse].content["_____SOME JSON"].schema = refSchema;
+        }
+
+        if (pathDefinition.operation.isItemOperation)
+        {
+          openApi.paths[path].operations[strMethod].parameters = [itemId];
+          openApi.paths[path][strMethod].responses["404"] = notFoundResponse;
+          openApi.paths[path][strMethod].responses["500"] = errorResponse;
+        }
+
+        if (pathDefinition.schemaBody != "")
+        {
+          openApi.paths[path].operations[strMethod].parameters ~= bodyParameter(pathDefinition.schemaBody);
+        }
+      }
+    }
+  }
+
+  return openApi;
+}
+
 OpenApi toOpenApi(T)(CrateRouter!T router)
 {
   OpenApi openApi;
@@ -254,15 +316,15 @@ unittest
   auto crateRouter = router
                       .crateSetup
                         .add(crate)
-                        .enableAction!(MemoryCrate!TestModel, "action")
-                        .enableAction!(MemoryCrate!TestModel, "actionResponse");
+                        .enableAction!(TestModel, "action")(crate)
+                        .enableAction!(TestModel, "actionResponse")(crate);
 
-  auto api = crateRouter.toOpenApi;
+  auto api = router.toOpenApi;
 
-  assert(api.paths.length == 4);
-  assert(OperationsType.get in api.paths["/testmodels/{id}/action"].operations);
-  assert(api.paths["/testmodels/{id}/action"]["get"].parameters.length == 1);
-  assert(api.paths["/testmodels/{id}/action"]["get"].parameters[0].name == "id");
+  api.paths.length.should.equal(4);
+  //(OperationsType.get in api.paths["/testmodels/{id}/action"].operations).should.equal(true);
+  api.paths["/testmodels/{id}/action"]["get"].parameters.length.should.equal(1);
+  api.paths["/testmodels/{id}/action"]["get"].parameters[0].name.should.equal("id");
 
   assert("ErrorList" in api.components.schemas);
   assert("Error" in api.components.schemas);

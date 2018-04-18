@@ -36,7 +36,7 @@ alias s = Spec!({
     describe("with a GET REST API request", {
       it("should return the serialized structure", {
         auto router = new URLRouter();
-        router.getWith!RestApi("/sites/:id", &getSite);
+        router.getWith!RestApi(&getSite);
 
         auto element = Json.emptyObject;
         element["site"] = getSite("10").serializeToJson;
@@ -50,20 +50,9 @@ alias s = Spec!({
             });
       });
 
-      it("should use the default route", {
-        auto router = new URLRouter();
-        router.getWith!RestApi(&getSite);
-
-        request(router)
-          .get("/sites/10")
-            .expectStatusCode(200)
-            .expectHeader("Content-Type", "application/json")
-            .end();
-      });
-
       it("should call a function with custom response", {
         auto router = new URLRouter();
-        router.getWith!RestApi("/sites/:id", &getSiteResponse);
+        router.getWith!(RestApi, Site)(&getSiteResponse);
 
         request(router)
           .get("/sites/10")
@@ -72,22 +61,12 @@ alias s = Spec!({
               response.bodyString.should.equal("hello");
             });
       });
-
-      it("should use the default route with custom response", {
-        auto router = new URLRouter();
-        router.getWith!(RestApi, Site)(&getSiteResponse);
-
-        request(router)
-          .get("/sites/10")
-            .expectStatusCode(200)
-            .end();
-      });
     });
 
     describe("with a GET JSON API request", {
       it("should return the serialized structure", {
         auto router = new URLRouter();
-        router.getWith!JsonApi("/sites/:id", &getSite);
+        router.getWith!JsonApi(&getSite);
 
         auto element = `{ "data": { "attributes": { "position": {
           "coordinates": [1.5, 2.5], "type": "Point" }},
@@ -104,7 +83,7 @@ alias s = Spec!({
 
       it("should call a function with custom response", {
         auto router = new URLRouter();
-        router.getWith!JsonApi("/sites/:id", &getSiteResponse);
+        router.getWith!(JsonApi, Site)(&getSiteResponse);
 
         request(router)
           .get("/sites/10")
