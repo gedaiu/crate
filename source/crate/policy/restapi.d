@@ -9,6 +9,8 @@ import crate.ctfe;
 import vibe.data.json;
 import vibe.http.common;
 
+import openapi.definitions;
+
 import std.string, std.stdio;
 
 struct RestApi {
@@ -29,6 +31,8 @@ struct RestApi {
 
       rule.response.mime = "application/json";
       rule.response.serializer = serializer;
+
+      rule.schemas[definition.type ~ "Attributes"] = definition.toSchema(false);
 
       return rule;
     }
@@ -66,13 +70,28 @@ struct RestApi {
       return rule;
     }
 
-    CrateRule get(FieldDefinition definition) {
+    CrateRule getItem(FieldDefinition definition) {
       auto routing = new RestApiRouting(definition);
       CrateRule rule = templateRule(definition);
 
       rule.request.path = routing.get;
       rule.request.method = HTTPMethod.GET;
       rule.response.statusCode = 200;
+
+      return rule;
+    }
+
+    CrateRule getList(FieldDefinition definition) {
+      auto routing = new RestApiRouting(definition);
+      CrateRule rule = templateRule(definition);
+
+      rule.request.path = routing.getList;
+      rule.request.method = HTTPMethod.GET;
+      rule.response.statusCode = 200;
+
+      rule.schemas[definition.type ~ "Request"] = new Schema;
+      rule.schemas[definition.type ~ "Response"] = new Schema;
+      rule.schemas[definition.type ~ "List"] = new Schema;
 
       return rule;
     }

@@ -9,7 +9,9 @@ import crate.ctfe;
 import vibe.data.json;
 import vibe.http.common;
 
-import std.string, std.stdio;
+import openapi.definitions;
+
+import std.string, std.stdio, std.algorithm, std.array, std.typecons;
 
 struct JsonApi {
   static immutable {
@@ -29,6 +31,8 @@ struct JsonApi {
 
       rule.response.mime = "application/vnd.api+json";
       rule.response.serializer = serializer;
+      rule.schemas = definition.extractObjects.map!(a => tuple(a.type ~ "Model", a.toSchema(false))).assocArray;
+      rule.schemas[definition.type ~ "Attributes"] = definition.toSchema(false);
 
       return rule;
     }
@@ -66,12 +70,23 @@ struct JsonApi {
       return rule;
     }
 
-    CrateRule get(FieldDefinition definition) {
+    CrateRule getItem(FieldDefinition definition) {
       auto routing = new JsonApiRouting(definition);
       CrateRule rule = templateRule(definition);
 
       rule.request.method = HTTPMethod.GET;
       rule.request.path = routing.get;
+      rule.response.statusCode = 200;
+
+      return rule;
+    }
+
+    CrateRule getList(FieldDefinition definition) {
+      auto routing = new JsonApiRouting(definition);
+      CrateRule rule = templateRule(definition);
+
+      rule.request.path = routing.getList;
+      rule.request.method = HTTPMethod.GET;
       rule.response.statusCode = 200;
 
       return rule;

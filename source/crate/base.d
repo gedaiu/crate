@@ -45,17 +45,20 @@ struct CrateResponse {
   string mime;
   uint statusCode;
   ModelSerializer serializer;
+  Schema schema;
 }
 
 struct CrateRequest {
   HTTPMethod method;
   string path;
   ModelSerializer serializer;
+  Schema schema;
 }
 
 struct CrateRule {
   CrateRequest request;
   CrateResponse response;
+  Schema[string] schemas;
 }
 
 /// Takes a nested Json object and moves the values to a Json assoc array where the key 
@@ -209,7 +212,7 @@ struct PathDefinition
 
 struct CrateRoutes
 {
-  Json[string] schemas;
+  Schema[string] schemas;
   PathDefinition[uint][HTTPMethod][string] paths;
 }
 

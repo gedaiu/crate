@@ -36,6 +36,10 @@ URLRouter addApi(URLRouter router, CrateRule rule) {
     [rule.request.method]
     [rule.response.statusCode] = definition;
 
+  foreach(string name, schema; rule.schemas) {
+    definedRoutes[router].schemas[name] = schema;
+  }
+
   return router;
 }
 
@@ -44,6 +48,67 @@ OpenApi toOpenApi(URLRouter router) {
   OpenApi openApi;
 
   foreach (string definedPath, methods; definedRoutes[router].paths) {
+    string path = definedPath.toOpenApiPath;
+    openApi.paths[path] = Path();
+
+    foreach (method, responses; methods) {
+      string strMethod = method.to!string.toLower;
+      auto openApiMethod = strToType(strMethod);
+
+      openApi.paths[path].operations[openApiMethod] = Operation();
+
+      foreach (response, pathDefinition; responses) {
+        string strResponse = response.to!string;
+
+        openApi.paths[path].operations[strMethod].responses[strResponse] = openapi.definitions.Response();
+
+        if (pathDefinition.schemaName != "") {
+          auto refSchema = new Schema;
+          refSchema._ref = "#/components/schema/" ~ pathDefinition.schemaName;
+
+          openApi.paths[path][strMethod].responses[strResponse].content["_____SOME JSON"] = MediaType();
+          openApi.paths[path][strMethod].responses[strResponse].content["_____SOME JSON"].schema = refSchema;
+        }
+
+        if (pathDefinition.operation.isItemOperation)
+        {
+          openApi.paths[path].operations[strMethod].parameters = [itemId];
+          openApi.paths[path][strMethod].responses["404"] = notFoundResponse;
+          openApi.paths[path][strMethod].responses["500"] = errorResponse;
+        }
+
+        if (pathDefinition.schemaBody != "")
+        {
+          openApi.paths[path].operations[strMethod].parameters ~= bodyParameter(pathDefinition.schemaBody);
+        }
+      }
+    }
+  }
+
+  foreach (string name, definition; definedRoutes[router].schemas) {
+    openApi.components.schemas[name] = definition;
+  }
+
+  foreach (string name, definition; errorDefinitions) {
+    openApi.components.schemas[name] = definition;
+  }
+
+  return openApi;
+}
+
+/*
+OpenApi toOpenApi(T)(CrateRouter!T router)
+{
+  OpenApi openApi;
+  openApi.components.schemas = errorDefinitions;
+
+  auto routes = router.allRoutes;
+
+  foreach (string key, schema; routes.schemas) {
+    openApi.components.schemas[key] = schema;
+  }
+
+  foreach (string definedPath, methods; routes.paths) {
     string path = definedPath.toOpenApiPath;
     openApi.paths[path] = Path();
 
@@ -92,7 +157,7 @@ OpenApi toOpenApi(T)(CrateRouter!T router)
   auto routes = router.allRoutes;
 
   foreach (string key, schema; routes.schemas) {
-    openApi.components.schemas[key] = Schema.fromJson(schema);
+    openApi.components.schemas[key] = schema;
   }
 
   foreach (string definedPath, methods; routes.paths) {
@@ -135,6 +200,7 @@ OpenApi toOpenApi(T)(CrateRouter!T router)
 
   return openApi;
 }
+*/
 
 private bool isItemOperation(CrateOperation operation)
 {
@@ -321,16 +387,15 @@ unittest
 
   auto api = router.toOpenApi;
 
-  api.paths.length.should.equal(4);
-  //(OperationsType.get in api.paths["/testmodels/{id}/action"].operations).should.equal(true);
-  api.paths["/testmodels/{id}/action"]["get"].parameters.length.should.equal(1);
-  api.paths["/testmodels/{id}/action"]["get"].parameters[0].name.should.equal("id");
+  api.paths["/testmodels/{id}/action"]["get"].serializeToJson.should.equal(`
+  {
+    "responses": {
+      "200": {}
+    }
+  }`.parseJsonString);
 
-  assert("ErrorList" in api.components.schemas);
-  assert("Error" in api.components.schemas);
-  assert("TestModelList" in api.components.schemas);
-  assert("TestModelResponse" in api.components.schemas);
-  assert("TestModelRequest" in api.components.schemas);
+  api.components.schemas.keys.should.contain(["ErrorList", "Error", "TestModelList", "TestModelResponse", "TestModelRequest"]);
+
   assert(OperationsType.get in api.paths["/testmodels/{id}/actionResponse"].operations);
 }
 
@@ -342,7 +407,7 @@ unittest
 
   auto crateRouter = router.crateSetup!JsonApi.add(crate);
 
-  auto api = crateRouter.toOpenApi.serializeToJson;
+  auto api = router.toOpenApi.serializeToJson;
 
   api["components"]["schemas"].byKeyValue.map!"a.key".should.contain("TestModelAttributes");
 
@@ -378,6 +443,55 @@ unittest
   testModelAttributesDefinition.should.equal(expected);
 }
 
+Schema toSchema(FieldDefinition definition, bool addIdFields = true) pure {
+  auto schema = new Schema;
+
+  schema.type = SchemaType.object;
+
+  foreach(field; definition.fields) {
+    if(field.isId && addIdFields == false) {
+      continue;
+    }
+    
+    if(!field.isOptional) {
+      schema.required ~= field.name;
+    }
+
+    if(field.isArray) {
+      schema.properties[field.name] = field.toArraySchema();
+    } else {
+      schema.properties[field.name] = field.toSchema(field.type);
+    }
+
+  }
+
+  return schema;
+}
+
+Schema toSchema(FieldDefinition definition, string type) pure {
+  if(!definition.isArray && type.asOpenApiType == SchemaType.object) {
+    auto refSchema = new Schema;
+    refSchema._ref = "#/components/schemas/" ~ definition.type ~ "Model";
+    return refSchema;
+  }
+
+  auto schema = new Schema;
+
+  schema.type = type.asOpenApiType;
+  schema.format = type.asOpenApiFormat;
+
+  return schema;
+}
+
+Schema toArraySchema(FieldDefinition definition) pure {
+  auto schema = new Schema;
+
+  schema.type = SchemaType.array;
+  schema.items = definition.fields[0].toSchema(definition.fields[0].type);
+
+  return schema;
+}
+
 @("Check if the nested property has the right definition")
 unittest
 {
@@ -386,7 +500,7 @@ unittest
 
   auto crateRouter = router.crateSetup!JsonApi.add(crate);
 
-  auto api = crateRouter.toOpenApi.serializeToJson;
+  auto api = router.toOpenApi.serializeToJson;
 
   api["components"]["schemas"].byKeyValue.map!"a.key".should.contain("NestedModel");
 
@@ -395,69 +509,65 @@ unittest
   nestedModelDefinition["properties"]["other"]["$ref"].to!string.should.equal("#/components/schemas/OtherNestedModel");
 }
 
-string asOpenApiType(string dType)
-{
-  switch (dType)
-  {
-  case "int":
-    return "integer";
+SchemaType asOpenApiType(string dType) pure {
+  switch (dType) {
+    case "int":
+      return SchemaType.integer;
 
-  case "long":
-    return "integer";
+    case "long":
+      return SchemaType.integer;
 
-  case "float":
-    return "number";
+    case "float":
+      return SchemaType.number;
 
-  case "double":
-    return "number";
+    case "double":
+      return SchemaType.number;
 
-  case "string":
-    return "string";
+    case "string":
+      return SchemaType.string;
 
-  case "bool":
-    return "boolean";
+    case "bool":
+      return SchemaType.boolean;
 
-  case "SysTime":
-    return "string";
+    case "SysTime":
+      return SchemaType.string;
 
-  case "DateTime":
-    return "string";
+    case "DateTime":
+      return SchemaType.string;
 
-  default:
-    return "object";
+    default:
+      return SchemaType.object;
   }
 }
 
-string asOpenApiFormat(string dType)
-{
-  switch (dType)
-  {
-  case "int":
-    return "int32";
+SchemaFormat asOpenApiFormat(string dType) pure {
+  switch (dType) {
+    case "int":
+      return SchemaFormat.int32;
 
-  case "long":
-    return "int64";
+    case "long":
+      return SchemaFormat.int64;
 
-  case "float":
-    return "float";
+    case "float":
+      return SchemaFormat.float_;
 
-  case "double":
-    return "double";
+    case "double":
+      return SchemaFormat.float_;
 
-  case "string":
-    return "";
+    case "string":
+      return SchemaFormat.undefined;
 
-  case "bool":
-    return "";
+    case "bool":
+      return SchemaFormat.undefined;
 
-  case "SysTime":
-  case "DateTime":
-    return "date-time";
+    case "SysTime":
+    case "DateTime":
+      return SchemaFormat.dateTime;
 
-  case "Date":
-    return "date";
+    case "Date":
+      return SchemaFormat.date;
 
-  default:
-    return "";
+    default:
+      return SchemaFormat.undefined;
   }
 }

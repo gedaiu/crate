@@ -970,7 +970,7 @@ URLRouter getWith(Policy, Type)(URLRouter router, void function(string id, HTTPS
 /// ditto
 URLRouter getWith(Policy, Type)(URLRouter router, Type delegate(string id) @safe handler) if(!is(Type == void)) {
   FieldDefinition definition = getFields!Type;
-  auto rule = Policy.get(definition);
+  auto rule = Policy.getItem(definition);
 
   enforce(rule.request.path.endsWith("/:id"), "Invalid `" ~ rule.request.path ~ "` route. It must end with `/:id`.");
   auto idHandler = requestIdHandler(handler, rule);
@@ -994,7 +994,7 @@ URLRouter getWith(Policy, Type)(URLRouter router, ICrateSelector delegate(string
 /// ditto
 URLRouter getWith(Policy, Type)(URLRouter router, void delegate(string id, HTTPServerResponse res) @safe handler) if(!is(Type == void)) {
   FieldDefinition definition = getFields!Type;
-  auto rule = Policy.get(definition);
+  auto rule = Policy.getItem(definition);
 
   enforce(rule.request.path.endsWith("/:id"), "Invalid `" ~ rule.request.path ~ "` route. It must end with `/:id`.");
   auto idHandler = requestIdHandler(handler, rule);
@@ -1030,11 +1030,11 @@ URLRouter getListWith(Policy, T)(URLRouter router, T[] delegate() @safe handler)
 /// ditto
 URLRouter getListFilteredWith(Policy, Type)(URLRouter router, ICrateSelector delegate() @safe handler, ICrateFilter[] filters ...) {
   FieldDefinition definition = getFields!Type;
-  auto routing = new Policy.Routing(definition);
+  auto rule = Policy.getList(definition);
 
   auto listHandler = requestFilteredListHandler!(Policy, Type)(handler, filters);
 
-  return router.get(routing.getList, requestErrorHandler(listHandler));
+  return addRule(router, rule, listHandler);
 }
 
 URLRouter addRule(T)(URLRouter router, CrateRule rule, T handler) {
