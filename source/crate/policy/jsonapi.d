@@ -24,7 +24,7 @@ struct JsonApi {
 
   static pure:
     private CrateRule templateRule(FieldDefinition definition) {
-      auto serializer = new JsonApiSerializer(definition);
+      auto serializer = new Serializer(definition);
       CrateRule rule;
 
       rule.request.serializer = serializer;
@@ -38,7 +38,7 @@ struct JsonApi {
     }
 
     CrateRule create(FieldDefinition definition) {
-      auto routing = new JsonApiRouting(definition);
+      auto routing = new Routing(definition);
       CrateRule rule = templateRule(definition);
 
       rule.request.path = routing.post;
@@ -49,7 +49,7 @@ struct JsonApi {
     }
 
     CrateRule replace(FieldDefinition definition) {
-      auto routing = new JsonApiRouting(definition);
+      auto routing = new Routing(definition);
       CrateRule rule = templateRule(definition);
 
       rule.request.path = routing.put;
@@ -60,7 +60,7 @@ struct JsonApi {
     }
 
     CrateRule delete_(FieldDefinition definition) {
-      auto routing = new JsonApiRouting(definition);
+      auto routing = new Routing(definition);
       CrateRule rule = templateRule(definition);
 
       rule.request.path = routing.delete_;
@@ -71,7 +71,7 @@ struct JsonApi {
     }
 
     CrateRule getItem(FieldDefinition definition) {
-      auto routing = new JsonApiRouting(definition);
+      auto routing = new Routing(definition);
       CrateRule rule = templateRule(definition);
 
       rule.request.method = HTTPMethod.GET;
@@ -82,7 +82,7 @@ struct JsonApi {
     }
 
     CrateRule getList(FieldDefinition definition) {
-      auto routing = new JsonApiRouting(definition);
+      auto routing = new Routing(definition);
       CrateRule rule = templateRule(definition);
 
       rule.request.path = routing.getList;
@@ -92,8 +92,30 @@ struct JsonApi {
       return rule;
     }
 
+    CrateRule getResource(string path)(FieldDefinition definition) {
+      auto routing = new Routing(definition);
+      CrateRule rule = templateRule(definition);
+
+      rule.request.path = routing.get ~ path;
+      rule.request.method = HTTPMethod.GET;
+      rule.response.statusCode = 200;
+
+      return rule;
+    }
+
+    CrateRule setResource(string path)(FieldDefinition definition) {
+      auto routing = new Routing(definition);
+      CrateRule rule = templateRule(definition);
+
+      rule.request.path = routing.get ~ path;
+      rule.request.method = HTTPMethod.POST;
+      rule.response.statusCode = 201;
+
+      return rule;
+    }
+
     CrateRule action(MethodReturnType, ParameterType, string actionName)(FieldDefinition definition) {
-      auto routing = new JsonApiRouting(definition);
+      auto routing = new Routing(definition);
       CrateRule rule;
 
       rule.request.path = routing.get ~ "/" ~ actionName;

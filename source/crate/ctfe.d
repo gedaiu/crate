@@ -9,6 +9,7 @@ import std.algorithm.searching;
 import std.traits, std.meta;
 import std.typetuple;
 import std.datetime;
+import std.exception;
 
 template OriginalFieldType(alias F)
 {

@@ -73,13 +73,11 @@ class CrateRouter(RouterPolicy) {
     }
   }
 
-  CrateRouter enableResource(T, string resourcePath)()
+  CrateRouter enableResource(Type, string resourcePath)(Crate!Type crate)
   {
-    return enableResource!(T, resourcePath, RouterPolicy);
-  }
+    router.getResource!(RouterPolicy, Type, resourcePath)(&crate.getItem);
+    router.setResource!(RouterPolicy, Type, resourcePath)(&crate.getItem, &crate.updateItem);
 
-  CrateRouter enableResource(T, string resourcePath, Policy)()
-  {
     return this;
   }
 
@@ -93,17 +91,7 @@ class CrateRouter(RouterPolicy) {
 
   CrateRouter enableAction(Policy, Type, string actionName)(Crate!Type crate) {
     router.enableAction!(Policy, Type, actionName)(&crate.getItem, &crate.updateItem);
-
-    return this;
-  }
-
-  CrateRouter enableCrateAction(T: Crate!U, string actionName, U)(T crate)
-  {
-    return enableCrateAction!(T, actionName, RouterPolicy)(crate);
-  }
-
-  CrateRouter enableCrateAction(T: Crate!U, string actionName, Policy, U)(T crate)
-  {
+  
     return this;
   }
 
@@ -348,8 +336,7 @@ version(unittest) {
 
     router
       .crateSetup
-        .add(baseCrate)
-          .enableCrateAction!(MemoryCrate!Site, "action")(baseCrate);
+        .add(baseCrate);
 
     Json data = `{
         "position": {
@@ -713,7 +700,7 @@ auto requestIdHandler(T)(T delegate(string) @safe next, CrateRule rule) if(!is(T
 }
 
 /// Handle a request that returns a list of elements
-auto requestListHandler(U, T)(T[] delegate() @safe next) if(!is(T == void)){
+auto requestListHandler(U, T)(T[] delegate() @safe next) if(!is(T == void)) {
   FieldDefinition definition = getFields!T;
   auto serializer = new U.Serializer(definition);
 
@@ -1107,4 +1094,122 @@ URLRouter enableAction(Policy, Type, string actionName, T, U)(URLRouter router, 
   auto actionHandler = requestActionHandler!(Type, actionName)(_getHandler, _updateHandler, rule);
 
   return router.addRule(rule, requestErrorHandler(actionHandler));
+}
+
+private string createResourceAccess(string resourcePath) {
+  auto parts = resourcePath.split("/");
+
+  string res = "";
+
+  foreach(part; parts) {
+    if(part == "") {
+      continue;
+    }
+
+    if(part[0] == ':') {
+      res ~= "[request.params[\"" ~ part[1 .. $] ~ "\"].to!ulong]";
+    } else {
+      res ~= "." ~ part;
+    }
+  }
+
+  return res;
+}
+
+/// ditto
+auto getResourceHandler(Type, string resourcePath, T)(T delegate(string) @safe next, CrateRule rule) if(!is(T == void)) {
+  import std.stdio;
+  void deserialize(HTTPServerRequest request, HTTPServerResponse response) @trusted {
+    string id = request.params["id"];
+
+    Type value;
+
+    try {
+      static if(is(T == Json)) {
+        value = next(id).deserializeJson!Type;
+      } else static if(is(T == ICrateSelector)) {
+        auto result = next(id).exec;
+        enforce!CrateNotFoundException(!result.empty, "Missing `" ~ Type.stringof ~ "`.");
+
+        value = result.front.deserializeJson!Type;
+      } else {
+        value = next(id);
+      }
+    } catch (JSONException e) {
+      throw new CrateValidationException("Can not deserialize data. " ~ e.msg, e.file, e.line);
+    }
+
+    mixin("auto obj = value" ~ resourcePath.createResourceAccess ~ ";");
+
+    response.headers["Content-Type"] = obj.contentType;
+
+    if(obj.hasSize) {
+      response.headers["Content-Length"] = obj.size.to!string;
+    }
+
+    response.statusCode = rule.response.statusCode;
+
+    obj.write(response.bodyWriter);
+  }
+
+  return &deserialize;
+}
+
+URLRouter getResource(Policy, Type, string resourcePath, T)(URLRouter router, T getItem) {
+  FieldDefinition definition = getFields!Type;
+
+  auto rule = Policy.getResource!resourcePath(definition);
+  
+  auto handler = getResourceHandler!(Type, resourcePath)(getItem, rule);
+
+  return router.addRule(rule, requestErrorHandler(handler));
+}
+
+auto setResourceHandler(Type, string resourcePath, T, U)(T delegate(string) @safe getItem, U updateItem, CrateRule rule) if(!is(T == void)) {
+  import std.stdio;
+  void deserialize(HTTPServerRequest request, HTTPServerResponse response) @trusted {
+    string id = request.params["id"];
+    auto pathItems = resourcePath.split("/");
+    auto resourceName = pathItems[pathItems.length - 1];
+
+    Type value;
+
+    try {
+      static if(is(T == Json)) {
+        value = getItem(id).deserializeJson!Type;
+      } else static if(is(T == ICrateSelector)) {
+        auto result = getItem(id).exec;
+        enforce!CrateNotFoundException(!result.empty, "Missing `" ~ Type.stringof ~ "`.");
+
+        value = result.front.deserializeJson!Type;
+      } else {
+        value = getItem(id);
+      }
+    } catch (JSONException e) {
+      throw new CrateValidationException("Can not deserialize data. " ~ e.msg, e.file, e.line);
+    }
+
+    mixin("auto obj = value" ~ resourcePath.createResourceAccess ~ ";");
+
+    enforce!CrateValidationException(resourceName in request.files, "`" ~ resourceName ~ "` attachement not found.");
+
+    auto file = request.files.get(resourceName);
+    obj.read(file);
+
+    updateItem(value.serializeToJson);
+
+    response.writeBody("", rule.response.statusCode);
+  }
+
+  return &deserialize;
+}
+
+
+URLRouter setResource(Policy, Type, string resourcePath, T, U)(URLRouter router, T getItem, U updateItem) {
+  FieldDefinition definition = getFields!Type;
+
+  auto rule = Policy.setResource!resourcePath(definition);
+  auto handler = setResourceHandler!(Type, resourcePath)(getItem, updateItem, rule);
+
+  return router.addRule(rule, requestErrorHandler(handler));
 }

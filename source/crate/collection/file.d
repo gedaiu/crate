@@ -143,8 +143,8 @@ unittest {
 	router
 		.crateSetup
 			.add(baseCrate)
-				.enableResource!(Item, "file")
-				.enableResource!(Item, "child/file");
+				.enableResource!(Item, "/file")(baseCrate)
+				.enableResource!(Item, "/child/file")(baseCrate);
 
 	Json data = `{
 		"item": {
@@ -224,8 +224,8 @@ unittest {
 	router
 		.crateSetup
 			.add(baseCrate)
-				.enableResource!(Item, "file")
-				.enableResource!(Item, "child/file");
+				.enableResource!(Item, "/file")(baseCrate)
+				.enableResource!(Item, "/child/file")(baseCrate);
 
 	request(router)
 		.get("/items/1/file")

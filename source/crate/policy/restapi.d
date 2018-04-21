@@ -96,6 +96,28 @@ struct RestApi {
       return rule;
     }
 
+    CrateRule getResource(string path)(FieldDefinition definition) {
+      auto routing = new Routing(definition);
+      CrateRule rule = templateRule(definition);
+
+      rule.request.path = routing.get ~ path;
+      rule.request.method = HTTPMethod.GET;
+      rule.response.statusCode = 200;
+
+      return rule;
+    }
+
+    CrateRule setResource(string path)(FieldDefinition definition) {
+      auto routing = new Routing(definition);
+      CrateRule rule = templateRule(definition);
+
+      rule.request.path = routing.get ~ path;
+      rule.request.method = HTTPMethod.POST;
+      rule.response.statusCode = 201;
+
+      return rule;
+    }
+
     CrateRule action(MethodReturnType, ParameterType, string actionName)(FieldDefinition definition) {
       auto routing = new RestApiRouting(definition);
       CrateRule rule;
