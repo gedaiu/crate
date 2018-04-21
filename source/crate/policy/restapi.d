@@ -38,7 +38,7 @@ struct RestApi {
     }
 
     CrateRule replace(FieldDefinition definition) {
-      auto routing = new RestApiRouting(definition);
+      auto routing = new Routing(definition);
       CrateRule rule = templateRule(definition);
 
       rule.request.path = routing.put;
@@ -49,7 +49,7 @@ struct RestApi {
     }
 
     CrateRule create(FieldDefinition definition) {
-      auto routing = new RestApiRouting(definition);
+      auto routing = new Routing(definition);
       CrateRule rule = templateRule(definition);
 
       rule.request.path = routing.post;
@@ -60,7 +60,7 @@ struct RestApi {
     }
 
     CrateRule delete_(FieldDefinition definition) {
-      auto routing = new RestApiRouting(definition);
+      auto routing = new Routing(definition);
       CrateRule rule = templateRule(definition);
 
       rule.request.path = routing.delete_;
@@ -71,7 +71,7 @@ struct RestApi {
     }
 
     CrateRule getItem(FieldDefinition definition) {
-      auto routing = new RestApiRouting(definition);
+      auto routing = new Routing(definition);
       CrateRule rule = templateRule(definition);
 
       rule.request.path = routing.get;
@@ -81,8 +81,19 @@ struct RestApi {
       return rule;
     }
 
+    CrateRule patch(FieldDefinition definition) {
+      auto routing = new Routing(definition);
+      CrateRule rule = templateRule(definition);
+
+      rule.request.method = HTTPMethod.PATCH;
+      rule.request.path = routing.get;
+      rule.response.statusCode = 200;
+
+      return rule;
+    }
+
     CrateRule getList(FieldDefinition definition) {
-      auto routing = new RestApiRouting(definition);
+      auto routing = new Routing(definition);
       CrateRule rule = templateRule(definition);
 
       rule.request.path = routing.getList;

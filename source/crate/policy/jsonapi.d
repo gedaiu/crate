@@ -81,6 +81,17 @@ struct JsonApi {
       return rule;
     }
 
+    CrateRule patch(FieldDefinition definition) {
+      auto routing = new Routing(definition);
+      CrateRule rule = templateRule(definition);
+
+      rule.request.method = HTTPMethod.PATCH;
+      rule.request.path = routing.get;
+      rule.response.statusCode = 200;
+
+      return rule;
+    }
+
     CrateRule getList(FieldDefinition definition) {
       auto routing = new Routing(definition);
       CrateRule rule = templateRule(definition);

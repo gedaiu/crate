@@ -460,10 +460,16 @@ unittest
 
   request(router).patch("/testmodels/573cbc2fc3b7025427000000").send(data).expectStatusCode(200)
     .expectHeader("Content-Type", "application/vnd.api+json").end((Response response) => {
-      assert(response.bodyJson["data"]["id"].to!string == "573cbc2fc3b7025427000000");
-      assert(response.bodyJson["data"]["type"].to!string == "testmodels");
-      assert(response.bodyJson["data"]["attributes"]["name"].to!string == "testName");
-      assert(response.bodyJson["data"]["attributes"]["other"].to!string == "other value");
+      
+      response.bodyJson["data"].should.equal(`{
+        "id": "573cbc2fc3b7025427000000",
+        "type": "testmodels",
+        "relationships": {},
+        "attributes": {
+          "name": "testName",
+          "other": "other value"
+        }
+      }`.parseJsonString);
     });
 }
 

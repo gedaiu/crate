@@ -114,6 +114,7 @@ class CrateRouter(RouterPolicy) {
   {
     router.putJsonWith!(Policy, Type)(&crate.updateItem);
     router.postJsonWith!(Policy, Type)(&crate.addItem);
+    router.patchJsonWith!(Policy, Type)(&crate.updateItem, &crate.getItem);
     router.deleteWith!(Policy, Type)(&crate.deleteItem);
     router.getWith!(Policy, Type)(&crate.getItem);
     router.getListFilteredWith!(Policy, Type)(&crate.getList, filters);
@@ -624,7 +625,7 @@ auto requestDeserializationHandler(U, T, V)(V delegate(T) @safe next, CrateRule 
 }
 
 /// ditto
-auto requestDeserializedHandler(Policy, Type, V)(V delegate(Json) @safe next, CrateRule rule) {
+auto requestDeserializedHandler(Policy, Type, V)(V delegate(Json) @safe setItem, CrateRule rule) {
 
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
     string id;
@@ -636,15 +637,44 @@ auto requestDeserializedHandler(Policy, Type, V)(V delegate(Json) @safe next, Cr
     auto clientData = rule.request.serializer.normalise(id, request.json);
 
     static if(is(V == void)) {
-      next(clientData);
+      setItem(clientData);
       response.statusCode = 204;
       response.writeVoidBody;
     } else static if(is(V == Json)) {
-      auto result = next(clientData);
+      auto result = setItem(clientData);
       response.statusCode = rule.response.statusCode;
       response.writeJsonBody(rule.response.serializer.denormalise(result), Policy.mime);
     } else {
-      auto result = next(clientData);
+      auto result = setItem(clientData);
+      response.statusCode = rule.response.statusCode;
+      response.writeJsonBody(rule.response.serializer.denormalise(result.serializeToJson), Policy.mime);
+    }
+  }
+
+  return &deserialize;
+}
+
+/// ditto
+auto requestDeserializedHandler(Policy, Type, V, U)(V delegate(Json) @safe setItem, U delegate(string) @safe getItem, CrateRule rule) {
+
+  void deserialize(HTTPServerRequest request, HTTPServerResponse response) @trusted {
+    string id;
+
+    id = request.params["id"];
+
+    Json oldData = getItem(id).exec.front;
+    auto clientData = mix(oldData, rule.request.serializer.normalise(id, request.json));
+
+    static if(is(V == void)) {
+      setItem(clientData);
+      response.statusCode = 204;
+      response.writeVoidBody;
+    } else static if(is(V == Json)) {
+      auto result = setItem(clientData);
+      response.statusCode = rule.response.statusCode;
+      response.writeJsonBody(rule.response.serializer.denormalise(result), Policy.mime);
+    } else {
+      auto result = setItem(clientData);
       response.statusCode = rule.response.statusCode;
       response.writeJsonBody(rule.response.serializer.denormalise(result.serializeToJson), Policy.mime);
     }
@@ -861,6 +891,28 @@ URLRouter putWith(Policy, Type, V)(URLRouter router, V delegate(Type object) @sa
 
   return router.put(rule.request.path, requestErrorHandler(handler));
 }
+
+///
+URLRouter patchJsonWith(Policy, Type, V, U)(URLRouter router, V function(Json) @safe setItem, U function(string) @safe getItem) {
+  return patchJsonWith!(Policy, Type)(router, setItem.toDelegate);
+}
+
+/// ditto
+URLRouter patchJsonWith(Policy, Type, V, U)(URLRouter router, V delegate(Json) @safe setItem, U delegate(string) @safe getItem) {
+  FieldDefinition definition = getFields!Type;
+  auto rule = Policy.patch(definition);
+
+  enforce(rule.request.path.endsWith("/:id"), "Invalid `" ~ rule.request.path ~ "` route. It must end with `/:id`.");
+
+  auto handler = requestDeserializedHandler!(Policy, Type)(setItem, getItem, rule);
+
+  return router.addRule(rule, requestErrorHandler(handler));
+}
+
+
+
+
+
 
 
 
@@ -1203,7 +1255,6 @@ auto setResourceHandler(Type, string resourcePath, T, U)(T delegate(string) @saf
 
   return &deserialize;
 }
-
 
 URLRouter setResource(Policy, Type, string resourcePath, T, U)(URLRouter router, T getItem, U updateItem) {
   FieldDefinition definition = getFields!Type;
