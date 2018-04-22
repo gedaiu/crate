@@ -14,30 +14,35 @@ import std.traits, std.stdio, std.meta, std.conv;
 import std.range.interfaces;
 
 class RestApiSerializer : ModelSerializer {
-  const { 
-    FieldDefinition definition;
-    private CrateRestApiSerializer serializer;
+  private { 
+    FieldDefinition _definition;
+    const CrateRestApiSerializer serializer;
   }
 
-  this(const FieldDefinition definition) pure {
-    this.definition = definition;
+  this(FieldDefinition definition) pure {
+    _definition = definition;
     serializer = new const CrateRestApiSerializer();
   }
 
   @safe:
+    /// Get the model definitin assigned to the serializer
+    FieldDefinition definition() {
+      return _definition;
+    }
+
     /// Prepare the data to be sent to the client
     Json denormalise(InputRange!Json data) {
-      return serializer.denormalise(data, definition);
+      return serializer.denormalise(data, _definition);
     }
 
     //dito
     Json denormalise(Json data) {
-      return serializer.denormalise(data, definition);
+      return serializer.denormalise(data, _definition);
     }
 
     /// Get the client data and prepare it for deserialization
     Json normalise(string id, Json data) {
-      return serializer.normalise(id, data, definition);
+      return serializer.normalise(id, data, _definition);
     }
 }
 

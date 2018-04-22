@@ -389,7 +389,7 @@ unittest
 
   auto expected = "{
     \"errors\": [{ 
-      \"description\": \"Missing `position` value.\", 
+      \"description\": \"`position` is required.\", 
       \"title\": \"Validation error\", 
       \"status\": 400
     }]
@@ -572,6 +572,72 @@ unittest {
 import crate.serializer.restapi;
 import crate.serializer.jsonapi;
 
+
+void checkFields(Json data, FieldDefinition definition, string prefix = "") @safe {
+  if(prefix != "") {
+    prefix ~= ".";
+  }
+
+
+  foreach (field; definition.fields) {
+    bool isSet = data[field.name].type !is Json.Type.undefined;
+    bool canCheck = !field.isId && !field.isOptional && field.name != "";
+
+    enforce!CrateValidationException(!canCheck || isSet, "`" ~ prefix ~ field.name ~ "` is required.");
+
+    if(!isSet) {
+      continue;
+    }
+
+    if(field.isArray) {
+      /// not implemented
+      continue;
+    }
+
+    if(!field.isBasicType) {
+      checkFields(data[field.name], field,  prefix ~ field.name);
+    }
+  }
+}
+
+void checkRelationships(ref Json data, FieldDefinition definition) @safe {
+  foreach (field; definition.fields) {
+    if(!field.isOptional && field.name != "" && data[field.name].type == Json.Type.undefined) {
+      throw new CrateValidationException("`" ~ field.name ~ "` is missing");
+    }
+
+    if(field.isOptional && data[field.name].type == Json.Type.undefined) {
+      continue;
+    }
+/*
+    if (field.isRelation) {
+      if (field.isArray) {
+        enforce!CrateValidationException(data[field.name].type == Json.Type.array,
+          "`" ~ field.name ~ "` should be an array.");
+
+        try {
+          auto relations = (cast(Json[])data[field.name]).map!((ref id) => crate.getItem(id.to!string).exec.front).array;
+          data[field.name] = relations;
+        } catch (CrateNotFoundException e) {
+          throw new CrateRelationNotFoundException(
+              "Can not resove array", e);
+        }
+      } else {
+        string id = data[field.name].to!string;
+
+        try {
+          data[field.name] = crate.getItem(id).exec.front;
+        } catch (CrateNotFoundException e) {
+          throw new CrateRelationNotFoundException(
+              "Item `" ~ field.type ~ "` in field `"
+              ~ field.name ~ "` with id `" ~ id ~ "` not found");
+        }
+      }
+    }*/
+  }
+}
+
+
 /// Call the next handler after the request data is deserialized
 auto requestFullDeserializationHandler(U, T)(void delegate(T, HTTPServerResponse) @safe next, CrateRule rule) {
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
@@ -582,6 +648,10 @@ auto requestFullDeserializationHandler(U, T)(void delegate(T, HTTPServerResponse
     }
 
     auto clientData = rule.request.serializer.normalise(id, request.json);
+    
+		checkRelationships(clientData, rule.request.serializer.definition);
+		checkFields(clientData, rule.request.serializer.definition);
+
     T value;
 
     try {
@@ -599,7 +669,7 @@ auto requestFullDeserializationHandler(U, T)(void delegate(T, HTTPServerResponse
 }
 
 /// ditto
-auto requestDeserializationHandler(U, T, V)(V delegate(T) @safe next, CrateRule rule) if(!is(V == void)) {
+auto requestDeserializationHandler(U, Type, V)(V delegate(Type) @safe next, CrateRule rule) if(!is(V == void)) {
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
     string id;
 
@@ -608,10 +678,10 @@ auto requestDeserializationHandler(U, T, V)(V delegate(T) @safe next, CrateRule 
     }
 
     auto clientData = rule.request.serializer.normalise(id, request.json);
-    T value;
+    Type value;
 
     try {
-      value = clientData.deserializeJson!T;
+      value = clientData.deserializeJson!Type;
     } catch (JSONException e) {
       throw new CrateValidationException("Can not deserialize data. " ~ e.msg, e.file, e.line);
     }
@@ -629,12 +699,17 @@ auto requestDeserializedHandler(Policy, Type, V)(V delegate(Json) @safe setItem,
 
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
     string id;
-
     if("id" in request.params) {
       id = request.params["id"];
     }
 
-    auto clientData = rule.request.serializer.normalise(id, request.json);
+    auto rawData = rule.request.serializer.normalise(id, request.json);
+
+    checkFields(rawData, rule.request.serializer.definition);
+
+    Type value = rawData.deserializeJson!Type;
+
+    auto clientData = value.serializeToJson;
 
     static if(is(V == void)) {
       setItem(clientData);
@@ -663,7 +738,7 @@ auto requestDeserializedHandler(Policy, Type, V, U)(V delegate(Json) @safe setIt
     id = request.params["id"];
 
     Json oldData = getItem(id).exec.front;
-    auto clientData = mix(oldData, rule.request.serializer.normalise(id, request.json));
+    auto clientData = mix(oldData, rule.request.serializer.normalise(id, request.json)).deserializeJson!Type.serializeToJson;
 
     static if(is(V == void)) {
       setItem(clientData);
@@ -1218,7 +1293,6 @@ URLRouter getResource(Policy, Type, string resourcePath, T)(URLRouter router, T 
 }
 
 auto setResourceHandler(Type, string resourcePath, T, U)(T delegate(string) @safe getItem, U updateItem, CrateRule rule) if(!is(T == void)) {
-  import std.stdio;
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @trusted {
     string id = request.params["id"];
     auto pathItems = resourcePath.split("/");

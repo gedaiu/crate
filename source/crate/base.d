@@ -289,6 +289,9 @@ interface ModelSerializer
 {
   @safe
   {
+    /// Get the model definitin assigned to the serializer
+    FieldDefinition definition();
+
     /// Prepare the data to be sent to the client
     Json denormalise(InputRange!Json data);
     /// ditto
