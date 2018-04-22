@@ -271,7 +271,7 @@ private
     {
       static if (fields.length == 1)
       {
-        static if (fields[0].type == "BsonObjectID")
+        static if (fields[0].type == "BsonObjectID" || fields[0].type == "ObjectId")
         {
           data[fields[0].type] = Json.emptyObject;
           data[fields[0].type]["type"] = "string";

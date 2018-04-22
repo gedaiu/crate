@@ -8,13 +8,13 @@ import crate.policy.restapi;
 import std.stdio;
 
 struct Comment {
-	BsonObjectID userId;
+	ObjectID userId;
 	string message;
 }
 
 @("plural:Categories")
 struct Category {
-	BsonObjectID _id;
+	ObjectID _id;
 
 	string name;
 	string color;
@@ -23,7 +23,7 @@ struct Category {
 struct Book
 {
 	@optional {
-		BsonObjectID _id;
+		ObjectID _id;
 	}
 
 	string name;

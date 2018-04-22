@@ -631,7 +631,7 @@ unittest
 
   struct TestModel
   {
-    BsonObjectID _id;
+    ObjectId _id;
   }
 
   auto definition = definition!TestModel;

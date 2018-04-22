@@ -7,13 +7,13 @@ import crate.generator.ember;
 import std.stdio;
 
 struct Comment {
-	BsonObjectID userId;
+	ObjectId userId;
 	string message;
 }
 
 @("plural:Categories")
 struct Category {
-	BsonObjectID _id;
+	ObjectId _id;
 
 	string name;
 	string color;
@@ -22,7 +22,7 @@ struct Category {
 struct Book
 {
 	@optional {
-		BsonObjectID _id;
+		ObjectId _id;
 	}
 
 	string name;

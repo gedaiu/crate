@@ -649,8 +649,8 @@ auto requestFullDeserializationHandler(U, T)(void delegate(T, HTTPServerResponse
 
     auto clientData = rule.request.serializer.normalise(id, request.json);
     
-		checkRelationships(clientData, rule.request.serializer.definition);
-		checkFields(clientData, rule.request.serializer.definition);
+    checkRelationships(clientData, rule.request.serializer.definition);
+    checkFields(clientData, rule.request.serializer.definition);
 
     T value;
 
@@ -697,7 +697,7 @@ auto requestDeserializationHandler(U, Type, V)(V delegate(Type) @safe next, Crat
 /// ditto
 auto requestDeserializedHandler(Policy, Type, V)(V delegate(Json) @safe setItem, CrateRule rule) {
 
-  void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
+  void deserialize(HTTPServerRequest request, HTTPServerResponse response) @trusted {
     string id;
     if("id" in request.params) {
       id = request.params["id"];

@@ -156,17 +156,15 @@ class MongoCrate(T): Crate!T
 
     Json addItem(Json item)
     {
-      item["_id"] = BsonObjectID.generate().to!string;
+      item["_id"] = ObjectId.generate().toString;
 
       collection.insert(toBson!T(item));
 
       return item;
     }
 
-    ICrateSelector getItem(string id)
-    {
-      if (collection.count(["_id" : toId(id, collection.name)]) == 0)
-      {
+    ICrateSelector getItem(string id) {
+      if (collection.count(["_id" : toId(id, collection.name)]) == 0) {
         throw new CrateNotFoundException("There is no item with id `" ~ id ~ "` inside `" ~ collection.name ~ "`");
       }
 
@@ -175,10 +173,8 @@ class MongoCrate(T): Crate!T
       ]);
     }
 
-    Json editItem(string id, Json fields)
-    {
-      if (collection.count(["_id" : toId(id, collection.name)]) == 0)
-      {
+    Json editItem(string id, Json fields) {
+      if (collection.count(["_id" : toId(id, collection.name)]) == 0) {
         throw new CrateNotFoundException("There is no item with id `" ~ id ~ "` inside `" ~ collection.name ~ "`");
       }
 
@@ -189,12 +185,10 @@ class MongoCrate(T): Crate!T
       return getItem(id).exec.front;
     }
 
-    Json updateItem(Json item)
-    {
+    Json updateItem(Json item) {
       string id = item["_id"].to!string;
 
-      if (collection.count(["_id" : toId(id, collection.name)]) == 0)
-      {
+      if (collection.count(["_id" : toId(id, collection.name)]) == 0) {
         throw new CrateNotFoundException("There is no item with id `" ~ id ~ "` inside `" ~ collection.name ~ "`");
       }
 
@@ -205,10 +199,8 @@ class MongoCrate(T): Crate!T
       return item;
     }
 
-    void deleteItem(string id)
-    {
-      if (collection.count(["_id" : toId(id, collection.name)]) == 0)
-      {
+    void deleteItem(string id) {
+      if (collection.count(["_id" : toId(id, collection.name)]) == 0) {
         throw new CrateNotFoundException("There is no item with id `" ~ id ~ "` inside `" ~ collection.name ~ "`");
       }
 
@@ -231,7 +223,7 @@ version (unittest)
 
   struct RelationModel
   {
-    BsonObjectID _id;
+    ObjectId _id;
     string name = "";
 
     EmbededModel embeded;
@@ -243,7 +235,7 @@ version (unittest)
   {
     @optional
     {
-      BsonObjectID _id;
+      ObjectId _id;
       string other = "";
     }
 
@@ -268,19 +260,19 @@ version (unittest)
   }
 }
 
-auto toId(string id, string type = "") {
+auto toId(string id, string type = "", string file = __FILE__, size_t line = __LINE__) {
   enforce!CrateNotFoundException(id.length == 24, "There is no item with id `" ~ id ~ "` inside `" ~ type ~ "`");
 
   try {
-    return BsonObjectID.fromString(id);
+    return ObjectId.fromString(id).bsonObjectID;
   } catch (ConvException e) {
     throw new CrateNotFoundException("There is no item with id `" ~ id ~ "` inside `" ~ type ~ "`");
   }
 }
 
-Bson toBson(FieldDefinition definition, Json model, string parent = "unknown model") {
+Bson toBson(FieldDefinition definition, Json model, string parent = "unknown model", string file = __FILE__, size_t line = __LINE__) {
   if(definition.isId) {
-    return Bson(model.to!string.toId(parent));
+    return model.get!string.toId(parent);
   }
 
   if(definition.isArray) {
@@ -294,7 +286,7 @@ Bson toBson(FieldDefinition definition, Json model, string parent = "unknown mod
   if(definition.isRelation) {
     foreach(f; definition.fields) {
       if(f.isId) {
-        return Bson(model[f.name].to!string.toId(definition.type));
+        return model[f.name].to!string.toId(definition.type);
       }
     }
 
@@ -315,7 +307,7 @@ Bson toBson(FieldDefinition definition, Json model, string parent = "unknown mod
   return Bson.fromJson(model);
 }
 
-Bson toBson(T)(Json model) {
+Bson toBson(T)(Json model, string file = __FILE__, size_t line = __LINE__) {
   return toBson(getFields!T, model);
 }
 
@@ -327,10 +319,10 @@ version(unittest) {
 unittest {
   RelationModel model;
   model.embeded.field = "field";
-  model.embeded.relation._id = BsonObjectID.generate;
-  model._id = BsonObjectID.generate;
-  model.relation = TestModel(BsonObjectID.generate, "other1");
-  model.relations = [ TestModel(BsonObjectID.generate, "other1") ];
+  model.embeded.relation._id = ObjectId.generate;
+  model._id = ObjectId.generate;
+  model.relation = TestModel(ObjectId.generate, "other1");
+  model.relations = [ TestModel(ObjectId.generate, "other1") ];
   model.name = "test";
 
   auto result = model.serializeToJson.toBson!RelationModel;
@@ -371,6 +363,7 @@ unittest
     .expectHeader("Content-Type", "application/vnd.api+json")
     .expectHeaderContains("Location", "http://localhost/testmodels/").expectStatusCode(201)
     .end((Response response) => {
+      response.bodyJson.byKeyValue.map!"a.key".should.contain("data");
       auto id = response.bodyJson["data"]["id"].to!string;
       response.headers["Location"].should.equal("http://localhost/testmodels/" ~ id);
     });
@@ -387,8 +380,8 @@ unittest
   try {
     collection.drop;
   } catch(Exception) {}
-  collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
-  collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000001")));
+  collection.insert(TestModel(ObjectId.fromString("573cbc2fc3b7025427000001")));
+  collection.insert(TestModel(ObjectId.fromString("573cbc2fc3b7025427000000")));
 
   auto router = new URLRouter();
   auto crate = new MongoCrate!TestModel(collection);
@@ -415,10 +408,13 @@ unittest
     collection.drop;
   } catch(Exception) {}
 
-  collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
+  
+  collection.insert(TestModel(ObjectId.fromString("573cbc2fc3b7025427000000")));
 
   auto router = new URLRouter();
   auto crate = new MongoCrate!TestModel(collection);
+
+  crate.addItem(TestModel(ObjectId.fromString("573cbc2fc3b7025427000000")).serializeToJson);
 
   router.crateSetup!JsonApi.add(crate);
 
@@ -444,7 +440,7 @@ unittest
     collection.drop;
   } catch(Exception) {}
 
-  collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000"), "", "testName"));
+  collection.insert(TestModel(ObjectId.fromString("573cbc2fc3b7025427000000"), "", "testName"));
 
   auto router = new URLRouter();
   auto crate = new MongoCrate!TestModel(collection);
@@ -515,7 +511,7 @@ unittest
     collection.drop;
   } catch(Exception e) {}
 
-  collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
+  collection.insert(TestModel(ObjectId.fromString("573cbc2fc3b7025427000000")));
 
   auto router = new URLRouter();
   auto crate = new MongoCrate!TestModel(collection);
@@ -534,6 +530,7 @@ unittest
     });
 }
 
+/// call action using mongo crate and JsonApi
 unittest
 {
   import vibe.db.mongo.mongo : connectMongoDB;
@@ -547,10 +544,13 @@ unittest
   try {
     collection.drop;
   } catch(Exception e) {}
-  collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
 
+  collection.insert(TestModel(ObjectId.fromString("573cbc2fc3b7025427000000")));
+  
   auto router = new URLRouter();
   auto crate = new MongoCrate!TestModel(collection);
+
+  auto testModel = TestModel(ObjectId.fromString("573cbc2fc3b7025427000000"));
 
   router.crateSetup!JsonApi
     .add(crate)
@@ -558,8 +558,8 @@ unittest
 
   request(router).get("/testmodels/573cbc2fc3b7025427000000/actionResponse").expectStatusCode(200)
     .end((Response response) => {
-      assert(response.bodyString == "ok.");
-      assert(isTestActionCalled);
+      response.bodyString.should.equal("ok.");
+      isTestActionCalled.should.equal(true);
     });
 }
 
@@ -577,7 +577,7 @@ unittest
     collection.drop;
   } catch(Exception) { }
 
-  collection.insert(TestModel(BsonObjectID.fromString("573cbc2fc3b7025427000000")));
+  collection.insert(TestModel(ObjectId.fromString("573cbc2fc3b7025427000000")));
 
   auto router = new URLRouter();
   auto crate = new MongoCrate!TestModel(collection);

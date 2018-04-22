@@ -158,7 +158,7 @@ class CrateJsonApiSerializer : CrateSerializer
     {
       foreach(field; fields)
       {
-        if (field.isId)
+        if (field.isId && id != "")
         {
           normalised[field.originalName] = id;
         }
@@ -246,7 +246,7 @@ unittest
 {
   struct TestModel
   {
-    BsonObjectID _id;
+    ObjectId _id;
 
     string field1;
     int field2;
@@ -280,7 +280,7 @@ unittest
 {
   struct TestModel
   {
-    BsonObjectID _id;
+    ObjectId _id;
 
     string field1;
     int field2;

@@ -8,10 +8,40 @@ import std.range.interfaces;
 import vibe.http.server;
 
 import crate.ctfe;
+import vibe.data.bson;
 
 import openapi.definitions;
 
 version(unittest) import fluent.asserts;
+
+struct ObjectId {
+  Bson bsonObjectID;
+  alias bsonObjectID this;
+
+  static ObjectId generate() {
+    return ObjectId(Bson(BsonObjectID.generate));
+  }
+
+  static ObjectId fromString(string value) @safe {
+    return ObjectId(Bson(BsonObjectID.fromString(value)));
+  }
+
+  string toString() @safe {
+    if(bsonObjectID.type != Bson.Type.objectID) {
+      return "";
+    }
+
+    return bsonObjectID.to!string[1..$-1];
+  }
+
+  Bson toBson() const @safe {
+    return bsonObjectID;
+  }
+
+  static ObjectId fromBson(Bson src) @safe {
+    return ObjectId(src);
+  }
+}
 
 enum CrateOperation
 {
