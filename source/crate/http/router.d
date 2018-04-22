@@ -702,13 +702,12 @@ auto requestDeserializedHandler(Policy, Type, V)(V delegate(Json) @safe setItem,
     if("id" in request.params) {
       id = request.params["id"];
     }
-
     auto rawData = rule.request.serializer.normalise(id, request.json);
 
     checkFields(rawData, rule.request.serializer.definition);
 
     Type value = rawData.deserializeJson!Type;
-
+    
     auto clientData = value.serializeToJson;
 
     static if(is(V == void)) {

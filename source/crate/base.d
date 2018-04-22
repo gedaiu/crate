@@ -26,7 +26,7 @@ struct ObjectId {
     return ObjectId(Bson(BsonObjectID.fromString(value)));
   }
 
-  string toString() @safe {
+  string toString() @safe const {
     if(bsonObjectID.type != Bson.Type.objectID) {
       return "";
     }
@@ -35,11 +35,32 @@ struct ObjectId {
   }
 
   Bson toBson() const @safe {
+    if(bsonObjectID.type != Bson.Type.objectID) {
+      return Bson.fromJson(Json.undefined);
+    }
+
     return bsonObjectID;
   }
 
   static ObjectId fromBson(Bson src) @safe {
     return ObjectId(src);
+  }
+
+
+  Json toJson() const @safe {
+    if(bsonObjectID.type != Bson.Type.objectID) {
+      return Json.undefined;
+    }
+
+    return Json(toString);
+  }
+
+  static ObjectId fromJson(Json src) @safe {
+    if(src.type != Json.Type.string) {
+      return ObjectId(Bson.fromJson(Json.undefined));
+    }
+
+    return ObjectId.fromString(src.get!string);
   }
 }
 
