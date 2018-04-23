@@ -116,7 +116,7 @@ class CrateRouter(RouterPolicy) {
     router.postJsonWith!(Policy, Type)(&crate.addItem);
     router.patchJsonWith!(Policy, Type)(&crate.updateItem, &crate.getItem);
     router.deleteWith!(Policy, Type)(&crate.deleteItem);
-    router.getWith!(Policy, Type)(&crate.getItem);
+    router.getWith!(Policy, Type)(&crate.getItem, filters);
     router.getListFilteredWith!(Policy, Type)(&crate.getList, filters);
 
     return this;
@@ -785,14 +785,41 @@ auto requestIdHandler(void delegate(string, HTTPServerResponse) @safe next, Crat
 }
 
 /// ditto
-auto requestIdHandler(T)(T delegate(string) @safe next, CrateRule rule) if(!is(T == void)){
+auto requestIdHandler(T)(T delegate(string) @safe getItem, CrateRule rule) if(!is(T == void) && !is(T == ICrateSelector)){
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
     string id = request.params["id"];
 
     Json jsonResponse;
 
     try {
-      jsonResponse = rule.response.serializer.denormalise(next(id).serializeToJson);
+      jsonResponse = rule.response.serializer.denormalise(getItem(id).serializeToJson);
+    } catch (JSONException e) {
+      throw new CrateValidationException("Can not serialize data. " ~ e.msg, e.file, e.line);
+    }
+
+    response.writeJsonBody(jsonResponse, 200, rule.response.mime);
+  }
+
+  return &deserialize;
+}
+
+/// ditto
+auto requestIdHandler(ICrateSelector delegate(string) @safe getItem, CrateRule rule, ICrateFilter[] filters) {
+  void deserialize(HTTPServerRequest request, HTTPServerResponse response) @trusted {
+    string id = request.params["id"];
+
+    Json jsonResponse;
+    auto items = getItem(id);
+
+    foreach(filter; filters) {
+      items = filter.apply(request, items);
+    }
+
+    auto result = items.exec;
+    enforce!CrateNotFoundException(!result.empty, "Missing `" ~ rule.response.serializer.definition.name ~ "`.");
+
+    try {
+      jsonResponse = rule.response.serializer.denormalise(result.front);
     } catch (JSONException e) {
       throw new CrateValidationException("Can not serialize data. " ~ e.msg, e.file, e.line);
     }
@@ -1092,16 +1119,14 @@ URLRouter getWith(Policy, Type)(URLRouter router, Type delegate(string id) @safe
 }
 
 /// ditto
-URLRouter getWith(Policy, Type)(URLRouter router, ICrateSelector delegate(string id) @safe handler) if(!is(T == void)) {
-  Type resultExtractor(string id) @trusted {
-    auto result = handler(id).exec;
+URLRouter getWith(Policy, Type)(URLRouter router, ICrateSelector delegate(string id) @safe handler, ICrateFilter[] filters) if(!is(T == void)) {
+  FieldDefinition definition = getFields!Type;
+  auto rule = Policy.getItem(definition);
 
-    enforce!CrateNotFoundException(!result.empty, "Missing `" ~ Type.stringof ~ "`.");
+  enforce(rule.request.path.endsWith("/:id"), "Invalid `" ~ rule.request.path ~ "` route. It must end with `/:id`.");
+  auto idHandler = requestIdHandler(handler, rule, filters);
 
-    return result.front.deserializeJson!Type;
-  }
-
-  return getWith!(Policy, Type)(router, &resultExtractor);
+  return router.addRule(rule, requestErrorHandler(idHandler));
 }
 
 /// ditto
