@@ -147,33 +147,29 @@ class ProxySelector: ICrateSelector {
     ICrateSelector selector;
   }
 
-  this(ICrateSelector selector) {
+  this(ICrateSelector selector) @safe {
     this.selector = selector;
   }
 
-  override {
+  override @safe {
     ICrateSelector where(string field, string value) {
-      this.selector.where(field, value);
-
-      return this;
+      return new ProxySelector(this.selector.where(field, value));
     }
 
     ICrateSelector whereArrayContains(string field, string value) {
-      this.selector.whereArrayContains(field, value);
-
-      return this;
+      return new ProxySelector(this.selector.whereArrayContains(field, value));
     }
 
     ICrateSelector whereArrayFieldContains(string arrayField, string field, string value) {
-      this.selector.whereArrayFieldContains(arrayField, field, value);
-
-      return this;
+      return new ProxySelector(this.selector.whereArrayFieldContains(arrayField, field, value));
     }
 
     ICrateSelector limit(size_t nr) {
-      this.selector.limit(nr);
+      return new ProxySelector(this.selector.limit(nr));
+    }
 
-      return this;
+    ICrateSelector like(string field, string value) {
+      return new ProxySelector(this.selector.like(field, value));
     }
 
     InputRange!Json exec() {

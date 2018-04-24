@@ -699,9 +699,11 @@ auto requestDeserializedHandler(Policy, Type, V)(V delegate(Json) @safe setItem,
 
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @trusted {
     string id;
+
     if("id" in request.params) {
       id = request.params["id"];
     }
+
     auto rawData = rule.request.serializer.normalise(id, request.json);
 
     checkFields(rawData, rule.request.serializer.definition);
@@ -1124,7 +1126,7 @@ URLRouter getWith(Policy, Type)(URLRouter router, ICrateSelector delegate(string
   auto rule = Policy.getItem(definition);
 
   enforce(rule.request.path.endsWith("/:id"), "Invalid `" ~ rule.request.path ~ "` route. It must end with `/:id`.");
-  auto idHandler = requestIdHandler(handler, rule, filters);
+  auto idHandler = requestIdHandler(handler, rule, filters.dup);
 
   return router.addRule(rule, requestErrorHandler(idHandler));
 }

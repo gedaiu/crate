@@ -50,6 +50,14 @@ class MongoCrateRange : ICrateSelector
       return this;
     }
 
+     ICrateSelector like(string field, string value) {
+      query = Json.emptyObject;
+      query[field] = Json.emptyObject;
+      query[field]["$regex"] = ".*" ~ value ~ ".*";
+
+      return this;
+    }
+
     ICrateSelector limit(size_t nr) {
       resultCount = nr;
 

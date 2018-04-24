@@ -182,7 +182,7 @@ version(unittest) {
     userDataCrate = new MemoryCrate!UserData(config);
     userCrate = new ApiUserTransformer(userDataCrate);
 
-    router.crateSetup.add(userCrate);
+    router.crateSetup.add(userCrate, [ new UserTermFilter ]);
 
     return router;
   }
@@ -360,4 +360,14 @@ unittest
         user["name"].to!string.should.equal("test");
         user["username"].to!string.should.equal("test_user");
       });
+}
+
+class UserTermFilter : ICrateFilter {
+  ICrateSelector apply(HTTPServerRequest request, ICrateSelector selector) {
+    if("term" in request.query) {
+      selector = selector.like("email", request.query["term"]);
+    }
+
+    return selector;
+  }
 }

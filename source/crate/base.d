@@ -46,7 +46,6 @@ struct ObjectId {
     return ObjectId(src);
   }
 
-
   Json toJson() const @safe {
     if(bsonObjectID.type != Bson.Type.objectID) {
       return Json.undefined;
@@ -87,6 +86,7 @@ interface ICrateSelector
     ICrateSelector where(string field, string value);
     ICrateSelector whereArrayContains(string field, string value);
     ICrateSelector whereArrayFieldContains(string arrayField, string field, string value);
+    ICrateSelector like(string field, string value);
     ICrateSelector limit(size_t nr);
 
     InputRange!Json exec();
@@ -202,10 +202,11 @@ class CrateRange : ICrateSelector
     this.data = data.inputRangeObject;
   }
 
-  override {
-    ICrateSelector where(string field, string value) {
+  override @trusted {
+    ICrateSelector where(string field, string value) @trusted {
       data = data
         .map!(a => tuple(a, a.flatten))
+        .filter!(a => field in a[1])
         .filter!(a => a[1][field].to!string == value)
         .map!(a => a[0])
           .inputRangeObject;
@@ -222,6 +223,17 @@ class CrateRange : ICrateSelector
       data = data.filter!(a => (cast(Json[])a[arrayField])
                 .map!(a => a[field])
                 .canFind(Json(value))).inputRangeObject;
+      return this;
+    }
+
+    ICrateSelector like(string field, string value) {
+      data = data
+        .map!(a => tuple(a, a.flatten))
+        .filter!(a => field in a[1])
+        .filter!(a => a[1][field].to!string.canFind(value))
+        .map!(a => a[0])
+          .inputRangeObject;
+
       return this;
     }
 
