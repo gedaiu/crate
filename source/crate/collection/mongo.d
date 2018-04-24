@@ -377,6 +377,7 @@ unittest
     });
 }
 
+/// get a list of items with mongo crate
 unittest
 {
   import vibe.db.mongo.mongo : connectMongoDB;
@@ -388,6 +389,7 @@ unittest
   try {
     collection.drop;
   } catch(Exception) {}
+
   collection.insert(TestModel(ObjectId.fromString("573cbc2fc3b7025427000001")));
   collection.insert(TestModel(ObjectId.fromString("573cbc2fc3b7025427000000")));
 
@@ -396,12 +398,19 @@ unittest
 
   router.crateSetup!JsonApi.add(crate);
 
-  request(router).get("/testmodels").expectHeader("Content-Type",
-      "application/vnd.api+json").expectStatusCode(200).end((Response response) => {
-    assert(response.bodyJson["data"].length == 2);
-    assert(response.bodyJson["data"][0]["id"].to!string == "573cbc2fc3b7025427000000");
-    assert(response.bodyJson["data"][1]["id"].to!string == "573cbc2fc3b7025427000001");
-  });
+  request(router)
+    .get("/testmodels")
+    .expectHeader("Content-Type", "application/vnd.api+json")
+    .expectStatusCode(200)
+      .end((Response response) => {
+        response.bodyJson.byKeyValue.map!"a.key".should.contain("data");
+
+        response.bodyJson["data"]
+          .byValue.map!`a["id"]`
+          .map!"a.get!string"
+          .should
+            .containOnly(["573cbc2fc3b7025427000000", "573cbc2fc3b7025427000001"]);
+      });
 }
 
 unittest

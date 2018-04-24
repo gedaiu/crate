@@ -95,6 +95,7 @@ interface ICrateSelector
 struct CrateResponse {
   string mime;
   uint statusCode;
+  string[string] headers;
   ModelSerializer serializer;
   Schema schema;
 }
