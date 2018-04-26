@@ -45,7 +45,7 @@ struct JsonApi {
       rule.request.method = HTTPMethod.POST;
 
       rule.response.statusCode = 201;
-      rule.response.headers["Location"] = routing.get;
+      rule.response.headers["Location"] = ":base_uri" ~ routing.getList ~ "/:id";
 
       return rule;
     }

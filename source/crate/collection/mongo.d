@@ -369,10 +369,13 @@ unittest
     .header("Content-Type", "application/vnd.api+json")
     .send(data)
     .expectHeader("Content-Type", "application/vnd.api+json")
-    .expectHeaderContains("Location", "http://localhost/testmodels/").expectStatusCode(201)
+    .expectHeaderContains("Location", "http://localhost/testmodels/")
+    .expectStatusCode(201)
     .end((Response response) => {
       response.bodyJson.byKeyValue.map!"a.key".should.contain("data");
       auto id = response.bodyJson["data"]["id"].to!string;
+
+      response.headers.byKey.should.contain("Location");
       response.headers["Location"].should.equal("http://localhost/testmodels/" ~ id);
     });
 }

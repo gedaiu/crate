@@ -19,6 +19,7 @@ import vibe.http.router;
 import vibe.stream.operations;
 
 import std.conv;
+import std.string;
 import std.traits;
 import std.stdio;
 import std.functional;
@@ -694,6 +695,26 @@ auto requestDeserializationHandler(U, Type, V)(V delegate(Type) @safe next, Crat
   return &deserialize;
 }
 
+void updateHeaders(HTTPServerResponse response, HTTPServerRequest request, CrateRule rule, Json result) {
+  foreach(string key, string value; rule.response.headers) {
+    if(value.canFind(":base_uri")) {
+      auto baseUri = request.fullURL.parentURL.toString;
+
+      if(baseUri.endsWith("/")) {
+        baseUri = baseUri[0..$-1];
+      }
+
+      value = value.replace(":base_uri", baseUri);
+    }
+
+    if(value.canFind(":id")) {
+      value = value.replace(":id", result["_id"].get!string);
+    }
+
+    response.headers[key] = value;
+  }
+}
+
 /// ditto
 auto requestDeserializedHandler(Policy, Type, V)(V delegate(Json) @safe setItem, CrateRule rule) {
 
@@ -718,6 +739,7 @@ auto requestDeserializedHandler(Policy, Type, V)(V delegate(Json) @safe setItem,
       response.writeVoidBody;
     } else static if(is(V == Json)) {
       auto result = setItem(clientData);
+      response.updateHeaders(request, rule, result);
       response.statusCode = rule.response.statusCode;
       response.writeJsonBody(rule.response.serializer.denormalise(result), Policy.mime);
     } else {

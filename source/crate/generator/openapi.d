@@ -95,11 +95,14 @@ OpenApi toOpenApi(URLRouter router) {
 
   return openApi;
 }
+
 private bool isItemOperation(CrateOperation operation)
 {
-  return operation == CrateOperation.getItem || operation == CrateOperation.updateItem
-    || operation == CrateOperation.replaceItem
-    || operation == CrateOperation.deleteItem || operation == CrateOperation.otherItem;
+  return operation == CrateOperation.getItem ||
+         operation == CrateOperation.updateItem ||
+         operation == CrateOperation.replaceItem ||
+         operation == CrateOperation.deleteItem ||
+         operation == CrateOperation.otherItem;
 }
 
 private string toOpenApiPath(string path)
