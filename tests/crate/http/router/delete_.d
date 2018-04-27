@@ -36,6 +36,8 @@ alias s = Spec!({
 
         request(router)
           .delete_("/sites/122")
+            .expectHeader("Access-Control-Allow-Origin", "*")
+            .expectHeader("Access-Control-Request-Method", "DELETE")
             .expectStatusCode(204)
             .end((Response response) => {
               response.bodyString.should.equal("");
@@ -49,6 +51,8 @@ alias s = Spec!({
         request(router)
           .delete_("/sites/122")
             .expectStatusCode(204)
+            .expectHeader("Access-Control-Allow-Origin", "*")
+            .expectHeader("Access-Control-Request-Method", "DELETE")
             .end((Response response) => {
               response.bodyString.should.equal("");
             });

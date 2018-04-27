@@ -57,6 +57,8 @@ alias s = Spec!({
             .send(dataUpdate)
               .expectStatusCode(201)
               .expectHeader("Content-Type", "application/json")
+              .expectHeader("Access-Control-Allow-Origin", "*")
+              .expectHeader("Access-Control-Request-Method", "POST")
               .end((Response response) => {
                 dataUpdate["site"]["_id"] = "122";
                 response.bodyJson.should.equal(dataUpdate);
@@ -74,6 +76,8 @@ alias s = Spec!({
             .send(dataUpdate)
               .expectStatusCode(201)
               .expectHeader("Content-Type", "application/json")
+              .expectHeader("Access-Control-Allow-Origin", "*")
+              .expectHeader("Access-Control-Request-Method", "POST")
               .end((Response response) => {
                 dataUpdate["site"]["_id"] = "122";
                 response.bodyJson.should.equal(dataUpdate);
@@ -91,6 +95,8 @@ alias s = Spec!({
             .send(dataUpdate)
               .expectStatusCode(201)
               .expectHeader("Content-Type", "application/json")
+              .expectHeader("Access-Control-Allow-Origin", "*")
+              .expectHeader("Access-Control-Request-Method", "POST")
               .end((Response response) => {
                 dataUpdate["site"]["_id"] = "122";
                 response.bodyJson.should.equal(dataUpdate);
@@ -108,6 +114,8 @@ alias s = Spec!({
             .send(dataUpdate)
               .expectStatusCode(201)
               .expectHeader("Content-Type", "application/json")
+              .expectHeader("Access-Control-Allow-Origin", "*")
+              .expectHeader("Access-Control-Request-Method", "POST")
               .end((Response response) => {
                 dataUpdate["site"]["_id"] = "122";
                 response.bodyJson.should.equal(dataUpdate);
@@ -124,6 +132,8 @@ alias s = Spec!({
           .post("/sites")
             .send(dataUpdate)
               .expectStatusCode(204)
+              .expectHeader("Access-Control-Allow-Origin", "*")
+              .expectHeader("Access-Control-Request-Method", "POST")
               .end((Response response) => {
                 response.bodyString.should.equal("");
               });
@@ -157,6 +167,8 @@ alias s = Spec!({
           .post("/sites")
             .send(dataUpdate)
               .expectStatusCode(400)
+              .expectHeader("Access-Control-Allow-Origin", "*")
+              .expectHeader("Access-Control-Request-Method", "POST")
               .expectHeader("Content-Type", "application/json; charset=UTF-8")
               .end((Response response) => {
                 response.bodyJson.should.equal(expectedError);

@@ -604,7 +604,9 @@ unittest
 
   router.crateSetup.add(crate);
 
-  request(router).get("/testmodels")
+  request(router)
+    .get("/testmodels")
     .expectHeader("Access-Control-Allow-Origin", "*")
+    .expectHeader("Access-Control-Request-Method", "POST, GET")
     .end();
 }

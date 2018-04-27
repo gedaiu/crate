@@ -65,6 +65,8 @@ alias s = Spec!({
           .get("/mockmodels/10/actionChangeAndReturn")
             .expectStatusCode(200)
             .expectHeader("Content-Type", "text/plain; charset=UTF-8")
+            .expectHeader("Access-Control-Allow-Origin", "*")
+            .expectHeader("Access-Control-Request-Method", "GET")
             .end((Response response) => {
               response.bodyString.should.equal("changed and return");
             });
@@ -79,6 +81,8 @@ alias s = Spec!({
             .send("test message")
               .expectStatusCode(200)
               .expectHeader("Content-Type", "text/plain; charset=UTF-8")
+              .expectHeader("Access-Control-Allow-Origin", "*")
+              .expectHeader("Access-Control-Request-Method", "POST")
               .end((Response response) => {
                 response.bodyString.should.equal("test message");
               });
@@ -92,6 +96,8 @@ alias s = Spec!({
           .get("/mockmodels/10/actionChangeAndReturn")
             .expectStatusCode(200)
             .expectHeader("Content-Type", "text/plain; charset=UTF-8")
+            .expectHeader("Access-Control-Allow-Origin", "*")
+            .expectHeader("Access-Control-Request-Method", "GET")
             .end((Response response) => {
               response.bodyString.should.equal("changed and return");
               lastMockItem.should.equal(`{ "_id": "1", "name": "changed and return" }`.parseJsonString);

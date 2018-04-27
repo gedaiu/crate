@@ -49,6 +49,8 @@ alias s = Spec!({
           .get("/sites")
             .expectStatusCode(200)
             .expectHeader("Content-Type", "application/json")
+            .expectHeader("Access-Control-Allow-Origin", "*")
+            .expectHeader("Access-Control-Request-Method", "GET")
             .end((Response response) => {
               response.bodyJson.should.equal(elements);
             });
@@ -61,6 +63,8 @@ alias s = Spec!({
         request(router)
           .get("/sites")
             .expectStatusCode(200)
+            .expectHeader("Access-Control-Allow-Origin", "*")
+            .expectHeader("Access-Control-Request-Method", "GET")
             .expectHeader("Content-Type", "application/json")
             .end();
       });
@@ -78,6 +82,8 @@ alias s = Spec!({
         request(router)
           .get("/sites")
             .expectStatusCode(200)
+            .expectHeader("Access-Control-Allow-Origin", "*")
+            .expectHeader("Access-Control-Request-Method", "GET")
             .expectHeader("Content-Type", "application/vnd.api+json")
             .end((Response response) => {
               response.bodyJson.should.equal(elements);

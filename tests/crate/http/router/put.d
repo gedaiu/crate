@@ -51,6 +51,8 @@ alias s = Spec!({
             .send(dataUpdate)
               .expectStatusCode(200)
               .expectHeader("Content-Type", "application/json")
+              .expectHeader("Access-Control-Allow-Origin", "*")
+              .expectHeader("Access-Control-Request-Method", "PUT")
               .end((Response response) => {
                 dataUpdate["site"]["_id"] = "10";
                 response.bodyJson.should.equal(dataUpdate);
@@ -67,6 +69,8 @@ alias s = Spec!({
           .put("/sites/10")
             .send(dataUpdate)
               .expectStatusCode(204)
+              .expectHeader("Access-Control-Allow-Origin", "*")
+              .expectHeader("Access-Control-Request-Method", "PUT")
               .end();
       });
 
@@ -80,6 +84,8 @@ alias s = Spec!({
           .put("/sites/10")
             .send(dataUpdate)
               .expectStatusCode(200)
+              .expectHeader("Access-Control-Allow-Origin", "*")
+              .expectHeader("Access-Control-Request-Method", "PUT")
               .end((Response response) => {
                 dataUpdate["site"]["_id"] = "10";
                 response.bodyJson.should.equal(dataUpdate);
@@ -96,6 +102,8 @@ alias s = Spec!({
           .put("/sites/10")
             .send(dataUpdate)
               .expectStatusCode(204)
+              .expectHeader("Access-Control-Allow-Origin", "*")
+              .expectHeader("Access-Control-Request-Method", "PUT")
               .end((Response response) => {
                 response.bodyString.should.equal("");
               });
@@ -111,6 +119,8 @@ alias s = Spec!({
           .put("/sites/10")
             .send(dataUpdate)
               .expectStatusCode(200)
+              .expectHeader("Access-Control-Allow-Origin", "*")
+              .expectHeader("Access-Control-Request-Method", "PUT")
               .end((Response response) => {
                 dataUpdate["site"]["_id"] = "10";
                 response.bodyJson.should.equal(dataUpdate);
@@ -131,6 +141,8 @@ alias s = Spec!({
           .put("/sites/10")
             .send(dataUpdate)
               .expectStatusCode(400)
+              .expectHeader("Access-Control-Allow-Origin", "*")
+              .expectHeader("Access-Control-Request-Method", "PUT")
               .expectHeader("Content-Type", "application/json; charset=UTF-8")
               .end((Response response) => {
                 response.bodyJson.should.equal(expectedError);
@@ -149,6 +161,8 @@ alias s = Spec!({
           .put("/sites/10")
             .send(dataUpdate)
               .expectStatusCode(200)
+              .expectHeader("Access-Control-Allow-Origin", "*")
+              .expectHeader("Access-Control-Request-Method", "PUT")
               .expectHeader("Content-Type", "application/vnd.api+json")
               .end((Response response) => {
                 dataUpdate["data"]["id"] = "10";
@@ -176,6 +190,8 @@ alias s = Spec!({
           .put("/sites/10")
             .send(dataUpdate)
               .expectStatusCode(400)
+              .expectHeader("Access-Control-Allow-Origin", "*")
+              .expectHeader("Access-Control-Request-Method", "PUT")
               .expectHeader("Content-Type", "application/json; charset=UTF-8")
               .end((Response response) => {
                 response.bodyJson.should.equal(expectedError);

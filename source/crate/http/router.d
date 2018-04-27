@@ -638,7 +638,6 @@ void checkRelationships(ref Json data, FieldDefinition definition) @safe {
   }
 }
 
-
 /// Call the next handler after the request data is deserialized
 auto requestFullDeserializationHandler(U, T)(void delegate(T, HTTPServerResponse) @safe next, CrateRule rule) {
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
@@ -874,7 +873,6 @@ auto requestListHandler(U, T)(T[] delegate() @safe next) if(!is(T == void)) {
   return &deserialize;
 }
 
-
 /// Handle a request that returns a list of elements before applying some filters
 auto requestFilteredListHandler(U, T)(const ICrateSelector delegate() @safe next, ICrateFilter[] filters...) if(!is(T == void)) {
   FieldDefinition definition = getFields!T;
@@ -967,6 +965,46 @@ auto requestActionHandler(Type, string actionName, T, U, V)(T delegate(string id
   return &deserialize;
 }
 
+
+class Cors {
+
+  private {
+    static Cors[string][URLRouter] cache;
+    HTTPMethod[] methods;
+  }
+
+  static Cors opCall(URLRouter router, string route) {
+    if(router !in cache || route !in cache[router]) {
+      auto cors = new Cors();
+      cache[router][route] = cors;
+
+      router.match(HTTPMethod.OPTIONS, route, &cors.addHeaders);
+    }
+
+    return cache[router][route];
+  }
+
+  void addHeaders(HTTPServerRequest request, HTTPServerResponse response) {
+      response.headers["Access-Control-Allow-Origin"] = "*";
+      response.headers["Access-Control-Request-Method"] = methods.map!(a => a.to!string).join(", ");
+      response.statusCode = 200;
+      response.writeVoidBody;
+  }
+
+  auto add(HTTPMethod method, void delegate(HTTPServerRequest, HTTPServerResponse) next) {
+    methods ~= method;
+
+    void cors(HTTPServerRequest request, HTTPServerResponse response) {
+      response.headers["Access-Control-Allow-Origin"] = "*";
+      response.headers["Access-Control-Request-Method"] = methods.map!(a => a.to!string).join(", ");
+
+      next(request, response);
+    }
+
+    return &cors;
+  }
+}
+
 ///
 URLRouter putJsonWith(Policy, Type, V)(URLRouter router, V function(Json) @safe handler) {
   return putJsonWith!(Policy, Type)(router, handler.toDelegate);
@@ -981,7 +1019,7 @@ URLRouter putJsonWith(Policy, Type, V)(URLRouter router, V delegate(Json) @safe 
 
   auto handler = requestDeserializedHandler!(Policy, Type)(next, rule);
 
-  return router.put(rule.request.path, requestErrorHandler(handler));
+  return router.addRule(rule, requestErrorHandler(handler));
 }
 
 /// Add a PUT route that parse the data according a Protocol
@@ -1003,7 +1041,7 @@ URLRouter putWith(Policy, Type)(URLRouter router, void delegate(Type object, HTT
 
   auto deserializationHandler = requestFullDeserializationHandler!(Policy, Type)(handler, rule);
 
-  return router.put(rule.request.path, requestErrorHandler(deserializationHandler));
+  return router.addRule(rule, requestErrorHandler(deserializationHandler));
 }
 
 /// ditto
@@ -1014,7 +1052,7 @@ URLRouter putWith(Policy, Type, V)(URLRouter router, V delegate(Type object) @sa
   enforce(rule.request.path.endsWith("/:id"), "Invalid `" ~ rule.request.path ~ "` route. It must end with `/:id`.");
   auto handler = requestDeserializationHandler!Policy(next, rule);
 
-  return router.put(rule.request.path, requestErrorHandler(handler));
+  return router.addRule(rule, requestErrorHandler(handler));
 }
 
 ///
@@ -1035,12 +1073,6 @@ URLRouter patchJsonWith(Policy, Type, V, U)(URLRouter router, V delegate(Json) @
 }
 
 
-
-
-
-
-
-
 /// Add a POST route that parse the data according a Protocol
 URLRouter postWith(Policy, T)(URLRouter router, void function(T object, HTTPServerResponse res) @safe handler) {
   return postWith!(Policy, T)(router, handler.toDelegate);
@@ -1058,7 +1090,7 @@ URLRouter postWith(Policy, Type)(URLRouter router, void delegate(Type object, HT
 
   auto deserializationHandler = requestFullDeserializationHandler!Policy(handler, rule);
 
-  return router.post(rule.request.path, requestErrorHandler(deserializationHandler));
+  return router.addRule(rule, requestErrorHandler(deserializationHandler));
 }
 
 /// ditto
@@ -1068,7 +1100,7 @@ URLRouter postWith(Policy, Type, V)(URLRouter router, V delegate(Type object) @s
 
   auto deserializationHandler = requestDeserializationHandler!Policy(handler, rule);
 
-  return router.post(rule.request.path, requestErrorHandler(deserializationHandler));
+  return router.addRule(rule, requestErrorHandler(deserializationHandler));
 }
 
 
@@ -1085,7 +1117,7 @@ URLRouter postJsonWith(Policy, Type, V)(URLRouter router, V delegate(Json object
 
   auto handler = requestDeserializedHandler!(Policy, Type)(next, rule);
 
-  return router.post(rule.request.path, requestErrorHandler(handler));
+  return router.addRule(rule, requestErrorHandler(handler));
 }
 
 
@@ -1108,7 +1140,7 @@ URLRouter deleteWith(Policy, Type)(URLRouter router, void delegate(string id, HT
   enforce(rule.request.path.endsWith("/:id"), "Invalid `" ~ rule.request.path ~ "` route. It must end with `/:id`.");
   auto idHandler = requestIdHandler(handler, rule);
 
-  return router.delete_(rule.request.path, requestErrorHandler(idHandler));
+  return router.addRule(rule, requestErrorHandler(idHandler));
 }
 /// ditto
 URLRouter deleteWith(Policy, Type)(URLRouter router, void delegate(string id) @safe handler) {
@@ -1175,10 +1207,13 @@ URLRouter getListWith(Policy, T)(URLRouter router, T[] function() @safe handler)
 }
 
 /// ditto
-URLRouter getListWith(Policy, T)(URLRouter router, string route, T[] delegate() @safe handler) if(!is(T == void)) {
-  auto listHandler = requestListHandler!(Policy, T)(handler);
+URLRouter getListWith(Policy, Type)(URLRouter router, string route, Type[] delegate() @safe handler) if(!is(Type == void)) {
+  FieldDefinition definition = getFields!Type;
+  auto rule = Policy.getList(definition);
 
-  return router.get(route, requestErrorHandler(listHandler));
+  auto listHandler = requestListHandler!(Policy, Type)(handler);
+
+  return router.addRule(rule, requestErrorHandler(listHandler));
 }
 
 /// ditto
@@ -1201,8 +1236,9 @@ URLRouter getListFilteredWith(Policy, Type)(URLRouter router, ICrateSelector del
 
 URLRouter addRule(T)(URLRouter router, CrateRule rule, T handler) {
   router.addApi(rule);
+  auto cors = Cors(router, rule.request.path);
 
-  return router.match(rule.request.method, rule.request.path, handler);
+  return router.match(rule.request.method, rule.request.path, cors.add(rule.request.method, handler));
 }
 
 /// Call a method from a structure by passing the body data
