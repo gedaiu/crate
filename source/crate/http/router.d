@@ -24,6 +24,8 @@ import std.traits;
 import std.stdio;
 import std.functional;
 import std.exception;
+import std.algorithm;
+import std.array;
 import std.range.interfaces;
 
 alias DefaultPolicy = crate.policy.restapi.CrateRestApiPolicy;
@@ -210,14 +212,14 @@ auto requestErrorHandler(void function(HTTPServerRequest, HTTPServerResponse) @s
 }
 
 auto requestErrorHandler(void delegate(HTTPServerRequest, HTTPServerResponse) @safe next) {
-  void check(HTTPServerRequest request, HTTPServerResponse response) @safe {
+  void check(HTTPServerRequest request, HTTPServerResponse response) @trusted {
     try {
       next(request, response);
     } catch(CrateException e) {
       response.writeJsonBody(e.toJson, e.statusCode);
     } catch (Exception e) {
+      debug e.writeln;
       Json data = e.toJson;
-      version(unittest) {} else debug stderr.writeln(e);
       response.writeJsonBody(data, data["errors"][0]["status"].to!int);
     }
   }
@@ -965,6 +967,13 @@ auto requestActionHandler(Type, string actionName, T, U, V)(T delegate(string id
   return &deserialize;
 }
 
+void addHeaderValue(ref HTTPServerResponse res, string name, string[] values) {
+  if(name in res.headers) {
+    values = res.headers[name].split(",") ~ values;
+  }
+
+  res.headers[name] = values.map!(a => a.strip).uniq.filter!(a => a != "").join(", ");
+}
 
 class Cors {
 
@@ -978,25 +987,28 @@ class Cors {
       auto cors = new Cors();
       cache[router][route] = cors;
 
-      router.match(HTTPMethod.OPTIONS, route, &cors.addHeaders);
+      router.match(HTTPMethod.OPTIONS, route, cors.add(HTTPMethod.OPTIONS));
     }
 
     return cache[router][route];
   }
 
-  void addHeaders(HTTPServerRequest request, HTTPServerResponse response) {
-      response.headers["Access-Control-Allow-Origin"] = "*";
-      response.headers["Access-Control-Request-Method"] = methods.map!(a => a.to!string).join(", ");
-      response.statusCode = 200;
-      response.writeVoidBody;
+  void nothing(HTTPServerRequest request, HTTPServerResponse response) {
+      response.statusCode = 201;
+      response.writeBody("");
   }
 
-  auto add(HTTPMethod method, void delegate(HTTPServerRequest, HTTPServerResponse) next) {
+  auto add(HTTPMethod method, void delegate(HTTPServerRequest, HTTPServerResponse) next = null) {
+    if(next is null) {
+      next = &this.nothing;
+    }
+
     methods ~= method;
 
     void cors(HTTPServerRequest request, HTTPServerResponse response) {
-      response.headers["Access-Control-Allow-Origin"] = "*";
-      response.headers["Access-Control-Request-Method"] = methods.map!(a => a.to!string).join(", ");
+      response.addHeaderValue("Access-Control-Allow-Origin", ["*"]);
+      response.addHeaderValue("Access-Control-Allow-Methods", methods.map!(a => a.to!string).array);
+      response.addHeaderValue("Access-Control-Allow-Headers", ["Content-Type"]);
 
       next(request, response);
     }

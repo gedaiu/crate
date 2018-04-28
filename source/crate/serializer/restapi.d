@@ -120,11 +120,13 @@ class CrateRestApiSerializer : CrateSerializer
   {
     auto name = singular(definition);
 
+    enforce!CrateValidationException(data.type == Json.Type.object,
+        "Expected to get a Json object instead of `" ~ data.type.to!string ~ "`");
     enforce!CrateValidationException(name in data,
         "object type expected to be `" ~ name ~ "`");
 
     foreach(field; definition.fields) {
-      if(field.isId) {
+      if(field.isId && id != "") {
         data[name][field.name] = id;
       }
     }

@@ -43,7 +43,6 @@ URLRouter addApi(URLRouter router, CrateRule rule) {
   return router;
 }
 
-
 OpenApi toOpenApi(URLRouter router) {
   OpenApi openApi;
 
