@@ -122,7 +122,7 @@ version (unittest)
   import vibe.http.router;
 
   struct Item {
-    string _id = "item_id";
+    @optional string _id = "item_id";
     Child child;
     CrateFile file = new CrateFile;
   }
@@ -140,7 +140,6 @@ unittest {
 
   auto router = new URLRouter();
   auto baseCrate = new MemoryCrate!Item;
-
   router
     .crateSetup
       .add(baseCrate)

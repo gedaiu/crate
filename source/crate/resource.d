@@ -68,21 +68,21 @@ version(unittest) {
 
   struct ResourceModel
   {
-    string _id = "1";
+    @optional string _id = "1";
     string name = "test";
     TestResource resource = new TestResource;
   }
 
   struct RelationModel
   {
-    string _id = "1";
+    @optional string _id = "1";
     string name = "test";
     ResourceEmbeded relation;
   }
 
   struct ArrayModel
   {
-    string _id = "1";
+    @optional string _id = "1";
     string name = "test";
     ResourceEmbeded[] relation = [ ResourceEmbeded() ];
   }

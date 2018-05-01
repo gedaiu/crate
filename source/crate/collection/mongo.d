@@ -607,6 +607,6 @@ unittest
   request(router)
     .get("/testmodels")
     .expectHeader("Access-Control-Allow-Origin", "*")
-    .expectHeader("Access-Control-Request-Method", "POST, GET")
+    .expectHeader("Access-Control-Allow-Methods", "OPTIONS, POST, GET")
     .end();
 }

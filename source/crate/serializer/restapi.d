@@ -126,8 +126,12 @@ class CrateRestApiSerializer : CrateSerializer
         "object type expected to be `" ~ name ~ "`");
 
     foreach(field; definition.fields) {
-      if(field.isId && id != "") {
-        data[name][field.name] = id;
+      if(field.isId) {
+        if(id != "") {
+          data[name][field.name] = id;
+        } else {
+          data[name][field.name] = null;
+        }
       }
     }
 

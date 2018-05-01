@@ -729,9 +729,7 @@ auto requestDeserializedHandler(Policy, Type, V)(V delegate(Json) @safe setItem,
     auto rawData = rule.request.serializer.normalise(id, request.json);
 
     checkFields(rawData, rule.request.serializer.definition);
-
     Type value = rawData.deserializeJson!Type;
-    
     auto clientData = value.serializeToJson;
 
     static if(is(V == void)) {
@@ -758,7 +756,6 @@ auto requestDeserializedHandler(Policy, Type, V, U)(V delegate(Json) @safe setIt
 
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @trusted {
     string id;
-
     id = request.params["id"];
 
     Json oldData = getItem(id).exec.front;
@@ -994,7 +991,7 @@ class Cors {
   }
 
   void nothing(HTTPServerRequest request, HTTPServerResponse response) {
-      response.statusCode = 201;
+      response.statusCode = 200;
       response.writeBody("");
   }
 

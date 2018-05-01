@@ -38,7 +38,7 @@ alias s = Spec!({
             .send(dataUpdate)
               .expectStatusCode(200)
               .expectHeader("Access-Control-Allow-Origin", "*")
-              .expectHeader("Access-Control-Request-Method", "POST")
+              .expectHeader("Access-Control-Allow-Methods", "OPTIONS, POST")
               .end;
       });
     });
