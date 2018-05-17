@@ -9,7 +9,9 @@
   "targetType": "library",
   "dependencies": {
     "open-api": "~>0.1.0",
-    "vibe-d": "~>0.8.3",
+    "vibe-d":  {
+      "path": "../vibe.d"
+    },
     "vibe-auth": "~>0.1.5",
     "stdx-allocator": "2.77.0"
   },
@@ -28,9 +30,11 @@
         "tests"
       ],
       "dependencies": {
-        "vibe-d": "~>0.8.3",
+        "vibe-d": {
+          "path": "../vibe.d"
+        },
         "fluent-asserts": "~>0.11.3",
-        "trial:lifecycle": "~>0.7.0-alpha.7",
+        "trial:lifecycle": "~>0.7.0-alpha.9",
         "stdx-allocator": "2.77.0"
       },
       "versions": [

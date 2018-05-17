@@ -115,6 +115,8 @@ class CrateRouter(RouterPolicy) {
 
   CrateRouter add(Policy, Type)(Crate!Type crate, ICrateFilter[] filters ...)
   {
+    crateGetters[Type.stringof] = &crate.getItem;
+
     router.putJsonWith!(Policy, Type)(&crate.updateItem);
     router.postJsonWith!(Policy, Type)(&crate.addItem);
     router.patchJsonWith!(Policy, Type)(&crate.updateItem, &crate.getItem);
@@ -576,11 +578,39 @@ import crate.serializer.restapi;
 import crate.serializer.jsonapi;
 
 
-void checkFields(Json data, FieldDefinition definition, string prefix = "") @safe {
+void checkFields(ref Json data, FieldDefinition definition, string prefix = "") @trusted {
+  
+  if(definition.isRelation && data.type == Json.Type.string) {
+    auto type = definition.originalType;
+
+    try {
+      auto relation = crateGetters[type](data.to!string).exec;
+      enforce!CrateValidationException(!relation.empty, "`" ~ prefix ~ "` is not a valid `" ~ type ~ "` relation.");
+      data = relation.front;
+
+      checkFields(data, definition, prefix);
+    } catch (CrateNotFoundException e) {
+      throw new CrateValidationException(e.msg, e.file, e.line, e);
+    }
+
+
+    return;
+  }
+
+  if(definition.isArray) {
+    enforce!CrateValidationException(data.type == Json.Type.array,
+      "`" ~ prefix ~ definition.name ~ "` should be an array instead of `" ~ data.type.to!string ~ "`.");
+
+    foreach(size_t i, ref value; data) {
+      checkFields(value, definition.fields[0],  prefix ~ "[" ~ i.to!string ~ "]");
+    }
+
+    return;
+  }
+
   if(prefix != "") {
     prefix ~= ".";
   }
-
 
   foreach (field; definition.fields) {
     bool isSet = data[field.name].type !is Json.Type.undefined;
@@ -593,7 +623,19 @@ void checkFields(Json data, FieldDefinition definition, string prefix = "") @saf
     }
 
     if(field.isArray) {
-      /// not implemented
+      checkFields(data[field.name], field, prefix ~ field.name);
+
+      continue;
+    }
+
+    if(field.isRelation) {
+      bool isValid = data[field.name].type != Json.Type.object && data[field.name].type != Json.Type.array;
+      
+      auto type = field.originalType;
+      enforce!CrateValidationException(isValid, "`" ~ prefix ~ field.name ~ "` is a relation and it should contain an id.");
+      enforce!CrateValidationException(type in crateGetters, "`" ~ prefix ~ field.name ~ "` can not be fetched because there is no `" ~ type ~ "` crate getter defined.");
+
+      checkFields(data[field.name], field,  prefix ~ field.name);
       continue;
     }
 
@@ -729,7 +771,9 @@ auto requestDeserializedHandler(Policy, Type, V)(V delegate(Json) @safe setItem,
     auto rawData = rule.request.serializer.normalise(id, request.json);
 
     checkFields(rawData, rule.request.serializer.definition);
+
     Type value = rawData.deserializeJson!Type;
+
     auto clientData = value.serializeToJson;
 
     static if(is(V == void)) {

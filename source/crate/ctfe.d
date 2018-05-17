@@ -375,11 +375,11 @@ template Describe(Prototype, alias FIELD, alias attributes) {
   }
   else
   {
-    alias Describe = getFields!(Type, FieldName!(FIELD, Prototype), true);
+    alias Describe = getFields!(Type, FieldName!(FIELD, Prototype), true, attributes);
   }
 }
 
-template getFields(Prototype, alias name = "", alias isNested = false) if(isAggregateType!Prototype)
+template getFields(Prototype, alias name = "", alias isNested = false, alias attributes = []) if(isAggregateType!Prototype)
 {
   /**
    * Get all the metods
@@ -424,6 +424,8 @@ template getFields(Prototype, alias name = "", alias isNested = false) if(isAggr
     enum isRelation = false;
   }
 
+  enum isOptional = (cast(string[]) attributes).canFind("optional()", "optional") == 1;
+
   enum getFields = FieldDefinition(
     name,                //name
     name,                //originalName
@@ -433,7 +435,7 @@ template getFields(Prototype, alias name = "", alias isNested = false) if(isAggr
     false,               //isBasicType
     isRelation,          //isRelation
     false,               //isId
-    false,               //isOptional
+    isOptional,          //isOptional
     false,               //isArray
     fields,              //fields
     Singular!Prototype,  //singular

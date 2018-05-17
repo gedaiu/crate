@@ -320,6 +320,10 @@ struct ModelDefinition
   FieldDefinition[string] fields;
 }
 
+alias CrateGetter = ICrateSelector delegate(string) @safe;
+
+CrateGetter[string] crateGetters;
+
 interface Crate(Type)
 {
   @safe:
