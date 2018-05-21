@@ -4,7 +4,6 @@ import crate.error;
 import crate.base;
 import crate.ctfe;
 import crate.collection.proxy;
-import crate.http.methodcollection;
 import crate.http.action.model;
 import crate.http.action.crate;
 import crate.generator.openapi;
