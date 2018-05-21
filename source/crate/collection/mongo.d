@@ -348,7 +348,7 @@ unittest {
 unittest
 {
   import vibe.db.mongo.mongo : connectMongoDB;
-  import crate.policy.jsonapi : JsonApi;
+  import crate.api.json.policy : JsonApi;
 
   auto client = connectMongoDB("127.0.0.1");
   auto collection = client.getCollection("test.model");
@@ -384,7 +384,7 @@ unittest
 unittest
 {
   import vibe.db.mongo.mongo : connectMongoDB;
-  import crate.policy.jsonapi : JsonApi;
+  import crate.api.json.policy : JsonApi;
 
   auto client = connectMongoDB("127.0.0.1");
   auto collection = client.getCollection("test.model");
@@ -419,7 +419,7 @@ unittest
 unittest
 {
   import vibe.db.mongo.mongo : connectMongoDB;
-  import crate.policy.jsonapi : JsonApi;
+  import crate.api.json.policy : JsonApi;
 
   auto client = connectMongoDB("127.0.0.1");
   auto collection = client.getCollection("test.model");
@@ -451,7 +451,7 @@ unittest
 unittest
 {
   import vibe.db.mongo.mongo : connectMongoDB;
-  import crate.policy.jsonapi : JsonApi;
+  import crate.api.json.policy : JsonApi;
 
   auto client = connectMongoDB("127.0.0.1");
   auto collection = client.getCollection("test.model");
@@ -493,7 +493,7 @@ unittest
 unittest
 {
   import vibe.db.mongo.mongo : connectMongoDB;
-  import crate.policy.jsonapi : JsonApi;
+  import crate.api.json.policy : JsonApi;
 
   bool actionCalled;
 
@@ -520,7 +520,7 @@ unittest
 unittest
 {
   import vibe.db.mongo.mongo : connectMongoDB;
-  import crate.policy.jsonapi : JsonApi;
+  import crate.api.json.policy : JsonApi;
 
   isTestActionCalled = false;
 
@@ -554,7 +554,7 @@ unittest
 unittest
 {
   import vibe.db.mongo.mongo : connectMongoDB;
-  import crate.policy.jsonapi : JsonApi;
+  import crate.api.json.policy : JsonApi;
 
   isTestActionCalled = false;
 

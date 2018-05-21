@@ -91,7 +91,7 @@ version(unittest) {
 @("Access a model with resources")
 unittest {
   import vibe.http.router;
-  import crate.policy.restapi;
+  import crate.api.rest.policy;
   import crate.http.router;
   import std.stdio;
 
@@ -157,7 +157,7 @@ unittest {
 @("Access a relation with resources")
 unittest {
   import vibe.http.router;
-  import crate.policy.restapi;
+  import crate.api.rest.policy;
   import crate.http.router;
   import std.stdio;
 
@@ -205,7 +205,7 @@ unittest {
 @("Access resources from an relation array")
 unittest {
   import vibe.http.router;
-  import crate.policy.restapi;
+  import crate.api.rest.policy;
   import crate.http.router;
   import std.stdio;
 

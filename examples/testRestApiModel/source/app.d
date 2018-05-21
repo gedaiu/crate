@@ -4,7 +4,7 @@ import crate.mongo;
 import crate.router;
 import crate.generator.openapi;
 import crate.generator.ember;
-import crate.policy.restapi;
+import crate.api.rest.policy;
 import std.stdio;
 
 struct Comment {

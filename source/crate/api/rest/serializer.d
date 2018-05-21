@@ -1,4 +1,4 @@
-module crate.serializer.restapi;
+module crate.api.rest.serializer;
 
 import crate.base, crate.ctfe, crate.generator.openapi;
 import crate.error;

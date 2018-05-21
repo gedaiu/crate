@@ -1,4 +1,4 @@
-module crate.serializer.jsonapi;
+module crate.api.json.serializer;
 
 import crate.base, crate.ctfe;
 import crate.error;

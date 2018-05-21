@@ -15,8 +15,8 @@ import vibe.http.router;
 
 import crate.http.router;
 import crate.http.handlers.put;
-import crate.policy.jsonapi;
-import crate.policy.restapi;
+import crate.api.json.policy;
+import crate.api.rest.policy;
 
 Site putSite(Site site) @safe {
   return site;

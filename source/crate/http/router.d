@@ -9,9 +9,6 @@ import crate.http.action.model;
 import crate.http.action.crate;
 import crate.generator.openapi;
 
-import crate.policy.jsonapi;
-import crate.policy.restapi;
-
 import vibe.data.json;
 import vibe.http.router;
 import vibe.stream.operations;
@@ -36,7 +33,8 @@ import crate.http.handlers.get_list;
 import crate.http.handlers.action;
 import crate.http.handlers.resource;
 
-alias DefaultPolicy = crate.policy.restapi.CrateRestApiPolicy;
+import crate.api.rest.policy;
+alias DefaultPolicy = crate.api.rest.policy.CrateRestApiPolicy;
 
 string basePath(T)(string name, const CrateConfig!T config)
 {
@@ -44,12 +42,12 @@ string basePath(T)(string name, const CrateConfig!T config)
   {
     if (name == "Json API")
     {
-      return crate.policy.jsonapi.basePath(config);
+      return crate.api.json.policy.basePath(config);
     }
 
     if (name == "Rest API")
     {
-      return crate.policy.restapi.basePath(config);
+      return crate.api.rest.policy.basePath(config);
     }
   }
 
@@ -321,7 +319,7 @@ unittest
 }
 
 version(unittest) {
-  import crate.policy.restapi;
+  import crate.api.rest.policy;
   import std.stdio;
 
   auto testRouter() {

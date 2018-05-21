@@ -1,7 +1,7 @@
-module crate.policy.restapi;
+module crate.api.rest.policy;
 
 import crate.base;
-import crate.serializer.restapi;
+import crate.api.rest.serializer;
 import crate.routing.restapi;
 import crate.generator.openapi;
 import crate.ctfe;

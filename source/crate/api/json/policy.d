@@ -1,7 +1,7 @@
-module crate.policy.jsonapi;
+module crate.api.json.policy;
 
 import crate.base;
-import crate.serializer.jsonapi;
+import crate.api.json.serializer;
 import crate.routing.jsonapi;
 import crate.generator.openapi;
 import crate.ctfe;

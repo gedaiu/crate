@@ -15,8 +15,8 @@ import vibe.http.router;
 
 import crate.http.router;
 import crate.http.handlers.post;
-import crate.policy.jsonapi;
-import crate.policy.restapi;
+import crate.api.json.policy;
+import crate.api.rest.policy;
 
 import tests.crate.http.router.mocks;
 

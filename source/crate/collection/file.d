@@ -135,7 +135,7 @@ version (unittest)
 
 @("the user should be able to upload a file as a base64 data")
 unittest {
-  import crate.policy.restapi;
+  import crate.api.rest.policy;
   import std.stdio;
 
   auto router = new URLRouter();
@@ -195,7 +195,7 @@ unittest {
 
 @("the user should be able to download a file")
 unittest {
-  import crate.policy.restapi;
+  import crate.api.rest.policy;
   import std.stdio;
 
   "files".mkdirRecurse;

@@ -3,7 +3,7 @@ module crate.generator.openapi;
 import vibe.http.router;
 import crate.base;
 import crate.http.router;
-import crate.policy.jsonapi;
+import crate.api.json.policy;
 
 import openapi.definitions;
 import std.stdio, std.string, std.conv, std.traits;

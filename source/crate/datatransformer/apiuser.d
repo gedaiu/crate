@@ -170,7 +170,7 @@ version(unittest) {
   import fluentasserts.vibe.json;
   import fluent.asserts;
   import crate.http.router;
-  import crate.policy.restapi;
+  import crate.api.rest.policy;
   import crate.base;
 
   ApiUserTransformer userCrate;
