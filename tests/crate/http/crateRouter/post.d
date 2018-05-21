@@ -17,7 +17,7 @@ import crate.api.json.policy;
 import crate.api.rest.policy;
 import crate.collection.memory;
 
-import tests.crate.http.router.mocks;
+import tests.crate.http.crateRouter.mocks;
 
 struct ChildValue {
   @optional string _id;
@@ -39,6 +39,53 @@ alias s = Spec!({
     describe("with a POST REST Api request", {
       URLRouter router;
       Json data;
+
+      describe("When adding new data", {
+        it("should fail when the item is invalid", {
+          auto data = `{
+            "site": {
+              "latitude": "0",
+              "longitude": "0"
+            }
+          }`.parseJsonString;
+
+          auto expected = "{
+            \"errors\": [{ 
+              \"description\": \"`position` is required.\", 
+              \"title\": \"Validation error\", 
+              \"status\": 400
+            }]
+          }".parseJsonString;
+
+          testRouter
+            .post("/sites")
+              .send(data)
+                .expectStatusCode(400)
+                .end((Response response) => {
+                  response.bodyJson.should.equal(expected);
+                });
+        });
+
+        it("should return a new id", {
+          auto data = `{
+            "site": {
+              "position": {
+                "type": "Point",
+                "coordinates": [23, 21]
+              }
+            }
+          }`.parseJsonString;
+
+          testRouter
+            .post("/sites")
+              .send(data)
+                .expectStatusCode(201)
+                .end((Response response) => {
+                  response.bodyJson["site"]["_id"].to!string.should.equal("2");
+                });
+        });
+      });
+
 
       describe("for a structure with a relation", {
         before({
@@ -124,6 +171,8 @@ alias s = Spec!({
                 });
         });
       });
+
+      
     });
   });
 });

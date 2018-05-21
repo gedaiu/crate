@@ -2,6 +2,9 @@ module tests.crate.http.router.mocks;
 
 import vibe.data.json;
 
+public import tests.crate.http.mocks;
+
+
 static immutable restSiteFixture = `{
   "site": {
     "position": {
