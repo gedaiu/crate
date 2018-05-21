@@ -13,6 +13,8 @@ import vibe.data.json;
 import vibe.http.router;
 
 import crate.http.router;
+import crate.http.handlers.post;
+
 import crate.policy.jsonapi;
 import crate.policy.restapi;
 

@@ -6,6 +6,7 @@ import std.string, std.traits, std.conv, std.typecons;
 import std.algorithm, std.range, std.string;
 import std.range.interfaces;
 import vibe.http.server;
+import vibe.http.router;
 
 import crate.ctfe;
 import vibe.data.bson;
@@ -107,10 +108,22 @@ struct CrateRequest {
   Schema schema;
 }
 
+/// Crate rules definitions
 struct CrateRule {
   CrateRequest request;
   CrateResponse response;
   Schema[string] schemas;
+}
+
+/// Apply a rule to a URLRouter
+URLRouter addRule(T)(URLRouter router, CrateRule rule, T handler) {
+  import crate.generator.openapi : addApi;
+  import crate.http.cors : Cors;
+
+  router.addApi(rule);
+  auto cors = Cors(router, rule.request.path);
+
+  return router.match(rule.request.method, rule.request.path, cors.add(rule.request.method, handler));
 }
 
 /// Takes a nested Json object and moves the values to a Json assoc array where the key 

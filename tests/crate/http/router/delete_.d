@@ -8,11 +8,11 @@ import trial.discovery.spec;
 import fluent.asserts;
 import fluentasserts.vibe.request;
 
-
 import vibe.data.json;
 import vibe.http.router;
 
 import crate.http.router;
+import crate.http.handlers.delete_;
 import crate.policy.jsonapi;
 import crate.policy.restapi;
 
