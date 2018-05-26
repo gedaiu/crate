@@ -11,6 +11,7 @@ import crate.generator.openapi;
 import vibe.data.json;
 import vibe.http.router;
 import vibe.stream.operations;
+import vibeauth.router.oauth;
 
 import std.conv;
 import std.string;
@@ -31,6 +32,7 @@ import crate.http.handlers.delete_;
 import crate.http.handlers.get_list;
 import crate.http.handlers.action;
 import crate.http.handlers.resource;
+
 
 import crate.api.rest.policy;
 alias DefaultPolicy = crate.api.rest.policy.CrateRestApiPolicy;
@@ -79,6 +81,12 @@ class CrateRouter(RouterPolicy) {
     if(router !in proxyCollection) {
       proxyCollection[router] = new CrateCollection();
     }
+  }
+
+  CrateRouter enable(OAuth2 auth) {
+    router.any("*", &auth.tokenHandlers);
+
+    return this;
   }
 
   CrateRouter enableResource(Type, string resourcePath)(Crate!Type crate)
