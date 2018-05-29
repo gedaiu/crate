@@ -14,9 +14,7 @@ import vibe.stream.operations;
 import vibeauth.router.oauth;
 
 import std.conv;
-import std.string;
 import std.traits;
-import std.stdio;
 import std.functional;
 import std.exception;
 import std.algorithm;
@@ -121,13 +119,12 @@ class CrateRouter(RouterPolicy) {
     return mimeList.keys;
   }
 
-  CrateRouter add(T)(Crate!T crate, ICrateFilter[] filters ...)
+  CrateRouter add(Type)(Crate!Type crate, ICrateFilter[] filters = [])
   {
     return add!RouterPolicy(crate, filters);
   }
 
-  CrateRouter add(Policy, Type)(Crate!Type crate, ICrateFilter[] filters ...)
-  {
+  CrateRouter add(Policy, Type)(Crate!Type crate, ICrateFilter[] filters = []) {
     crateGetters[Type.stringof] = &crate.getItem;
 
     router.putJsonWith!(Policy, Type)(&crate.updateItem);
@@ -140,84 +137,47 @@ class CrateRouter(RouterPolicy) {
     return this;
   }
 
-  private
+  CrateRouter add(Type, T)(Crate!Type crate, T middleware, ICrateFilter[] filters = [])
   {
-    void bindRoutes(T)(CrateRoutes routes, const CratePolicy policy, Crate!T crate, ICrateFilter[] filters)
-    {
-      auto methodCollection = new MethodCollection!T(policy, proxyCollection[router], crate.config, filters);
+    return add!RouterPolicy(crate, middleware, filters);
+  }
 
-      if (crate.config.getList || crate.config.addItem)
-      {
-        router.match(HTTPMethod.OPTIONS, basePath(policy.name, crate.config),
-            checkError(policy, &methodCollection.optionsList));
-      }
+  CrateRouter add(Policy, Type, T)(Crate!Type crate, T middleware, ICrateFilter[] filters = []) {
+    CrateRule rule;
+    FieldDefinition definition;
 
-      if (crate.config.getItem || crate.config.updateItem || crate.config.deleteItem)
-      {
-        router.match(HTTPMethod.OPTIONS, basePath(policy.name, crate.config) ~ "/:id",
-            checkError(policy, &methodCollection.optionsItem));
-      }
+    definition = getFields!Type;
 
-      foreach (string path, methods; routes.paths)
-        foreach (method, responses; methods)
-          foreach (response, pathDefinition; responses) {
-            addRoute(policy, path, methodCollection, pathDefinition);
-          }
+    static if(__traits(hasMember, T, "getList")) {
+      rule = Policy.getList(definition);
+      router.match(rule.request.method, rule.request.path, &middleware.getList);
     }
 
-    void addRoute(T)(const CratePolicy policy, string path, MethodCollection!T methodCollection, PathDefinition definition)
-    {
-      switch (definition.operation)
-      {
-      case CrateOperation.getList:
-        router.get(path, checkError(policy, &methodCollection.getList));
-        break;
-
-      case CrateOperation.getItem:
-        router.get(path, checkError(policy, &methodCollection.getItem));
-        break;
-
-      case CrateOperation.addItem:
-        router.post(path, checkError(policy, &methodCollection.postItem));
-        break;
-
-      case CrateOperation.deleteItem:
-        router.delete_(path,
-            checkError(policy, &methodCollection.deleteItem));
-        break;
-
-      case CrateOperation.updateItem:
-        router.patch(path,
-            checkError(policy, &methodCollection.updateItem));
-        break;
-
-      case CrateOperation.replaceItem:
-        router.put(path,
-            checkError(policy, &methodCollection.replaceItem));
-        break;
-
-      default:
-        throw new Exception("Operation not supported: " ~ definition.operation.to!string);
-      }
+    static if(__traits(hasMember, T, "getItem")) {
+      rule = Policy.getItem(definition);
+      router.match(rule.request.method, rule.request.path, &middleware.getItem);
     }
 
-    auto checkError(T)(const CratePolicy policy, T func)
-    {
-      void check(HTTPServerRequest request, HTTPServerResponse response)
-      {
-        try
-        {
-          func(request, response);
-        }
-        catch (Exception e)
-        {
-          Json data = e.toJson;
-          version(unittest) {} else debug stderr.writeln(e);
-          response.writeJsonBody(data, data["errors"][0]["status"].to!int, policy.mime);
-        }
-      }
-
-      return &check;
+    static if(__traits(hasMember, T, "create")) {
+      rule = Policy.create(definition);
+      router.match(rule.request.method, rule.request.path, &middleware.create);
     }
+
+    static if(__traits(hasMember, T, "replace")) {
+      rule = Policy.replace(definition);
+      router.match(rule.request.method, rule.request.path, &middleware.replace);
+    }
+
+    static if(__traits(hasMember, T, "patch")) {
+      rule = Policy.patch(definition);
+      router.match(rule.request.method, rule.request.path, &middleware.patch);
+    }
+
+    static if(__traits(hasMember, T, "delete_")) {
+      rule = Policy.delete_(definition);
+      router.match(rule.request.method, rule.request.path, &middleware.delete_);
+    }
+
+    return add!Policy(crate, filters);
   }
 }

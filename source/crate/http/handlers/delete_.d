@@ -32,6 +32,7 @@ URLRouter deleteWith(Policy, Type)(URLRouter router, void delegate(string id, HT
 
   return router.addRule(rule, requestErrorHandler(idHandler));
 }
+
 /// ditto
 URLRouter deleteWith(Policy, Type)(URLRouter router, void delegate(string id) @safe handler) {
   FieldDefinition definition = getFields!Type;

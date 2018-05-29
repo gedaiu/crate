@@ -27,7 +27,7 @@ alias s = Spec!({
 
           router
             .crateSetup
-              .add(baseCrate, new TypeFilter);
+              .add(baseCrate, [ new TypeFilter ]);
 
           Json data1 = `{
               "position": {

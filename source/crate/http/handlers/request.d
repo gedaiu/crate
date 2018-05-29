@@ -289,7 +289,11 @@ auto requestDeserializedHandler(Policy, Type, V, U)(V delegate(Json) @safe setIt
     string id;
     id = request.params["id"];
 
-    Json oldData = getItem(id).exec.front;
+    auto rangeData = getItem(id).exec;
+
+    enforce!CrateNotFoundException(!rangeData.empty, "Item `" ~ id ~ "` not found.");
+
+    Json oldData = rangeData.front;
     auto clientData = mix(oldData, rule.request.serializer.normalise(id, request.json)).deserializeJson!Type.serializeToJson;
 
     static if(is(V == void)) {

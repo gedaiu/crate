@@ -33,7 +33,7 @@ auto queryRouter() {
 
   router
     .crateSetup
-      .add(baseCrate, new SomeTestCrateFilter);
+      .add(baseCrate, [ new SomeTestCrateFilter ]);
 
   Json data1 = `{
       "position": {
