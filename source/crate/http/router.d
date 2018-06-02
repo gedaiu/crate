@@ -143,10 +143,42 @@ class CrateRouter(RouterPolicy) {
   }
 
   CrateRouter add(Policy, Type, T)(Crate!Type crate, T middleware, ICrateFilter[] filters = []) {
+    static if(isArray!T) {
+      foreach(item; middleware) {
+        addOneMiddleware!(Policy, Type)(item);
+      }
+    } else {
+      addOneMiddleware!(Policy, Type)(middleware);
+    }
+
+    return add!Policy(crate, filters);
+  }
+
+  private void addOneMiddleware(Policy, Type, T)(T middleware) {
     CrateRule rule;
     FieldDefinition definition;
 
     definition = getFields!Type;
+
+    static if(__traits(hasMember, T, "any")) {
+      rule = Policy.getList(definition);
+      router.match(rule.request.method, rule.request.path, &middleware.any);
+   
+      rule = Policy.getItem(definition);
+      router.match(rule.request.method, rule.request.path, &middleware.any);
+
+      rule = Policy.create(definition);
+      router.match(rule.request.method, rule.request.path, &middleware.any);
+
+      rule = Policy.replace(definition);
+      router.match(rule.request.method, rule.request.path, &middleware.any);
+
+      rule = Policy.patch(definition);
+      router.match(rule.request.method, rule.request.path, &middleware.any);
+
+      rule = Policy.delete_(definition);
+      router.match(rule.request.method, rule.request.path, &middleware.any);
+    }
 
     static if(__traits(hasMember, T, "getList")) {
       rule = Policy.getList(definition);
@@ -177,7 +209,5 @@ class CrateRouter(RouterPolicy) {
       rule = Policy.delete_(definition);
       router.match(rule.request.method, rule.request.path, &middleware.delete_);
     }
-
-    return add!Policy(crate, filters);
   }
 }

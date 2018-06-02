@@ -34,6 +34,14 @@ class MongoCrateRange : ICrateSelector
       return this;
     }
 
+    ICrateSelector whereAny(string field, string[] values) {
+      assert(false, "not implemented");
+    }
+
+    ICrateSelector whereAny(string field, ObjectId[] ids) {
+      assert(false, "not implemented");
+    }
+
     ICrateSelector whereArrayContains(string field, string value) {
       query[field] = Json.emptyObject;
       query[field]["$elemMatch"] = Json.emptyObject;

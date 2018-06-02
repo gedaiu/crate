@@ -51,7 +51,6 @@ private {
   }
 }
 
-
 struct User {
   string _id;
 
@@ -213,7 +212,7 @@ unittest
   userCrate.config.plural.should.equal("users");
 }
 
-@("it should use custom names")
+@("it should allow model name customization")
 unittest
 {
   CrateConfig!UserData config;
@@ -333,7 +332,22 @@ unittest
       });
 }
 
-@("it should search users by a term")
+
+/// Filter designed to work with the getList operation. It will filter all the users
+/// that have the "term" parameter in the email
+class UserTermFilter : ICrateFilter {
+
+  /// Call the "like" method on the crate selector
+  ICrateSelector apply(HTTPServerRequest request, ICrateSelector selector) {
+    if("term" in request.query) {
+      selector = selector.like("email", request.query["term"]);
+    }
+
+    return selector;
+  }
+}
+
+/// it should search users by a term
 unittest
 {
   auto router = getTestRoute;
@@ -360,14 +374,4 @@ unittest
         user["name"].to!string.should.equal("test");
         user["username"].to!string.should.equal("test_user");
       });
-}
-
-class UserTermFilter : ICrateFilter {
-  ICrateSelector apply(HTTPServerRequest request, ICrateSelector selector) {
-    if("term" in request.query) {
-      selector = selector.like("email", request.query["term"]);
-    }
-
-    return selector;
-  }
 }

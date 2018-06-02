@@ -10,7 +10,7 @@
   "dependencies": {
     "open-api": "~>0.1.0",
     "vibe-d": "~>0.8.4-rc.1",
-    "vibe-auth": "~>0.2.0",
+    "vibe-auth": "~>0.2.2",
     "stdx-allocator": "2.77.0"
   },
   "configurations": [

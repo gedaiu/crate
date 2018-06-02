@@ -24,7 +24,18 @@ struct ObjectId {
   }
 
   static ObjectId fromString(string value) @safe {
-    return ObjectId(Bson(BsonObjectID.fromString(value)));
+    import std.stdio;
+    static immutable fill = "000000000000000000000000";
+
+    if(value.length > 2 && value[0] == '"' && value[$-1..$] == `"`) {
+      value = value[1..$-1];
+    }
+
+    if(value.length < 24) {
+      value = fill[0..$-value.length] ~ value;
+    }
+
+      return ObjectId(Bson(BsonObjectID.fromString(value)));
   }
 
   string toString() @safe const {
@@ -60,7 +71,9 @@ struct ObjectId {
       return ObjectId(Bson.fromJson(Json.undefined));
     }
 
-    return ObjectId.fromString(src.get!string);
+    string strId = src.get!string;
+
+    return ObjectId.fromString(strId);
   }
 }
 
@@ -85,6 +98,8 @@ interface ICrateSelector
 {
   @safe:
     ICrateSelector where(string field, string value);
+    ICrateSelector whereAny(string field, string[] values);
+    ICrateSelector whereAny(string field, ObjectId[] ids);
     ICrateSelector whereArrayContains(string field, string value);
     ICrateSelector whereArrayFieldContains(string arrayField, string field, string value);
     ICrateSelector like(string field, string value);
@@ -226,6 +241,22 @@ class CrateRange : ICrateSelector
           .inputRangeObject;
 
       return this;
+    }
+
+    ICrateSelector whereAny(string field, string[] values) @safe {
+      data = data
+        .map!(a => tuple(a, a.flatten))
+        .filter!(a => field in a[1])
+        .filter!(a => values.canFind(a[1][field].to!string))
+        .map!(a => a[0])
+          .inputRangeObject;
+
+      return this;
+    }
+
+
+    ICrateSelector whereAny(string field, ObjectId[] ids) {
+      return whereAny(field, ids.map!(a => a.toString).array);
     }
 
     ICrateSelector whereArrayContains(string field, string value) {

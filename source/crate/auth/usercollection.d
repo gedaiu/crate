@@ -15,6 +15,10 @@ import vibeauth.users;
 import vibeauth.collection;
 import vibeauth.token;
 
+version(unittest){
+  import fluent.asserts;
+}
+
 class UserCrateCollection: UserCollection
 {
   immutable(string[]) accessList;
@@ -27,10 +31,12 @@ class UserCrateCollection: UserCollection
 	}
 
   private Json getUserData(string email) {
-      auto users = crate.get.where("email", email).limit(1).exec;
-      enforce!CrateNotFoundException(!users.empty, "The user does not exist.");
+    auto users = crate.get.where("email", email).limit(1).exec;
 
-      return users.front;
+    enforce!CrateNotFoundException(!users.empty, "The user does not exist.");
+    enforce(users.front["email"] == email, "Invalid fetched user.");
+
+    return users.front;
   }
 
   void disempower(string email, string access) {
@@ -150,7 +156,7 @@ version(unittest) {
   }`;
 }
 
-@("it should find the users")
+/// it should find the users
 unittest
 {
   auto crate = new MemoryCrate!UserData;
@@ -158,19 +164,11 @@ unittest
 
   auto collection = new UserCrateCollection([], crate);
 
-  assert(collection["test@asd.asd"].email == "test@asd.asd");
-
-  bool found = true;
-  try {
-    collection["other@asd.asd"];
-  } catch(CrateNotFoundException e) {
-    found = false;
-  }
-
-  assert(!found);
+  collection["test@asd.asd"].email.should.equal("test@asd.asd");
+  collection["other@asd.asd"].should.throwException!CrateNotFoundException.withMessage("The user does not exist.");
 }
 
-@("it should empower an user")
+/// it should empower an user
 unittest
 {
   auto crate = new MemoryCrate!UserData;
@@ -273,8 +271,8 @@ unittest
 
   auto collection = new UserCrateCollection(["scopes"], crate);
 
-  assert(collection.contains("test@asd.asd"));
-  assert(!collection.contains("other@asd.asd"));
+  collection.contains("test@asd.asd").should.equal(true);
+  collection.contains("other@asd.asd").should.equal(false);
 }
 
 @("it should add an user")
