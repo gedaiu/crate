@@ -164,6 +164,14 @@ class ProxySelector: ICrateSelector {
       return new ProxySelector(this.selector.whereAny(field, ids));
     }
 
+    ICrateSelector whereArrayAny(string arrayField, string[] values) {
+      return new ProxySelector(this.selector.whereArrayAny(arrayField, values));
+    }
+
+    ICrateSelector whereArrayAny(string arrayField, ObjectId[] ids) {
+      return new ProxySelector(this.selector.whereArrayAny(arrayField, ids));
+    }
+
     ICrateSelector whereArrayContains(string field, string value) {
       return new ProxySelector(this.selector.whereArrayContains(field, value));
     }

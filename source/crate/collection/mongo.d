@@ -18,13 +18,13 @@ class MongoCrateRange : ICrateSelector
 {
   private {
     MongoCollection collection;
-    Json query;
+    Bson query;
     size_t resultCount;
   }
 
   this(MongoCollection collection) {
     this.collection = collection;
-    this.query = Json.emptyObject;
+    this.query = Bson.emptyObject;
   }
 
   @safe override {
@@ -35,33 +35,43 @@ class MongoCrateRange : ICrateSelector
     }
 
     ICrateSelector whereAny(string field, string[] values) {
-      assert(false, "not implemented");
+      query[field] = ["$in": values].serializeToBson;
+
+      return this;
     }
 
     ICrateSelector whereAny(string field, ObjectId[] ids) {
-      assert(false, "not implemented");
+      query[field] = ["$in": ids].serializeToBson;
+      return this;
+    }
+
+
+    ICrateSelector whereArrayAny(string arrayField, string[] values) {
+      query[arrayField] = ["$elemMatch": ["$in": values]].serializeToBson;
+
+      return this;
+    }
+
+    ICrateSelector whereArrayAny(string arrayField, ObjectId[] ids) {
+      query[arrayField] = ["$elemMatch": ["$in": ids]].serializeToBson;
+
+      return this;
     }
 
     ICrateSelector whereArrayContains(string field, string value) {
-      query[field] = Json.emptyObject;
-      query[field]["$elemMatch"] = Json.emptyObject;
-      query[field]["$elemMatch"]["$eq"] = value;
+      query[field] = ["$elemMatch": ["$eq": value]].serializeToBson;
 
       return this;
     }
 
     ICrateSelector whereArrayFieldContains(string arrayField, string field, string value) {
-      query[arrayField] = Json.emptyObject;
-      query[arrayField]["$elemMatch"] = Json.emptyObject;
-      query[arrayField]["$elemMatch"][field] = value;
+      query[arrayField] = ["$elemMatch": [field: value]].serializeToBson;
 
       return this;
     }
 
      ICrateSelector like(string field, string value) {
-      query = Json.emptyObject;
-      query[field] = Json.emptyObject;
-      query[field]["$regex"] = ".*" ~ value ~ ".*";
+      query[field] = ["$elemMatch": ["$regex": ".*" ~ value ~ ".*"]].serializeToBson;
 
       return this;
     }
@@ -276,7 +286,7 @@ version (unittest)
   }
 }
 
-auto toId(string id, string type = "", string file = __FILE__, size_t line = __LINE__) {
+auto toId(string id, string type = "") {
   enforce!CrateNotFoundException(id.length == 24, "There is no item with id `" ~ id ~ "` inside `" ~ type ~ "`");
 
   try {
@@ -350,6 +360,29 @@ unittest {
   assert(result["relation"].toJson.to!string == model.relation._id.to!string);
   assert(result["relations"].length == 1);
   assert(result["relations"][0].toJson.to!string == model.relations[0]._id.to!string);
+}
+
+/// It should find items with whereAny with ids selector
+unittest {
+  import vibe.db.mongo.mongo : connectMongoDB;
+
+  auto client = connectMongoDB("127.0.0.1");
+  auto collection = client.getCollection("test.idlist");
+  auto crate = new MongoCrate!TestModel(collection);
+
+  Bson data = Bson.emptyObject;
+  Bson id1 = BsonObjectID.generate;
+  Bson id2 = BsonObjectID.generate;
+  auto id3 = BsonObjectID.generate;
+
+  data["search"] = Bson([ id1, id2 ]);
+
+  collection.insert(data);
+
+  auto mongoCrate = new MongoCrate!TestModel(collection);
+  auto result = mongoCrate.getList().whereAny("search", [ ObjectId.fromBson(id1) ]).exec.array;
+
+  result.length.should.equal(1);
 }
 
 /// It should save data to mongo db using JSON API

@@ -25,10 +25,10 @@ class UserCrateCollection: UserCollection
 
   private Crate!UserData crate;
 
-	this(immutable(string[]) accessList, Crate!UserData crate) {
-		this.accessList = accessList;
+  this(immutable(string[]) accessList, Crate!UserData crate) {
+    this.accessList = accessList;
     this.crate = crate;
-	}
+  }
 
   private Json getUserData(string email) {
     auto users = crate.get.where("email", email).limit(1).exec;

@@ -98,9 +98,14 @@ interface ICrateSelector
 {
   @safe:
     ICrateSelector where(string field, string value);
+
     ICrateSelector whereAny(string field, string[] values);
     ICrateSelector whereAny(string field, ObjectId[] ids);
-    ICrateSelector whereArrayContains(string field, string value);
+
+    ICrateSelector whereArrayAny(string arrayField, string[] values);
+    ICrateSelector whereArrayAny(string arrayField, ObjectId[] ids);
+
+    ICrateSelector whereArrayContains(string arrayField, string value);
     ICrateSelector whereArrayFieldContains(string arrayField, string field, string value);
     ICrateSelector like(string field, string value);
     ICrateSelector limit(size_t nr);
@@ -254,9 +259,16 @@ class CrateRange : ICrateSelector
       return this;
     }
 
-
     ICrateSelector whereAny(string field, ObjectId[] ids) {
       return whereAny(field, ids.map!(a => a.toString).array);
+    }
+
+    ICrateSelector whereArrayAny(string arrayField, string[] values) {
+      return whereAny(arrayField, values);
+    }
+
+    ICrateSelector whereArrayAny(string arrayField, ObjectId[] ids) {
+      return whereAny(arrayField, ids);
     }
 
     ICrateSelector whereArrayContains(string field, string value) {
@@ -265,9 +277,12 @@ class CrateRange : ICrateSelector
     }
 
     ICrateSelector whereArrayFieldContains(string arrayField, string field, string value) {
-      data = data.filter!(a => (cast(Json[])a[arrayField])
+      data = data
+              .filter!(a => (cast(Json[])a[arrayField])
                 .map!(a => a[field])
-                .canFind(Json(value))).inputRangeObject;
+                .canFind(Json(value)))
+                .inputRangeObject;
+
       return this;
     }
 
