@@ -89,42 +89,80 @@ enum CrateOperation
   other
 }
 
-interface ICrateFilter
-{
+/// A Crate filter is a specialized middelware which filters the database data
+/// based on a request parameters
+interface ICrateFilter {
+  /// Filter the data
   ICrateSelector apply(HTTPServerRequest, ICrateSelector);
 }
 
-interface ICrateSelector
-{
+/// A crate is a specialized interface to perform DB selectors.
+/// All the selectors must implement theese selectors.
+/// Performing multiple operations over the same selectors are grouped
+/// with an `and` logic operator
+interface ICrateSelector {
   @safe:
+    /// March an item if exactly one field value
     ICrateSelector where(string field, string value);
+    /// ditto
+    ICrateSelector where(string field, bool value);
 
+    /// Match an item if a filed value contains at least one value from the values list
     ICrateSelector whereAny(string field, string[] values);
+    /// ditto
     ICrateSelector whereAny(string field, ObjectId[] ids);
 
+    /// Match an item if the array field contains at least one value from the values list
     ICrateSelector whereArrayAny(string arrayField, string[] values);
+    /// ditto
     ICrateSelector whereArrayAny(string arrayField, ObjectId[] ids);
 
+    /// Match an item if the array field contains the `value` element
     ICrateSelector whereArrayContains(string arrayField, string value);
+
+    /// Match an item if an array field contains an object that has the field equals with the value
     ICrateSelector whereArrayFieldContains(string arrayField, string field, string value);
+
+    /// Match an item using a substring
     ICrateSelector like(string field, string value);
+
+    /// Limit the number of results
     ICrateSelector limit(size_t nr);
 
+    /// Execute the selector and return a range of JSONs
     InputRange!Json exec();
 }
 
+/// Struct used to define response rules
 struct CrateResponse {
+  /// Response mime
   string mime;
+
+  /// Response sttatus code
   uint statusCode;
+
+  ///
   string[string] headers;
+  
+  /// Serializer used to convert the json
   ModelSerializer serializer;
+
+  /// How the data will look after serialization
   Schema schema;
 }
 
+/// Struct used to define request rules
 struct CrateRequest {
+  /// The expected method
   HTTPMethod method;
+
+  ///
   string path;
+
+  /// Serializer used to normalize the json
   ModelSerializer serializer;
+
+  /// How the sent data should look
   Schema schema;
 }
 
@@ -221,22 +259,26 @@ unittest {
   result["key3.item2.item5.item6"].should.equal(Json.emptyObject);
 }
 
-
+/// Convert a Json range to a ICrateSelector
 class CrateRange : ICrateSelector
 {
   private {
     InputRange!Json data;
   }
 
+  ///
   this(Json[] data) {
     this.data = inputRangeObject(data);
   }
 
+  ///
   this(T)(T data) {
     this.data = data.inputRangeObject;
   }
 
   override @trusted {
+
+    /// March an item if exactly one field value
     ICrateSelector where(string field, string value) @trusted {
       data = data
         .map!(a => tuple(a, a.flatten))
@@ -248,6 +290,19 @@ class CrateRange : ICrateSelector
       return this;
     }
 
+    /// ditto
+    ICrateSelector where(string field, bool value) {
+      data = data
+        .map!(a => tuple(a, a.flatten))
+        .filter!(a => field in a[1])
+        .filter!(a => a[1][field].to!bool == value)
+        .map!(a => a[0])
+          .inputRangeObject;
+
+      return this;
+    }
+    
+    /// Match an item if a filed value contains at least one value from the values list
     ICrateSelector whereAny(string field, string[] values) @safe {
       data = data
         .map!(a => tuple(a, a.flatten))
@@ -258,24 +313,28 @@ class CrateRange : ICrateSelector
 
       return this;
     }
-
+    //ditto
     ICrateSelector whereAny(string field, ObjectId[] ids) {
       return whereAny(field, ids.map!(a => a.toString).array);
     }
 
+    /// Match an item if the array field contains at least one value from the values list
     ICrateSelector whereArrayAny(string arrayField, string[] values) {
       return whereAny(arrayField, values);
     }
 
+    /// ditto
     ICrateSelector whereArrayAny(string arrayField, ObjectId[] ids) {
       return whereAny(arrayField, ids);
     }
 
+    /// Match an item if the array field contains the `value` element
     ICrateSelector whereArrayContains(string field, string value) {
       data = data.filter!(a => (cast(Json[])a[field]).canFind(Json(value))).inputRangeObject;
       return this;
     }
 
+    /// Match an item if an array field contains an object that has the field equals with the value
     ICrateSelector whereArrayFieldContains(string arrayField, string field, string value) {
       data = data
               .filter!(a => (cast(Json[])a[arrayField])
@@ -286,6 +345,7 @@ class CrateRange : ICrateSelector
       return this;
     }
 
+    /// Match an item using a substring
     ICrateSelector like(string field, string value) {
       data = data
         .map!(a => tuple(a, a.flatten))
@@ -297,11 +357,13 @@ class CrateRange : ICrateSelector
       return this;
     }
 
+    /// Limit the number of results
     ICrateSelector limit(size_t nr) {
       data = data.take(nr).inputRangeObject;
       return this;
     }
 
+    /// Execute the selector and return a range of JSONs
     InputRange!Json exec() @trusted {
       return data;
     }

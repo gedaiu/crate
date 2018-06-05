@@ -156,6 +156,10 @@ class ProxySelector: ICrateSelector {
       return new ProxySelector(this.selector.where(field, value));
     }
 
+    ICrateSelector where(string field, bool value) {
+      return new ProxySelector(this.selector.where(field, value));
+    }
+
     ICrateSelector whereAny(string field, string[] values) {
       return new ProxySelector(this.selector.whereAny(field, values));
     }

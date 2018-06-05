@@ -34,6 +34,12 @@ class MongoCrateRange : ICrateSelector
       return this;
     }
 
+    ICrateSelector where(string field, bool value) {
+      query[field] = value;
+
+      return this;
+    }
+
     ICrateSelector whereAny(string field, string[] values) {
       query[field] = ["$in": values].serializeToBson;
 
