@@ -3,6 +3,7 @@ module crate.collection.mongo;
 import crate.base;
 import crate.error;
 import crate.ctfe;
+import crate.collection.memory;
 
 import vibe.inet.url;
 import vibe.http.router;
@@ -81,6 +82,17 @@ class MongoCrateRange : ICrateSelector
 
       return this;
     }
+
+    /// Perform an or logical operation 
+    ICrateSelector or() {
+      assert(false);
+    }
+
+    /// Perform an and logical operation 
+    ICrateSelector and() {
+      assert(false);
+    }
+
 
     ICrateSelector limit(size_t nr) {
       resultCount = nr;

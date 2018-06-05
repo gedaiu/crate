@@ -184,6 +184,17 @@ class ProxySelector: ICrateSelector {
       return new ProxySelector(this.selector.whereArrayFieldContains(arrayField, field, value));
     }
 
+    /// Perform an or logical operation 
+    ICrateSelector or() {
+      return new ProxySelector(this.selector.or());
+    }
+
+    /// Perform an and logical operation 
+    ICrateSelector and() {
+      return new ProxySelector(this.selector.and());
+    }
+
+
     ICrateSelector limit(size_t nr) {
       return new ProxySelector(this.selector.limit(nr));
     }
