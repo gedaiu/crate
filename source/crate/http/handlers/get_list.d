@@ -47,5 +47,5 @@ URLRouter getListFilteredWith(Policy, Type)(URLRouter router, ICrateSelector del
 
   auto listHandler = requestFilteredListHandler!(Policy, Type)(handler, filters);
 
-  return addRule(router, rule, listHandler);
+  return addRule(router, rule, requestErrorHandler(listHandler));
 }

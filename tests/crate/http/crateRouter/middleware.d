@@ -51,7 +51,7 @@ alias s = Spec!({
 
           router
             .crateSetup
-              .add(baseCrate, new MockMiddleware);
+              .add(baseCrate, [], new MockMiddleware);
       });
 
       it("should run the middleware handler for get list", {
@@ -116,7 +116,7 @@ alias s = Spec!({
 
           router
             .crateSetup
-              .add(baseCrate, new Object);
+              .add(baseCrate, [], new Object);
       });
 
       it("should run the middleware handler for get list", {
@@ -169,7 +169,7 @@ alias s = Spec!({
 
           router
             .crateSetup
-              .add(baseCrate, new MockAnyMiddleware);
+              .add(baseCrate, [], new MockAnyMiddleware);
       });
 
       it("should run the middleware handler for get list", {

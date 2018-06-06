@@ -20,6 +20,7 @@ import std.exception;
 import std.algorithm;
 import std.array;
 import std.range.interfaces;
+import std.stdio;
 
 import crate.http.handlers.error;
 import crate.http.handlers.get;
@@ -137,18 +138,13 @@ class CrateRouter(RouterPolicy) {
     return this;
   }
 
-  CrateRouter add(Type, T)(Crate!Type crate, T middleware, ICrateFilter[] filters = [])
-  {
-    return add!RouterPolicy(crate, middleware, filters);
+  CrateRouter add(Type, T...)(Crate!Type crate, ICrateFilter[] filters, T middleware) {
+    return add!RouterPolicy(crate, filters, middleware);
   }
 
-  CrateRouter add(Policy, Type, T)(Crate!Type crate, T middleware, ICrateFilter[] filters = []) {
-    static if(isArray!T) {
-      foreach(item; middleware) {
-        addOneMiddleware!(Policy, Type)(item);
-      }
-    } else {
-      addOneMiddleware!(Policy, Type)(middleware);
+  CrateRouter add(Policy, Type, T...)(Crate!Type crate, ICrateFilter[] filters, T middleware) {
+    foreach(item; middleware) {
+      addOneMiddleware!(Policy, Type)(item);
     }
 
     return add!Policy(crate, filters);
@@ -163,7 +159,7 @@ class CrateRouter(RouterPolicy) {
     static if(__traits(hasMember, T, "any")) {
       rule = Policy.getList(definition);
       router.match(rule.request.method, rule.request.path, &middleware.any);
-   
+
       rule = Policy.getItem(definition);
       router.match(rule.request.method, rule.request.path, &middleware.any);
 

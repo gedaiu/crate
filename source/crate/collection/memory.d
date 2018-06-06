@@ -14,24 +14,39 @@ import crate.error;
 
 import vibe.data.json;
 
+version(unittest) {
+  import fluent.asserts;
+}
+
 /// Convert a Json range to a ICrateSelector
 class CrateRange : ICrateSelector
 {
   private {
-    InputRange!Json originalData;
+    Json[] originalData;
+    InputRange!Json prevData;
     InputRange!Json data;
   }
-
+  enum Json[] emptyRange = [];
+  
   ///
   this(Json[] data) {
-    this.originalData = inputRangeObject(data);
-    this.data = inputRangeObject(data);
+    this.originalData = data;
+    this.data = inputRangeObject(data.dup);
+    this.prevData = emptyRange.inputRangeObject;
   }
 
   ///
   this(T)(T data) {
-    this.originalData = data.inputRangeObject;
-    this.data = data.inputRangeObject;
+    this.originalData = data.array;
+    this.data = originalData.dup.inputRangeObject;
+    this.prevData = emptyRange.inputRangeObject;
+  }
+
+   ///
+  this(T)(InputRange!Json prevData, T data) {
+    this.originalData = data.array;
+    this.data = originalData.dup.inputRangeObject;
+    this.prevData = prevData;
   }
 
   override @trusted {
@@ -117,7 +132,7 @@ class CrateRange : ICrateSelector
 
     /// Perform an or logical operation 
     ICrateSelector or() {
-      assert(false);
+      return new CrateRange(data, originalData);
     }
 
     /// Perform an and logical operation 
@@ -133,9 +148,25 @@ class CrateRange : ICrateSelector
 
     /// Execute the selector and return a range of JSONs
     InputRange!Json exec() @trusted {
-      return data;
+      return prevData.chain(data)
+        .map!(a => a.toString)
+        .array
+        .sort
+        .uniq
+        .map!(a => a.parseJsonString)
+        .inputRangeObject;
     }
   }
+}
+
+/// The or selector should work
+unittest {
+  auto val1 = `{ "a": "1" }`.parseJsonString;
+  auto val2 = `{ "a": "2" }`.parseJsonString;
+
+  auto range = new CrateRange([val1, val2]);
+
+  range.where("a", "1").or.where("a", "2").exec.array.should.containOnly([val1, val2]);
 }
 
 class MemoryCrate(T) : Crate!T

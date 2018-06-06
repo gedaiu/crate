@@ -12,7 +12,7 @@ import vibe.data.serialization;
 import vibe.db.mongo.collection;
 import vibe.db.mongo.mongo;
 
-import std.conv, std.stdio, std.array, std.range.interfaces;
+import std.conv, std.stdio, std.array, std.range;
 import std.algorithm, std.typecons, std.exception;
 
 class MongoCrateRange : ICrateSelector
@@ -28,64 +28,87 @@ class MongoCrateRange : ICrateSelector
     this.query = Bson.emptyObject;
   }
 
+  private void add(string key, Bson partialQuery) @safe {
+    if(query.byKeyValue.map!(a=> a.key).canFind("$or")) {
+      auto last = query["$or"].length - 1;
+
+      auto lastBson = query["$or"][last];
+      lastBson[key] = partialQuery;
+
+      query["$or"] = Bson(query["$or"].byValue.take(last).chain([lastBson]).array);
+    } else {
+      query[key] = partialQuery;
+    }
+  }
+
   @safe override {
     ICrateSelector where(string field, string value) {
-      query[field] = value;
+      add(field, value.serializeToBson);
 
       return this;
     }
 
     ICrateSelector where(string field, bool value) {
-      query[field] = value;
+      add(field, value.serializeToBson);
 
       return this;
     }
 
     ICrateSelector whereAny(string field, string[] values) {
-      query[field] = ["$in": values].serializeToBson;
+      add(field, ["$in": values].serializeToBson);
 
       return this;
     }
 
     ICrateSelector whereAny(string field, ObjectId[] ids) {
-      query[field] = ["$in": ids].serializeToBson;
+      add(field, ["$in": ids].serializeToBson);
+
       return this;
     }
 
 
     ICrateSelector whereArrayAny(string arrayField, string[] values) {
-      query[arrayField] = ["$elemMatch": ["$in": values]].serializeToBson;
+      add(arrayField, ["$elemMatch": ["$in": values]].serializeToBson);
 
       return this;
     }
 
     ICrateSelector whereArrayAny(string arrayField, ObjectId[] ids) {
-      query[arrayField] = ["$elemMatch": ["$in": ids]].serializeToBson;
+      add(arrayField, ["$elemMatch": ["$in": ids]].serializeToBson);
 
       return this;
     }
 
     ICrateSelector whereArrayContains(string field, string value) {
-      query[field] = ["$elemMatch": ["$eq": value]].serializeToBson;
+      add(field, ["$elemMatch": ["$eq": value]].serializeToBson);
 
       return this;
     }
 
     ICrateSelector whereArrayFieldContains(string arrayField, string field, string value) {
-      query[arrayField] = ["$elemMatch": [field: value]].serializeToBson;
+      add(arrayField, ["$elemMatch": [field: value]].serializeToBson);
 
       return this;
     }
 
      ICrateSelector like(string field, string value) {
-      query[field] = ["$elemMatch": ["$regex": ".*" ~ value ~ ".*"]].serializeToBson;
+      add(field, ["$elemMatch": ["$regex": ".*" ~ value ~ ".*"]].serializeToBson);
 
       return this;
     }
 
     /// Perform an or logical operation 
     ICrateSelector or() {
-      assert(false);
+      if(!query.byKeyValue.map!(a=> a.key).canFind("$or")) {
+        auto tmpQuery = Bson.emptyObject;
+        tmpQuery["$or"] = Bson([ query, Bson.emptyObject ]);
+
+        query = tmpQuery;
+      } else {
+        query["$or"] = Bson(query["$or"].byValue.chain([Bson.emptyObject]).array);
+      }
+
+      return this;
     }
 
     /// Perform an and logical operation 
@@ -391,7 +414,6 @@ unittest {
   Bson data = Bson.emptyObject;
   Bson id1 = BsonObjectID.generate;
   Bson id2 = BsonObjectID.generate;
-  auto id3 = BsonObjectID.generate;
 
   data["search"] = Bson([ id1, id2 ]);
 
@@ -401,6 +423,38 @@ unittest {
   auto result = mongoCrate.getList().whereAny("search", [ ObjectId.fromBson(id1) ]).exec.array;
 
   result.length.should.equal(1);
+}
+
+/// It should find items with or selector
+unittest {
+  import vibe.db.mongo.mongo : connectMongoDB;
+
+  auto client = connectMongoDB("127.0.0.1");
+  auto collection = client.getCollection("test.idlist");
+  collection.drop;
+  auto crate = new MongoCrate!TestModel(collection);
+
+  Bson data = Bson.emptyObject;
+  Bson id1 = Bson("1");
+  Bson id2 = Bson("2");
+  Bson id3 = Bson("3");
+
+  data["search"] = id1;
+  collection.insert(data);
+
+  data["search"] = id2;
+  collection.insert(data);
+
+  data["search"] = id3;
+  collection.insert(data);
+
+  auto mongoCrate = new MongoCrate!TestModel(collection);
+  auto result = mongoCrate.getList().where("search", "1").or
+    .where("search", "2").or
+    .where("search", "3")
+    .exec.array;
+
+  result.map!(a => a["search"].to!string).array.should.equal(["1", "2", "3"]);
 }
 
 /// It should save data to mongo db using JSON API
