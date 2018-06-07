@@ -587,3 +587,43 @@ unittest {
   def.fields[0].fields[0].fields[0].originalType.should.equal("double");
   def.fields[0].fields[0].fields[0].isBasicType.should.equal(true);
 }
+
+template isVibeHandler(Type, alias member) {
+  import vibe.http.server: HTTPServerRequest, HTTPServerResponse;
+
+  static if(__traits(hasMember, Type, member)) {
+    alias parameters = Parameters!(__traits(getMember, Type, member));
+
+
+    static if(parameters.length == 2 && is(parameters[0] == HTTPServerRequest) && is(parameters[1] == HTTPServerResponse)) {
+      enum result = true;
+    } else {
+      enum result = false;
+    }
+
+  } else {
+    enum result = false;
+  }
+
+  alias isVibeHandler = result;
+}
+
+
+template isCrateFilter(Type, alias member) {
+  import vibe.http.server: HTTPServerRequest, HTTPServerResponse;
+
+  static if(__traits(hasMember, Type, member)) {
+    alias parameters = Parameters!(__traits(getMember, Type, member));
+
+    static if(parameters.length == 2 && is(parameters[0] == HTTPServerRequest) && is(parameters[1] == ICrateSelector)) {
+      enum result = true;
+    } else {
+      enum result = false;
+    }
+
+  } else {
+    enum result = false;
+  }
+
+  alias isCrateFilter = result;
+}

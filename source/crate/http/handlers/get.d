@@ -32,12 +32,12 @@ URLRouter getWith(Policy, Type)(URLRouter router, Type delegate(string id) @safe
 }
 
 /// ditto
-URLRouter getWith(Policy, Type)(URLRouter router, ICrateSelector delegate(string id) @safe handler, ICrateFilter[] filters) if(!is(T == void)) {
+URLRouter getWith(Policy, Type, Filters...)(URLRouter router, ICrateSelector delegate(string id) @safe handler, Filters filters) if(!is(T == void)) {
   FieldDefinition definition = getFields!Type;
   auto rule = Policy.getItem(definition);
 
   enforce(rule.request.path.endsWith("/:id"), "Invalid `" ~ rule.request.path ~ "` route. It must end with `/:id`.");
-  auto idHandler = requestIdHandler(handler, rule, filters.dup);
+  auto idHandler = requestIdHandler(handler, rule, filters);
 
   return router.addRule(rule, requestErrorHandler(idHandler));
 }

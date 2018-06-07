@@ -43,7 +43,6 @@ alias s = Spec!({
               });
       });
 
-
       it("should replace available items using query alteration", {
         Json dataUpdate = `{ "site": {
             "position": {
@@ -68,6 +67,31 @@ alias s = Spec!({
         }}`.parseJsonString;
 
         request(queryRouter)
+          .put("/sites/24")
+            .send(dataUpdate)
+              .expectStatusCode(404)
+              .end();
+      });
+      
+      it("should return 404 fhen the item is filtered", {
+        import crate.base;
+
+        class FilterAll : ICrateFilter {
+          ICrateSelector any(HTTPServerRequest, ICrateSelector selector) {
+            return selector.where("field", "missing");
+          }
+        }
+
+        Json dataUpdate = `{ "site": {
+            "position": {
+              "type": "Point",
+              "coordinates": [0, 0]
+            }
+        }}`.parseJsonString;
+
+        auto router = testRouter([ new FilterAll ]);
+
+        router
           .put("/sites/24")
             .send(dataUpdate)
               .expectStatusCode(404)

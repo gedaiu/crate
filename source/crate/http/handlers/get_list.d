@@ -41,7 +41,7 @@ URLRouter getListWith(Policy, T)(URLRouter router, T[] delegate() @safe handler)
 }
 
 /// ditto
-URLRouter getListFilteredWith(Policy, Type)(URLRouter router, ICrateSelector delegate() @safe handler, ICrateFilter[] filters ...) {
+URLRouter getListFilteredWith(Policy, Type, Filters...)(URLRouter router, ICrateSelector delegate() @safe handler, Filters filters) {
   FieldDefinition definition = getFields!Type;
   auto rule = Policy.getList(definition);
 

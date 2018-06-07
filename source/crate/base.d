@@ -93,7 +93,18 @@ enum CrateOperation
 /// based on a request parameters
 interface ICrateFilter {
   /// Filter the data
-  ICrateSelector apply(HTTPServerRequest, ICrateSelector);
+  ICrateSelector any(HTTPServerRequest, ICrateSelector);
+}
+
+/// Apply the filters for the provided selector
+ICrateSelector applyFilters(Types...)(ICrateSelector selector, HTTPServerRequest request, Types filters) {
+  static foreach(i, Type; Types) {
+    static if(isCrateFilter!(Type, "any")) {
+      selector = filters[i].any(request, selector);
+    }
+  }
+
+  return selector;
 }
 
 /// A crate is a specialized interface to perform DB selectors.

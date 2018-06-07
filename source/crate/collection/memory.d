@@ -214,7 +214,7 @@ class MemoryCrate(T) : Crate!T
     Json updateItem(Json item)
     {
       auto match = list.enumerate
-        .filter!(a => a[1][idField] == item[idField]);
+        .filter!(a => a[1][idField].to!string.stripLeft('0') == item[idField].to!string.stripLeft('0'));
 
       enforce!CrateNotFoundException(!match.empty, "No item found.");
 
@@ -230,6 +230,6 @@ class MemoryCrate(T) : Crate!T
 
       enforce!CrateNotFoundException(!match.empty, "No item found.");
 
-      list = list.filter!(a => a[idField].to!string != id).array;
+      list = list.filter!(a => a[idField].to!string.stripLeft('0') != id.stripLeft('0')).array;
     }
 }

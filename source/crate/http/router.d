@@ -120,34 +120,25 @@ class CrateRouter(RouterPolicy) {
     return mimeList.keys;
   }
 
-  CrateRouter add(Type)(Crate!Type crate, ICrateFilter[] filters = [])
-  {
-    return add!RouterPolicy(crate, filters);
+  CrateRouter add(Type, T...)(Crate!Type crate, T middleware) {
+    return add!RouterPolicy(crate, middleware);
   }
 
-  CrateRouter add(Policy, Type)(Crate!Type crate, ICrateFilter[] filters = []) {
+  CrateRouter add(Policy, Type, T...)(Crate!Type crate, T middleware) {
+    foreach(item; middleware) {
+      addOneMiddleware!(Policy, Type)(item);
+    }
+
     crateGetters[Type.stringof] = &crate.getItem;
 
     router.putJsonWith!(Policy, Type)(&crate.updateItem);
     router.postJsonWith!(Policy, Type)(&crate.addItem);
     router.patchJsonWith!(Policy, Type)(&crate.updateItem, &crate.getItem);
     router.deleteWith!(Policy, Type)(&crate.deleteItem);
-    router.getWith!(Policy, Type)(&crate.getItem, filters);
-    router.getListFilteredWith!(Policy, Type)(&crate.getList, filters);
+    router.getWith!(Policy, Type)(&crate.getItem, middleware);
+    router.getListFilteredWith!(Policy, Type)(&crate.getList, middleware);
 
     return this;
-  }
-
-  CrateRouter add(Type, T...)(Crate!Type crate, ICrateFilter[] filters, T middleware) {
-    return add!RouterPolicy(crate, filters, middleware);
-  }
-
-  CrateRouter add(Policy, Type, T...)(Crate!Type crate, ICrateFilter[] filters, T middleware) {
-    foreach(item; middleware) {
-      addOneMiddleware!(Policy, Type)(item);
-    }
-
-    return add!Policy(crate, filters);
   }
 
   private void addOneMiddleware(Policy, Type, T)(T middleware) {
@@ -156,7 +147,7 @@ class CrateRouter(RouterPolicy) {
 
     definition = getFields!Type;
 
-    static if(__traits(hasMember, T, "any")) {
+    static if(isVibeHandler!(T, "any")) {
       rule = Policy.getList(definition);
       router.match(rule.request.method, rule.request.path, &middleware.any);
 
@@ -176,32 +167,32 @@ class CrateRouter(RouterPolicy) {
       router.match(rule.request.method, rule.request.path, &middleware.any);
     }
 
-    static if(__traits(hasMember, T, "getList")) {
+    static if(isVibeHandler!(T, "getList")) {
       rule = Policy.getList(definition);
       router.match(rule.request.method, rule.request.path, &middleware.getList);
     }
 
-    static if(__traits(hasMember, T, "getItem")) {
+    static if(isVibeHandler!(T, "getItem")) {
       rule = Policy.getItem(definition);
       router.match(rule.request.method, rule.request.path, &middleware.getItem);
     }
 
-    static if(__traits(hasMember, T, "create")) {
+    static if(isVibeHandler!(T, "create")) {
       rule = Policy.create(definition);
       router.match(rule.request.method, rule.request.path, &middleware.create);
     }
 
-    static if(__traits(hasMember, T, "replace")) {
+    static if(isVibeHandler!(T, "replace")) {
       rule = Policy.replace(definition);
       router.match(rule.request.method, rule.request.path, &middleware.replace);
     }
 
-    static if(__traits(hasMember, T, "patch")) {
+    static if(isVibeHandler!(T, "patch")) {
       rule = Policy.patch(definition);
       router.match(rule.request.method, rule.request.path, &middleware.patch);
     }
 
-    static if(__traits(hasMember, T, "delete_")) {
+    static if(isVibeHandler!(T, "delete_")) {
       rule = Policy.delete_(definition);
       router.match(rule.request.method, rule.request.path, &middleware.delete_);
     }

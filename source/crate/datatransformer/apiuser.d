@@ -181,7 +181,7 @@ version(unittest) {
     userDataCrate = new MemoryCrate!UserData(config);
     userCrate = new ApiUserTransformer(userDataCrate);
 
-    router.crateSetup.add(userCrate, [ new UserTermFilter ]);
+    router.crateSetup.add(userCrate, new UserTermFilter);
 
     return router;
   }
@@ -338,7 +338,7 @@ unittest
 class UserTermFilter : ICrateFilter {
 
   /// Call the "like" method on the crate selector
-  ICrateSelector apply(HTTPServerRequest request, ICrateSelector selector) {
+  ICrateSelector any(HTTPServerRequest request, ICrateSelector selector) {
     if("term" in request.query) {
       selector = selector.like("email", request.query["term"]);
     }

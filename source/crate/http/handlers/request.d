@@ -161,19 +161,14 @@ auto requestIdHandler(T)(T delegate(string) @safe getItem, CrateRule rule) if(!i
 }
 
 /// ditto
-auto requestIdHandler(ICrateSelector delegate(string) @safe getItem, CrateRule rule, ICrateFilter[] filters) {
+auto requestIdHandler(Types...)(ICrateSelector delegate(string) @safe getItem, CrateRule rule, Types filters) {
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @trusted {
     string id = request.params["id"];
 
     Json jsonResponse;
-    auto items = getItem(id);
+    auto result = getItem(id).applyFilters(request, filters).exec;
 
-    foreach(filter; filters) {
-      items = filter.apply(request, items);
-    }
-
-    auto result = items.exec;
-    enforce!CrateNotFoundException(!result.empty, "Missing `" ~ rule.response.serializer.definition.name ~ "`.");
+    enforce!CrateNotFoundException(!result.empty, "Missing `" ~ rule.response.serializer.definition.type ~ "`.");
 
     try {
       jsonResponse = rule.response.serializer.denormalise(result.front);
@@ -243,8 +238,6 @@ auto requestFullDeserializationHandler(U, T)(void delegate(T, HTTPServerResponse
   return &deserialize;
 }
 
-
-
 /// ditto
 auto requestDeserializedHandler(Policy, Type, V)(V delegate(Json) @safe setItem, CrateRule rule) {
 
@@ -263,7 +256,7 @@ auto requestDeserializedHandler(Policy, Type, V)(V delegate(Json) @safe setItem,
 
     auto clientData = value.serializeToJson;
 
-    static if(is(V == void)) {
+    static if(is(V  == void)) {
       setItem(clientData);
       response.statusCode = 204;
       response.writeVoidBody;
@@ -336,21 +329,15 @@ auto requestListHandler(U, T)(T[] delegate() @safe next) if(!is(T == void)) {
 }
 
 /// Handle a request that returns a list of elements before applying some filters
-auto requestFilteredListHandler(U, T)(const ICrateSelector delegate() @safe next, ICrateFilter[] filters...) if(!is(T == void)) {
+auto requestFilteredListHandler(U, T, Types...)(const ICrateSelector delegate() @safe get, Types filters) if(!is(T == void)) {
   FieldDefinition definition = getFields!T;
   auto serializer = new U.Serializer(definition);
-
-  ICrateFilter[] localFilters = filters.dup;
 
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @trusted {
     Json jsonResponse;
 
     try {
-      auto items = next();
-
-      foreach(filter; localFilters) {
-        items = filter.apply(request, items);
-      }
+      auto items = get().applyFilters(request, filters);
 
       auto result = items.exec.array.inputRangeObject;
       jsonResponse = serializer.denormalise(result);

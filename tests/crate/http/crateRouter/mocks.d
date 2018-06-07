@@ -12,7 +12,7 @@ import std.algorithm;
 public import tests.crate.http.mocks;
 
 class TypeFilter : ICrateFilter {
-  ICrateSelector apply(HTTPServerRequest request, ICrateSelector selector) {
+  ICrateSelector any(HTTPServerRequest request, ICrateSelector selector) {
     if("type" !in request.query) {
       return selector;
     }
@@ -22,7 +22,9 @@ class TypeFilter : ICrateFilter {
 }
 
 class SomeTestCrateFilter : ICrateFilter {
-  ICrateSelector apply(HTTPServerRequest request, ICrateSelector selector) {
+  ICrateSelector any(HTTPServerRequest request, ICrateSelector selector) {
+    import std.stdio;
+    writeln("!!!");
     return new CrateRange(selector.exec.filter!(a => a["position"]["type"] == "Point"));
   }
 }
@@ -33,7 +35,7 @@ auto queryRouter() {
 
   router
     .crateSetup
-      .add(baseCrate, [ new SomeTestCrateFilter ]);
+      .add(baseCrate, new SomeTestCrateFilter);
 
   Json data1 = `{
       "position": {
@@ -55,13 +57,13 @@ auto queryRouter() {
   return router;
 }
 
-auto testRouter() {
+auto testRouter(T...)(T filters) {
   auto router = new URLRouter();
   auto baseCrate = new MemoryCrate!Site;
 
   router
     .crateSetup
-      .add(baseCrate);
+      .add(baseCrate, filters);
 
   Json data = `{
       "position": {
