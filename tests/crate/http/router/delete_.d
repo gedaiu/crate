@@ -32,7 +32,9 @@ alias s = Spec!({
     describe("with a DELETE request", {
       it("should accept a valid request with id", {
         auto router = new URLRouter();
-        router.deleteWith!(RestApi, Site)(&deleteSiteWithResponse);
+        auto deleteOperation = new DeleteOperation!(RestApi, Site)(router);
+        deleteOperation.handler = &deleteSiteWithResponse;
+        deleteOperation.bind;
 
         request(router)
           .delete_("/sites/122")
@@ -46,7 +48,9 @@ alias s = Spec!({
 
       it("should accept a valid request with id when the response is not handeled", {
         auto router = new URLRouter();
-        router.deleteWith!(RestApi, Site)(&deleteSite);
+        auto deleteOperation = new DeleteOperation!(RestApi, Site)(router);
+        deleteOperation.handler = &deleteSite;
+        deleteOperation.bind;
 
         request(router)
           .delete_("/sites/122")
@@ -58,6 +62,5 @@ alias s = Spec!({
             });
       });
     });
-
   });
 });

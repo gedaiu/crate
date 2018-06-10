@@ -136,7 +136,7 @@ alias s = Spec!({
       it("should run the middleware handler for put item", {
         request(router)
           .put("/sites/123")
-            .expectStatusCode(400)
+            .expectStatusCode(404)
             .end;
       });
 

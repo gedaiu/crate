@@ -592,36 +592,38 @@ template isVibeHandler(Type, alias member) {
   import vibe.http.server: HTTPServerRequest, HTTPServerResponse;
 
   static if(__traits(hasMember, Type, member)) {
-    alias parameters = Parameters!(__traits(getMember, Type, member));
-
-
-    static if(parameters.length == 2 && is(parameters[0] == HTTPServerRequest) && is(parameters[1] == HTTPServerResponse)) {
-      enum result = true;
-    } else {
-      enum result = false;
+    static foreach (Method; __traits(getOverloads, Type, member)) {
+      static if(Parameters!Method.length == 2 && 
+        is(Parameters!Method[0] == HTTPServerRequest) && 
+        is(Parameters!Method[1] == HTTPServerResponse)) {
+        
+        enum result = true;
+      }
     }
+  }
 
-  } else {
+  static if(!__traits(compiles, result)) {
     enum result = false;
   }
 
   alias isVibeHandler = result;
 }
 
-
 template isCrateFilter(Type, alias member) {
   import vibe.http.server: HTTPServerRequest, HTTPServerResponse;
 
   static if(__traits(hasMember, Type, member)) {
-    alias parameters = Parameters!(__traits(getMember, Type, member));
-
-    static if(parameters.length == 2 && is(parameters[0] == HTTPServerRequest) && is(parameters[1] == ICrateSelector)) {
-      enum result = true;
-    } else {
-      enum result = false;
+    static foreach (Method; __traits(getOverloads, Type, member)) {
+      static if(Parameters!Method.length == 2 && 
+        is(Parameters!Method[0] == HTTPServerRequest) && 
+        is(Parameters!Method[1] == ICrateSelector)) {
+        
+        enum result = true;
+      }
     }
+  }
 
-  } else {
+  static if(!__traits(compiles, result)) {
     enum result = false;
   }
 

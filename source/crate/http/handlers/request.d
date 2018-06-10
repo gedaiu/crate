@@ -15,6 +15,50 @@ import crate.error;
 import crate.ctfe;
 
 
+/// Interface for wrapper crate selelctors
+interface IFiltersWrapper {
+  ///
+  alias GetItemDelegate = ICrateSelector delegate(string id) @safe;
+
+  ///
+  void getItem(GetItemDelegate value);
+
+  ///
+  VibeHandler handler(VibeHandler next) @safe;
+}
+/// Wraps a vibe handlers with filter middlewares. See `ICrateFilter`
+class FiltersWrapper(Types...) : IFiltersWrapper {
+
+  private {
+    Types middlewares;
+    GetItemDelegate _getItem;
+  }
+
+  /// The list of middlewares
+  this(Types middlewares) {
+    this.middlewares = middlewares;
+  }
+
+  /// Set the get item function
+  void getItem(IFiltersWrapper.GetItemDelegate value) {
+    this._getItem = value;
+  }
+
+  /// Handler used to validate the request against the provided filters
+  VibeHandler handler(VibeHandler next) @safe {
+
+    auto localHandler(HTTPServerRequest request, HTTPServerResponse response) @trusted {
+      auto result = _getItem(request.params["id"]).applyFilters(request, middlewares).exec;
+      enforce!CrateNotFoundException(!result.empty, "Item not found.");
+
+      next(request, response);
+    }  
+
+    return &localHandler;
+  }
+}
+
+
 void updateHeaders(HTTPServerResponse response, HTTPServerRequest request, CrateRule rule, Json result) {
   foreach(string key, string value; rule.response.headers) {
     if(value.canFind(":base_uri")) {
@@ -116,6 +160,7 @@ void checkRelationships(ref Json data, FieldDefinition definition) @safe {
 
 /// Handle requests with id and without body
 auto requestIdHandler(void delegate(string) @safe next, CrateRule rule) {
+  enforce(next !is null, "The next handler was not set. ");
 
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
     string id = request.params["id"];
@@ -131,6 +176,7 @@ auto requestIdHandler(void delegate(string) @safe next, CrateRule rule) {
 
 /// ditto
 auto requestIdHandler(void delegate(string, HTTPServerResponse) @safe next, CrateRule rule) {
+  enforce(next !is null, "The next handler was not set. ");
 
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
     string id = request.params["id"];
@@ -143,6 +189,8 @@ auto requestIdHandler(void delegate(string, HTTPServerResponse) @safe next, Crat
 
 /// ditto
 auto requestIdHandler(T)(T delegate(string) @safe getItem, CrateRule rule) if(!is(T == void) && !is(T == ICrateSelector)){
+  enforce(getItem !is null, "The getItem handler was not set. ");
+
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
     string id = request.params["id"];
 
@@ -162,6 +210,8 @@ auto requestIdHandler(T)(T delegate(string) @safe getItem, CrateRule rule) if(!i
 
 /// ditto
 auto requestIdHandler(Types...)(ICrateSelector delegate(string) @safe getItem, CrateRule rule, Types filters) {
+  enforce(getItem !is null, "The getItem handler was not set. ");
+
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @trusted {
     string id = request.params["id"];
 
@@ -183,7 +233,9 @@ auto requestIdHandler(Types...)(ICrateSelector delegate(string) @safe getItem, C
 }
 
 /// ditto
-auto requestDeserializationHandler(U, Type, V)(V delegate(Type) @safe next, CrateRule rule) if(!is(V == void)) {
+auto requestDeserializationHandler(Type, V, U)(V delegate(U) @safe next, CrateRule rule) if(!is(V == void)) {
+  enforce(next !is null, "The next handler for `" ~ Type.stringof ~ "` was not set. ");
+
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
     string id;
 
@@ -193,16 +245,60 @@ auto requestDeserializationHandler(U, Type, V)(V delegate(Type) @safe next, Crat
 
     auto clientData = rule.request.serializer.normalise(id, request.json);
     Type value;
+    Json result;
+
+    checkRelationships(clientData, rule.request.serializer.definition);
+    checkFields(clientData, rule.request.serializer.definition);
 
     try {
       value = clientData.deserializeJson!Type;
+
+      static if(is(U == Json)) {
+        result = next(value.serializeToJson).serializeToJson;
+      } else {
+        result = next(value).serializeToJson;
+      }
     } catch (JSONException e) {
       throw new CrateValidationException("Can not deserialize data. " ~ e.msg, e.file, e.line);
     }
-
-    auto result = next(value);
+  
     response.statusCode = rule.response.statusCode;
-    response.writeJsonBody(rule.response.serializer.denormalise(result.serializeToJson), U.mime);
+
+    if(result.type == Json.Type.undefined || result.type == Json.Type.null_) {
+      response.writeVoidBody;
+    } else {
+      response.writeJsonBody(rule.response.serializer.denormalise(result.serializeToJson), rule.response.mime);
+    }
+  }
+
+  return &deserialize;
+}
+
+/// ditto
+auto requestDeserializationHandler(Type, U)(void delegate(U, HTTPServerResponse) @safe next, CrateRule rule) if(!is(V == void)) {
+  enforce(next !is null, "The next handler was not set. ");
+
+  void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
+    string id;
+
+    if("id" in request.params) {
+      id = request.params["id"];
+    }
+
+    auto clientData = rule.request.serializer.normalise(id, request.json);
+    Type value;
+    Json result;
+
+    checkRelationships(clientData, rule.request.serializer.definition);
+    checkFields(clientData, rule.request.serializer.definition);
+
+    value = clientData.deserializeJson!Type;
+
+    static if(is(U == Json)) {
+      next(value.serializeToJson, response);
+    } else {
+      next(value, response).serializeToJson;
+    }
   }
 
   return &deserialize;
@@ -210,6 +306,8 @@ auto requestDeserializationHandler(U, Type, V)(V delegate(Type) @safe next, Crat
 
 /// Call the next handler after the request data is deserialized
 auto requestFullDeserializationHandler(U, T)(void delegate(T, HTTPServerResponse) @safe next, CrateRule rule) {
+  enforce(next !is null, "The next handler was not set. ");
+
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @safe {
     string id;
 
@@ -240,6 +338,7 @@ auto requestFullDeserializationHandler(U, T)(void delegate(T, HTTPServerResponse
 
 /// ditto
 auto requestDeserializedHandler(Policy, Type, V)(V delegate(Json) @safe setItem, CrateRule rule) {
+  enforce(setItem !is null, "The setItem handler for `" ~ Type.stringof ~ "` was not set. ");
 
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @trusted {
     string id;
@@ -276,7 +375,8 @@ auto requestDeserializedHandler(Policy, Type, V)(V delegate(Json) @safe setItem,
 }
 
 /// ditto
-auto requestDeserializedHandler(Policy, Type, V, U)(V delegate(Json) @safe setItem, U delegate(string) @safe getItem, CrateRule rule) {
+auto requestDeserializedHandler(Policy, Type, V, U, Types...)(V delegate(Json) @safe setItem, U delegate(string) @safe getItem, CrateRule rule, Types middlewares) {
+  enforce(setItem !is null, "The setItem handler for `" ~ Type.stringof ~ "` was not set. ");
 
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @trusted {
     string id;
@@ -287,7 +387,10 @@ auto requestDeserializedHandler(Policy, Type, V, U)(V delegate(Json) @safe setIt
     enforce!CrateNotFoundException(!rangeData.empty, "Item `" ~ id ~ "` not found.");
 
     Json oldData = rangeData.front;
-    auto clientData = mix(oldData, rule.request.serializer.normalise(id, request.json)).deserializeJson!Type.serializeToJson;
+
+    auto mixResult = mix(oldData, rule.request.serializer.normalise(id, request.json));
+
+    auto clientData = mixResult.deserializeJson!Type.serializeToJson;
 
     static if(is(V == void)) {
       setItem(clientData);
@@ -310,6 +413,8 @@ auto requestDeserializedHandler(Policy, Type, V, U)(V delegate(Json) @safe setIt
 
 /// Handle a request that returns a list of elements
 auto requestListHandler(U, T)(T[] delegate() @safe next) if(!is(T == void)) {
+  enforce(next !is null, "The next handler was not set. ");
+
   FieldDefinition definition = getFields!T;
   auto serializer = new U.Serializer(definition);
 
@@ -332,6 +437,7 @@ auto requestListHandler(U, T)(T[] delegate() @safe next) if(!is(T == void)) {
 auto requestFilteredListHandler(U, T, Types...)(const ICrateSelector delegate() @safe get, Types filters) if(!is(T == void)) {
   FieldDefinition definition = getFields!T;
   auto serializer = new U.Serializer(definition);
+  enforce(get !is null, "The get handler was not set. ");
 
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @trusted {
     Json jsonResponse;
@@ -353,6 +459,9 @@ auto requestFilteredListHandler(U, T, Types...)(const ICrateSelector delegate() 
 
 auto requestActionHandler(Type, string actionName, T, U, V)(T delegate(string id) @system getElement, U delegate(V item) @system updateElement, CrateRule rule) 
     if(is(T == ICrateSelector) || is(T == Json) || is(T == Type)) {
+  enforce(getElement !is null, "The getElement handler was not set. ");
+  enforce(updateElement !is null, "The updateElement handler  was not set. ");
+
   void deserialize(HTTPServerRequest request, HTTPServerResponse response) @trusted {
     string id = request.params["id"];
 
@@ -415,15 +524,16 @@ auto requestActionHandler(Type, string actionName, T, U, V)(T delegate(string id
 }
 
 
-Json mix(Json data, Json newData)
+Json mix(Json data, Json newData, string prefix = "")
 {
   Json mixedData = data;
+  enforce!CrateRelationNotFoundException(data.type == newData.type, "Invalid `" ~ prefix ~ "` type.");
 
   foreach (string key, value; newData)
   {
     if (mixedData[key].type == Json.Type.object)
     {
-      mixedData[key] = mix(mixedData[key], value);
+      mixedData[key] = mix(mixedData[key], value, prefix ~ (prefix == "" ? "" : ".") ~ key);
     }
     else
     {

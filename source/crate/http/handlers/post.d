@@ -36,7 +36,7 @@ URLRouter postWith(Policy, Type, V)(URLRouter router, V delegate(Type object) @s
   FieldDefinition definition = getFields!Type;
   auto rule = Policy.create(definition);
 
-  auto deserializationHandler = requestDeserializationHandler!Policy(handler, rule);
+  auto deserializationHandler = requestDeserializationHandler!Type(handler, rule);
 
   return router.addRule(rule, requestErrorHandler(deserializationHandler));
 }

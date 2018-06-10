@@ -133,11 +133,8 @@ version (unittest)
   }
 }
 
-@("the user should be able to upload a file as a base64 data")
+/// the user should be able to upload a file as a base64 data using POST
 unittest {
-  import crate.api.rest.policy;
-  import std.stdio;
-
   auto router = new URLRouter();
   auto baseCrate = new MemoryCrate!Item;
   router
@@ -174,8 +171,27 @@ unittest {
           readText(parentFile).should.equal("this is a text file");
           readText(childFile).should.equal("hello world");
         });
+}
 
-  data = `{
+/// the user should be able to upload a file as a base64 data using PUT
+unittest {
+  auto router = new URLRouter();
+  auto baseCrate = new MemoryCrate!Item;
+  router
+    .crateSetup
+      .add(baseCrate)
+        .enableResource!(Item, "/file")(baseCrate)
+        .enableResource!(Item, "/child/file")(baseCrate);
+
+  Item item = Item("1");
+  item.file = new CrateFile("files/item.txt");
+  item.child.file = new CrateFile("files/child.txt");
+
+  baseCrate.addItem(item.serializeToJson);
+
+  scope(exit) "files/".rmdirRecurse;
+
+  auto data = `{
     "item": {
       "file": "data:text/plain;base64,Y2hhbmdlMQ==",
       "child": {

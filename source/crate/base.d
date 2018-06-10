@@ -15,6 +15,8 @@ import openapi.definitions;
 
 version(unittest) import fluent.asserts;
 
+alias VibeHandler = void delegate(HTTPServerRequest request, HTTPServerResponse response) @safe;
+
 struct ObjectId {
   Bson bsonObjectID;
   alias bsonObjectID this;
@@ -92,8 +94,16 @@ enum CrateOperation
 /// A Crate filter is a specialized middelware which filters the database data
 /// based on a request parameters
 interface ICrateFilter {
-  /// Filter the data
+  /// Filter applied to all operations. This has priority over get and update
   ICrateSelector any(HTTPServerRequest, ICrateSelector);
+
+  /// Filter applied to get operations. This should filter only the elements that
+  /// a client has rights to see
+  ICrateSelector get(HTTPServerRequest, ICrateSelector);
+
+  /// Filter applied to get operations. This should filter only the elements that
+  /// a client has rights to change
+  ICrateSelector update(HTTPServerRequest, ICrateSelector);
 }
 
 /// Apply the filters for the provided selector
@@ -104,7 +114,46 @@ ICrateSelector applyFilters(Types...)(ICrateSelector selector, HTTPServerRequest
     }
   }
 
+  if(request.method == HTTPMethod.GET) {
+    static foreach(i, Type; Types) {
+      static if(isCrateFilter!(Type, "get")) {
+        selector = filters[i].get(request, selector);
+      }
+    }
+  } else {
+    static foreach(i, Type; Types) {
+      static if(isCrateFilter!(Type, "update")) {
+        selector = filters[i].update(request, selector);
+      }
+    }
+  }
+
   return selector;
+}
+
+/// Middlewares suported by the crate router
+interface ICrateMiddleware {
+  /// Middleware applied before all operations. This has priority over any other
+  /// binded middlewares
+  ICrateSelector any(HTTPServerRequest, HTTPServerResponse);
+
+  /// Middleware applied for get list routes
+  ICrateSelector getList(HTTPServerRequest, HTTPServerResponse);
+
+  /// Middleware applied for get item routes
+  ICrateSelector getItem(HTTPServerRequest, HTTPServerResponse);
+
+  /// Middleware applied for create routes
+  ICrateSelector create(HTTPServerRequest, HTTPServerResponse);
+
+  /// Middleware applied for replace routes
+  ICrateSelector replace(HTTPServerRequest, HTTPServerResponse);
+
+  /// Middleware applied for patch routes
+  ICrateSelector patch(HTTPServerRequest, HTTPServerResponse);
+
+  /// Middleware applied for delete_ routes
+  ICrateSelector delete_(HTTPServerRequest, HTTPServerResponse);
 }
 
 /// A crate is a specialized interface to perform DB selectors.

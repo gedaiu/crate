@@ -335,7 +335,7 @@ unittest
 
 /// Filter designed to work with the getList operation. It will filter all the users
 /// that have the "term" parameter in the email
-class UserTermFilter : ICrateFilter {
+class UserTermFilter {
 
   /// Call the "like" method on the crate selector
   ICrateSelector any(HTTPServerRequest request, ICrateSelector selector) {

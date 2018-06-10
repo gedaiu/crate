@@ -43,7 +43,10 @@ alias s = Spec!({
     describe("with a PUT REST Api request", {
       it("should accept a valid request and return the changed data", {
         auto router = new URLRouter();
-        router.putWith!RestApi(&putSite);
+        auto putOperation = new PutOperation!(RestApi, Site)(router);
+        putOperation.handler = &putSite;
+        putOperation.bind;
+        
 
         Json dataUpdate = restSiteFixture.parseJsonString;
 
@@ -62,22 +65,28 @@ alias s = Spec!({
 
       it("should accept a valid request and return the changed data", {
         auto router = new URLRouter();
-        router.putJsonWith!(RestApi, Site)(&putVoidJsonSite);
+        auto putOperation = new PutOperation!(RestApi, Site)(router);
+        putOperation.handler = &putVoidJsonSite;
+        putOperation.bind;
 
         Json dataUpdate = restSiteFixture.parseJsonString;
 
         request(router)
           .put("/sites/10")
             .send(dataUpdate)
-              .expectStatusCode(204)
+              .expectStatusCode(200)
               .expectHeader("Access-Control-Allow-Origin", "*")
               .expectHeader("Access-Control-Allow-Methods", "OPTIONS, PUT")
-              .end();
+              .end((Response response) => {
+                response.bodyString.should.equal("");
+              });
       });
 
       it("should accept a valid request and return the changed data", {
         auto router = new URLRouter();
-        router.putJsonWith!(RestApi, Site)(&putSiteJson);
+        auto putOperation = new PutOperation!(RestApi, Site)(router);
+        putOperation.handler = &putSiteJson;
+        putOperation.bind;
 
         Json dataUpdate = restSiteFixture.parseJsonString;
 
@@ -95,7 +104,9 @@ alias s = Spec!({
 
       it("should accept a valid request and return an empty body", {
         auto router = new URLRouter();
-        router.putWith!RestApi(&putVoidSite);
+        auto putOperation = new PutOperation!(RestApi, Site)(router);
+        putOperation.handler = &putVoidSite;
+        putOperation.bind;
 
         Json dataUpdate = restSiteFixture.parseJsonString;
 
@@ -112,7 +123,9 @@ alias s = Spec!({
 
       it("should accept a valid request as json", {
         auto router = new URLRouter();
-        router.putWith!RestApi(&putJsonSite);
+        auto putOperation = new PutOperation!(RestApi, Site)(router);
+        putOperation.handler = &putJsonSite;
+        putOperation.bind;
 
         Json dataUpdate = restSiteFixture.parseJsonString;
 
@@ -130,13 +143,15 @@ alias s = Spec!({
 
       it("should respond with an error when there are missing fields", {
         auto router = new URLRouter();
-        router.putWith!RestApi(&putSite);
+        auto putOperation = new PutOperation!(RestApi, Site)(router);
+        putOperation.handler = &putSite;
+        putOperation.bind;
 
         auto dataUpdate = `{ "site": { }}`.parseJsonString;
-        auto expectedError = `{"errors": [{
-          "description": "Can not deserialize data. Got .site.position of type undefined, expected object.", 
-          "title": "Validation error", 
-          "status": 400 }]}`.parseJsonString;
+        auto expectedError = "{\"errors\": [{
+          \"description\": \"`position` is missing\", 
+          \"title\": \"Validation error\", 
+          \"status\": 400 }]}".parseJsonString;
 
         request(router)
           .put("/sites/10")
@@ -154,7 +169,9 @@ alias s = Spec!({
     describe("with a PUT JSON Api request", {
       it("should accept a valid request", {
         auto router = new URLRouter();
-        router.putWith!JsonApi(&putSite);
+        auto putOperation = new PutOperation!(JsonApi, Site)(router);
+        putOperation.handler = &putSite;
+        putOperation.bind;
 
         Json dataUpdate = jsonSiteFixture.parseJsonString;
 
@@ -175,17 +192,19 @@ alias s = Spec!({
 
       it("should respond with an error when there are missing fields", {
         auto router = new URLRouter();
-        router.putWith!JsonApi(&putSite);
+        auto putOperation = new PutOperation!(JsonApi, Site)(router);
+        putOperation.handler = &putSite;
+        putOperation.bind;
 
         Json dataUpdate = `{ "data": {
           "type": "sites",
           "attributes": {
           }}}`.parseJsonString;
 
-        auto expectedError = `{"errors": [{
-          "description": "Can not deserialize data. Got .position of type undefined, expected object.", 
-          "title": "Validation error", 
-          "status": 400 }]}`.parseJsonString;
+        auto expectedError = "{\"errors\": [{
+          \"description\": \"`position` is missing\",  
+          \"title\": \"Validation error\", 
+          \"status\": 400 }]}".parseJsonString;
 
         request(router)
           .put("/sites/10")

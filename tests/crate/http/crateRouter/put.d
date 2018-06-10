@@ -76,7 +76,7 @@ alias s = Spec!({
       it("should return 404 fhen the item is filtered", {
         import crate.base;
 
-        class FilterAll : ICrateFilter {
+        class FilterAll {
           ICrateSelector any(HTTPServerRequest, ICrateSelector selector) {
             return selector.where("field", "missing");
           }

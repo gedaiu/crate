@@ -131,10 +131,18 @@ class CrateRouter(RouterPolicy) {
 
     crateGetters[Type.stringof] = &crate.getItem;
 
-    router.putJsonWith!(Policy, Type)(&crate.updateItem);
+    auto deleteOperation = new DeleteOperation!(Policy, Type)(router);
+    deleteOperation.handler = &crate.deleteItem;
+    deleteOperation.getItem(&crate.getItem, middleware);
+    deleteOperation.bind();
+
+    auto putOperation = new PutOperation!(Policy, Type)(router);
+    putOperation.handler = &crate.updateItem;
+    putOperation.getItem(&crate.getItem, middleware);
+    putOperation.bind();
+
     router.postJsonWith!(Policy, Type)(&crate.addItem);
     router.patchJsonWith!(Policy, Type)(&crate.updateItem, &crate.getItem);
-    router.deleteWith!(Policy, Type)(&crate.deleteItem);
     router.getWith!(Policy, Type)(&crate.getItem, middleware);
     router.getListFilteredWith!(Policy, Type)(&crate.getList, middleware);
 

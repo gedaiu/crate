@@ -11,7 +11,7 @@ import std.algorithm;
 
 public import tests.crate.http.mocks;
 
-class TypeFilter : ICrateFilter {
+class TypeFilter {
   ICrateSelector any(HTTPServerRequest request, ICrateSelector selector) {
     if("type" !in request.query) {
       return selector;
@@ -21,10 +21,8 @@ class TypeFilter : ICrateFilter {
   }
 }
 
-class SomeTestCrateFilter : ICrateFilter {
+class SomeTestCrateFilter {
   ICrateSelector any(HTTPServerRequest request, ICrateSelector selector) {
-    import std.stdio;
-    writeln("!!!");
     return new CrateRange(selector.exec.filter!(a => a["position"]["type"] == "Point"));
   }
 }

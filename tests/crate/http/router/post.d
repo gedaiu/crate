@@ -160,10 +160,10 @@ alias s = Spec!({
         router.postWith!RestApi(&postSite);
 
         auto dataUpdate = `{ "site": { }}`.parseJsonString;
-        auto expectedError = `{"errors": [{
-          "description": "Can not deserialize data. Got .site.position of type undefined, expected object.", 
-          "title": "Validation error", 
-          "status": 400 }]}`.parseJsonString;
+        auto expectedError ="{\"errors\": [{
+          \"description\": \"`position` is missing\", 
+          \"title\": \"Validation error\", 
+          \"status\": 400 }]}".parseJsonString;
 
         request(router)
           .post("/sites")

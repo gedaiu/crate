@@ -11,52 +11,118 @@ import crate.http.handlers.error;
 import vibe.http.router;
 import vibe.data.json;
 
-/// Add a PUT route that parse the data according a Protocol
-URLRouter putWith(Policy, T, V)(URLRouter router, V function(T object) @safe handler) {
-  return putWith!(Policy, T, V)(router, handler.toDelegate);
+///
+auto toJsonDelegate(R, P)(R delegate(P value) @safe value) {
+  auto jsonWrapper(Json parameter) {
+    static if(is(P == Json)) {
+      auto param = parameter;
+    } else {
+      auto param = parameter.deserializeJson!P;
+    }
+
+    Json jsonResult;
+    static if(is(R == void)) {
+      jsonResult = Json.undefined;
+      value(param);
+    } else static if(is(R == Json)) {
+      jsonResult = value(param);
+    } else {
+      jsonResult = value(param).serializeToJson;
+    }
+
+    return jsonResult;
+  }
+  
+  return &jsonWrapper;
 }
 
-/// ditto
-URLRouter putWith(Policy, T)(URLRouter router, void function(T object, HTTPServerResponse) @safe handler) {
-  return putWith!(Policy, T)(router, handler.toDelegate);
-}
-
-/// ditto
-URLRouter putWith(Policy, Type)(URLRouter router, void delegate(Type object, HTTPServerResponse res) @safe handler) {
-  FieldDefinition definition = getFields!Type;
-  auto rule = Policy.replace(definition);
-
-  enforce(rule.request.path.endsWith("/:id"), "Invalid `" ~ rule.request.path ~ "` route. It must end with `/:id`.");
-
-  auto deserializationHandler = requestFullDeserializationHandler!(Policy, Type)(handler, rule);
-
-  return router.addRule(rule, requestErrorHandler(deserializationHandler));
-}
-
-/// ditto
-URLRouter putWith(Policy, Type, V)(URLRouter router, V delegate(Type object) @safe next) {
-  FieldDefinition definition = getFields!Type;
-  auto rule = Policy.replace(definition);
-
-  enforce(rule.request.path.endsWith("/:id"), "Invalid `" ~ rule.request.path ~ "` route. It must end with `/:id`.");
-  auto handler = requestDeserializationHandler!Policy(next, rule);
-
-  return router.addRule(rule, requestErrorHandler(handler));
-}
 
 ///
-URLRouter putJsonWith(Policy, Type, V)(URLRouter router, V function(Json) @safe handler) {
-  return putJsonWith!(Policy, Type)(router, handler.toDelegate);
+auto toJsonDelegate(R, P)(R delegate(P value, HTTPServerResponse res) @safe value) {
+  void jsonWrapper(Json parameter, HTTPServerResponse res) {
+    static if(is(P == Json)) {
+      auto param = parameter;
+    } else {
+      auto param = parameter.deserializeJson!P;
+    }
+
+    value(param, res);
+  }
+  
+  return &jsonWrapper;
 }
 
-/// ditto
-URLRouter putJsonWith(Policy, Type, V)(URLRouter router, V delegate(Json) @safe next) {
-  FieldDefinition definition = getFields!Type;
-  auto rule = Policy.replace(definition);
+class PutOperation(Policy, Type) {
+  alias DelegateResponseHandler = void delegate(Json value, HTTPServerResponse res) @safe;
+  alias DelegateHandler = Json delegate(Json value) @safe;
 
-  enforce(rule.request.path.endsWith("/:id"), "Invalid `" ~ rule.request.path ~ "` route. It must end with `/:id`.");
+  private {
+    URLRouter router;
+    DelegateHandler _handler;
+    DelegateResponseHandler _responseHandler;
 
-  auto handler = requestDeserializedHandler!(Policy, Type)(next, rule);
+    IFiltersWrapper filters;
+  }
 
-  return router.addRule(rule, requestErrorHandler(handler));
+  /// Set the get item function
+  void getItem(Types...)(IFiltersWrapper.GetItemDelegate value, Types middlewares) {
+    filters = new FiltersWrapper!Types(middlewares);
+    filters.getItem = value;
+  }
+
+  /// Set the put handler
+  void handler(DelegateHandler value) {
+    this._handler = value;
+  }
+
+  /// ditto
+  void handler(R, P)(R function(P value) @safe value) {
+    this._handler = value.toDelegate.toJsonDelegate;
+  }
+
+  /// ditto
+  void handler(R, P)(R delegate(P value) @safe value) {
+    this._handler = value.toJsonDelegate;
+  }
+
+
+  /// ditto
+  void handler(DelegateResponseHandler value) {
+    this._responseHandler = value;
+  }
+
+  /// ditto
+  void handler(R, P)(R function(P value, HTTPServerResponse res) @safe value) {
+    this._responseHandler = value.toDelegate.toJsonDelegate;
+  }
+
+  /// ditto
+  void handler(R, P)(R delegate(P value, HTTPServerResponse res) @safe value) {
+    this._responseHandler = value.toJsonDelegate;
+  }
+
+  this(URLRouter router) {
+    this.router = router;
+  }
+
+  URLRouter bind(Types...)(Types middlewares) {
+    FieldDefinition definition = getFields!Type;
+    auto rule = Policy.replace(definition);
+
+    enforce(rule.request.path.endsWith("/:id"), "Invalid `" ~ rule.request.path ~ "` route. It must end with `/:id`.");
+
+    VibeHandler next;
+
+    if(_handler !is null) {
+      next = requestDeserializationHandler!Type(_handler, rule);
+    } else {
+      next = requestDeserializationHandler!Type(_responseHandler, rule);
+    }
+
+    if(filters is null) {
+      return router.addRule(rule, requestErrorHandler(next));
+    } else {
+      return router.addRule(rule, requestErrorHandler(filters.handler(next)));
+    }
+  }
 }
